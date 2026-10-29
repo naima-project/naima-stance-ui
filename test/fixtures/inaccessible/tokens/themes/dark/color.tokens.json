@@ -1,0 +1,38 @@
+{
+  "color": {
+    "$type": "color",
+    "text": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.333,
+          0.333,
+          0.333
+        ],
+        "hex": "#555555"
+      }
+    },
+    "surface": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.086,
+          0.086,
+          0.086
+        ],
+        "hex": "#161616"
+      }
+    },
+    "focus": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.125,
+          0.188,
+          0.29
+        ],
+        "hex": "#20304a"
+      }
+    }
+  }
+}

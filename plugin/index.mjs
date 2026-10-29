@@ -27,6 +27,12 @@ const CHECKS = [
     says: "the design tokens follow the W3C Design Tokens (DTCG) format, and every mood board defines the same tokens",
   },
   {
+    name: "ui-contrast",
+    runs: "contrast",
+    says:
+      "every colour pair the widgets use reaches 4.5:1 for text and 3:1 for controls and focus rings, in every theme of every mood board",
+  },
+  {
     name: "ui-no-raw-literals",
     runs: "no-raw-literals",
     says: "components hold no raw colour, size or duration, and read only tokens the mood board defines",
@@ -40,6 +46,22 @@ const CHECKS = [
     name: "ui-svelte-check",
     runs: "svelte-check",
     says: "svelte-check passes: types hold, and nothing writes the store around its transitions",
+  },
+  {
+    name: "ui-a11y",
+    runs: "a11y",
+    says:
+      "the app's pages pass axe-core at WCAG 2.2 AA in both themes on desktop and phone, every control is reached with Tab and shows its focus, and the page reflows at 320 CSS px",
+  },
+  {
+    name: "ui-target-size",
+    runs: "target-size",
+    says: "every pointer target is at least 24 by 24 CSS px, or far enough from the others (WCAG 2.2 SC 2.5.8)",
+  },
+  {
+    name: "ui-reduced-motion",
+    runs: "reduced-motion",
+    says: "nothing moves when the system asks for reduced motion",
   },
 ];
 
@@ -105,10 +127,32 @@ export const RULES = [
     audience: "everyone",
     strength: "must",
     text:
-      "A mood board is a complete set of token values, and every mood board defines the same tokens. The project chooses one while it is designed and builds it into its CSS; the app does not switch between mood boards at run time.",
+      "A mood board is a complete set of token values, and every mood board defines the same tokens. The project chooses one while it is designed and builds it into its CSS; the app does not switch between mood boards at run time. What does switch at run time is the theme within the mood board, light or dark (see the rule on light and dark).",
     why:
       "a mood board is a design choice, made once and reviewed; the same token names in every mood board are what lets a project change its choice without touching a component.",
     enforcedBy: "ui-tokens",
+  },
+  {
+    name: "ui-light-and-dark",
+    title: "Every mood board has a light and a dark theme, and the user's choice is app state",
+    audience: "everyone",
+    strength: "must",
+    text:
+      "Each mood board has a light and a dark theme, declared by a DTCG resolver file, with the same token names. The app follows prefers-color-scheme unless the user chose a theme; that choice is held by the theme machine in the store and changes only through its transition, whose port sets data-theme on the page. Both themes reach 4.5:1 for text and 3:1 for controls and focus rings, for every pair in the contrast file.",
+    why:
+      "a theme that is only light fails people who need a dark screen, and a dark theme added later is never checked; a choice kept outside the store is app state no machine knows about.",
+    enforcedBy: "ui-contrast",
+  },
+  {
+    name: "ui-accessible",
+    title: "The interface meets EN 301 549 and WCAG 2.2 at level AA",
+    audience: "everyone",
+    strength: "must",
+    text:
+      "Every widget and page meets the European Accessibility Act's harmonised standard, EN 301 549, and WCAG 2.2 level AA: names, roles and states for assistive technology; everything works from the keyboard with a visible focus that is never hidden; targets of at least 24 by 24 CSS px; motion stops when reduced motion is asked for; text resizes to 200% and the page reflows at 320 CSS px; nothing is told by colour alone; an input's error is said in text and tied to it; the page states its language. Dragging always has a single-pointer alternative, help sits in the same place on every page, a sign-in never asks to solve or remember a puzzle, and nothing already entered is asked for again in the same process.",
+    why:
+      "the European Accessibility Act has applied since 28 June 2025; an inaccessible interface shuts people out, and accessibility added at the end is never finished.",
+    enforcedBy: "ui-a11y",
   },
   {
     name: "ui-compositional-widget-set",
@@ -116,7 +160,7 @@ export const RULES = [
     audience: "everyone",
     strength: "should",
     text:
-      "The widget set has primitives (Button, Text, Input, Checkbox, Icon, Stack, Cluster) and components composed from them (Field, Dropdown, Dialog, Card, Toolbar); a new component is built from existing ones before it is written from scratch. The set is copied into the project with `naima stance-ui adopt`, as source the project owns, and stance-ui.json records the stance's version so that later updates can be compared.",
+      "The widget set has primitives (Button, Text, Input, Checkbox, Icon, Stack, Cluster, Grid, Keycap) and components composed from them (Field, Dropdown, Dialog, Card, Toolbar, ThemeSwitch); a new component is built from existing ones before it is written from scratch. The set is copied into the project with `naima stance-ui adopt`, as source the project owns, and stance-ui.json records the stance's version so that later updates can be compared.",
     why:
       "composition keeps the look and the behaviour (focus, keyboard, labels) consistent, since each is written once, in the smallest component that needs it.",
   },
@@ -173,10 +217,10 @@ export default function stanceUi(options = {}, api = {}) {
     name: api.plugin ?? "stance-ui",
     contract: CONTRACT,
     says:
-      "the UI stance by makebecome: logic without UI, one store written by transitions, design tokens, a compositional widget set",
+      "the UI stance by makebecome: logic without UI, one store written by transitions, design tokens in light and dark, accessible at WCAG 2.2 AA, a compositional widget set",
     about:
-      "A stance is a set of authored, opinionated choices and rules a project adopts. This one, by makebecome, is about user interfaces: the app's logic is code with no UI; one deep-reactive Svelte 5 store holds every state machine and is written only through their transitions; machines are composed of simpler ones and modelled first; components keep only their own UI state; every colour, size and duration is a DTCG design token; the mood board is chosen at design time; the widget set is compositional. " +
-      "Its rules are listed by `naima rules`; its checks run with `naima check` and need Deno on the PATH; `naima stance-ui adopt` copies the widget set, the store and a mood board into the project.",
+      "A stance is a set of authored, opinionated choices and rules a project adopts. This one, by makebecome, is about user interfaces: the app's logic is code with no UI; one deep-reactive Svelte 5 store holds every state machine and is written only through their transitions; machines are composed of simpler ones and modelled first; components keep only their own UI state; every colour, size and duration is a DTCG design token; the mood board is chosen at design time, with a light and a dark theme the user can choose; the interface meets EN 301 549 and WCAG 2.2 AA; the widget set is compositional. " +
+      "Its rules are listed by `naima rules`; its checks run with `naima check` and need Deno on the PATH, and the browser checks need Playwright's Chromium; `naima stance-ui adopt` copies the widget set, the store and a mood board into the project.",
     options: [
       {
         name: "app",

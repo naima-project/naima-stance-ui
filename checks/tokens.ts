@@ -338,3 +338,27 @@ export function compareMoods(moods: Map<string, Map<string, Token>>): Finding[] 
   }
   return findings;
 }
+
+/** Named token files of a folder, parsed; a file that is missing or not JSON is a finding. */
+export async function readNamedFiles(
+  dir: string,
+  label: string,
+  names: string[],
+): Promise<{ files: { file: string; json: unknown }[]; findings: Finding[] }> {
+  const files: { file: string; json: unknown }[] = [];
+  const findings: Finding[] = [];
+  for (const name of names) {
+    const file = `${label}/${name}`;
+    try {
+      files.push({ file, json: JSON.parse(await Deno.readTextFile(`${dir}/${name}`)) });
+    } catch (e) {
+      findings.push({
+        check: CHECK,
+        level: "problem",
+        file,
+        message: `cannot be read as JSON: ${(e as Error).message}`,
+      });
+    }
+  }
+  return { files, findings };
+}

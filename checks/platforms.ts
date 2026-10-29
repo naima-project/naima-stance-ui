@@ -125,7 +125,7 @@ class Launched {
       .spawn();
     const log = Deno.openSync(opts.log, { write: true, create: true, append: true });
     log.writeSync(new TextEncoder().encode(`$ ${cmd} ${args.join(" ")}\n`));
-    const read = async (s: ReadableStream<Uint8Array>) => {
+    const read = async (s: ReadableStream<Uint8Array<ArrayBuffer>>) => {
       for await (const line of s.pipeThrough(new TextDecoderStream()).pipeThrough(new TextLineStream())) {
         log.writeSync(new TextEncoder().encode(line + "\n"));
         this.lines.push(line);

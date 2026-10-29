@@ -15,9 +15,11 @@
     choices: readonly Choice[];
     onselect: (value: string) => void;
     variant?: "primary" | "secondary" | "ghost";
+    /** The edge of the button the list lines up with: "end" for a button at the end of a row. */
+    align?: "start" | "end";
   }
 
-  let { label, choices, onselect, variant = "secondary" }: Props = $props();
+  let { label, choices, onselect, variant = "secondary", align = "start" }: Props = $props();
   const id = $props.id();
 
   let open = $state(false);
@@ -69,7 +71,7 @@
     <span class="caret" aria-hidden="true">▾</span>
   </Button>
   {#if open}
-    <ul class="menu" id="{id}-menu" role="menu" bind:this={menu}>
+    <ul class="menu" class:end={align === "end"} id="{id}-menu" role="menu" bind:this={menu}>
       {#each choices as choice (choice.value)}
         <li
           role="menuitem"
@@ -106,6 +108,10 @@
     background: var(--color-surface-raised);
     box-shadow: var(--shadow-overlay);
   }
+  .end {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+  }
   [role="menuitem"] {
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
@@ -113,9 +119,12 @@
     font-size: var(--font-size-md);
     cursor: pointer;
   }
-  [role="menuitem"]:hover,
+  [role="menuitem"]:hover {
+    background: var(--color-surface-sunken);
+  }
   [role="menuitem"]:focus-visible {
-    outline: none;
+    outline: var(--border-width-focus) solid var(--color-focus);
+    outline-offset: calc(-1 * var(--border-width-focus));
     background: var(--color-surface-sunken);
   }
   [aria-disabled="true"] {

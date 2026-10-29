@@ -1,0 +1,24 @@
+{
+  "pairs": [
+    {
+      "kind": "text",
+      "use": "text",
+      "fg": [
+        "color.text"
+      ],
+      "bg": [
+        "color.surface"
+      ]
+    },
+    {
+      "kind": "ui",
+      "use": "focus ring",
+      "fg": [
+        "color.focus"
+      ],
+      "bg": [
+        "color.surface"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "check": {
+    "tokens": "tokens",
+    "widgets": [],
+    "components": [],
+    "store": [],
+    "tsconfig": null,
+    "pages": [
+      {
+        "name": "bad",
+        "path": "pages/bad.html"
+      }
+    ]
+  }
+}

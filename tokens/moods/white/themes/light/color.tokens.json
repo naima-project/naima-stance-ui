@@ -1,159 +1,159 @@
 {
-  "$description": "Dark and warm: light text on a deep blue-grey, an amber accent, softer corners and deeper shadows.",
+  "$description": "White and minimal, light: black text on white, grey rules, one dark accent, almost no shadow.",
   "color": {
     "$type": "color",
     "surface": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.11,
-          0.122,
-          0.149
+          1.0,
+          1.0,
+          1.0
         ],
-        "hex": "#1c1f26"
+        "hex": "#ffffff"
       }
     },
     "surface-raised": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.145,
-          0.165,
-          0.2
+          1.0,
+          1.0,
+          1.0
         ],
-        "hex": "#252a33"
+        "hex": "#ffffff"
       }
     },
     "surface-sunken": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.086,
-          0.094,
-          0.118
+          0.965,
+          0.965,
+          0.965
         ],
-        "hex": "#16181e"
+        "hex": "#f6f6f6"
       }
     },
     "text": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.925,
-          0.906,
-          0.875
+          0.102,
+          0.102,
+          0.102
         ],
-        "hex": "#ece7df"
+        "hex": "#1a1a1a"
       }
     },
     "text-muted": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.639,
-          0.616,
-          0.58
+          0.388,
+          0.388,
+          0.388
         ],
-        "hex": "#a39d94"
+        "hex": "#636363"
       }
     },
     "border": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.208,
-          0.231,
-          0.275
+          0.89,
+          0.89,
+          0.89
         ],
-        "hex": "#353b46"
+        "hex": "#e3e3e3"
       }
     },
     "border-strong": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.302,
-          0.333,
-          0.388
+          0.541,
+          0.541,
+          0.541
         ],
-        "hex": "#4d5563"
+        "hex": "#8a8a8a"
       }
     },
     "accent": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.941,
-          0.651,
-          0.227
+          0.102,
+          0.102,
+          0.102
         ],
-        "hex": "#f0a63a"
+        "hex": "#1a1a1a"
       }
     },
     "accent-hover": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.961,
-          0.725,
-          0.373
+          0.227,
+          0.227,
+          0.227
         ],
-        "hex": "#f5b95f"
+        "hex": "#3a3a3a"
       }
     },
     "on-accent": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.11,
-          0.122,
-          0.149
+          1.0,
+          1.0,
+          1.0
         ],
-        "hex": "#1c1f26"
+        "hex": "#ffffff"
       }
     },
     "focus": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.498,
-          0.702,
-          1
+          0.184,
+          0.435,
+          0.871
         ],
-        "hex": "#7fb3ff"
+        "hex": "#2f6fde"
       }
     },
     "danger": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          1,
-          0.482,
-          0.447
+          0.769,
+          0.118,
+          0.165
         ],
-        "hex": "#ff7b72"
+        "hex": "#c41e2a"
       }
     },
     "success": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.337,
-          0.827,
-          0.392
+          0.102,
+          0.498,
+          0.216
         ],
-        "hex": "#56d364"
+        "hex": "#1a7f37"
       }
     },
     "overlay": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
-        "alpha": 0.55,
+        "alpha": 0.32,
         "hex": "#000000"
       }
     },
@@ -161,44 +161,44 @@
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.173,
-          0.196,
-          0.235
+          1.0,
+          1.0,
+          1.0
         ],
-        "hex": "#2c323c"
+        "hex": "#ffffff"
       }
     },
     "key-hover": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.204,
-          0.231,
-          0.278
+          0.965,
+          0.965,
+          0.965
         ],
-        "hex": "#343b47"
+        "hex": "#f6f6f6"
       }
     },
     "key-pressed": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.137,
-          0.157,
-          0.188
+          0.922,
+          0.922,
+          0.922
         ],
-        "hex": "#232830"
+        "hex": "#ebebeb"
       }
     },
     "accent-soft": {
       "$value": {
         "colorSpace": "srgb",
         "components": [
-          0.29,
-          0.227,
-          0.133
+          0.925,
+          0.925,
+          0.925
         ],
-        "hex": "#4a3a22"
+        "hex": "#ececec"
       }
     }
   }

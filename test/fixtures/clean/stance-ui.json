@@ -1,9 +1,21 @@
 {
   "check": {
     "tokens": "tokens",
-    "widgets": ["src/lib/ui/components"],
-    "components": ["src"],
-    "store": ["src/lib/ui/store/store.svelte.ts"],
-    "tsconfig": null
+    "widgets": [
+      "src/lib/ui/components"
+    ],
+    "components": [
+      "src"
+    ],
+    "store": [
+      "src/lib/ui/store/store.svelte.ts"
+    ],
+    "tsconfig": null,
+    "pages": [
+      {
+        "name": "home",
+        "path": "pages/index.html"
+      }
+    ]
   }
 }

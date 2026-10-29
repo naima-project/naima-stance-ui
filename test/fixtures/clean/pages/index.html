@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clean</title>
+    <style>
+    :root {
+      color-scheme: light dark;
+      --text: #1a1a1a;
+      --surface: #ffffff;
+      --focus: #2f6fde;
+      --fast: 0.1s;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0;
+        --surface: #161616;
+        --focus: #7aa7ff;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --fast: 0s;
+      }
+    }
+    body {
+      margin: 0;
+      padding: 1rem;
+      background: var(--surface);
+      color: var(--text);
+      font-family: system-ui;
+    }
+    button,
+    input {
+      min-height: 2.25rem;
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--text);
+      transition: background-color var(--fast);
+    }
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>A clean page</h1>
+      <label for="name">Name</label>
+      <input id="name" autocomplete="name" />
+      <button type="button">Save</button>
+    </main>
+  </body>
+</html>

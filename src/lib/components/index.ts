@@ -11,3 +11,6 @@ export { default as Dropdown } from "./Dropdown.svelte";
 export { default as Dialog } from "./Dialog.svelte";
 export { default as Card } from "./Card.svelte";
 export { default as Toolbar } from "./Toolbar.svelte";
+export { default as Grid } from "./Grid.svelte";
+export { default as Keycap } from "./Keycap.svelte";
+export { default as ThemeSwitch } from "./ThemeSwitch.svelte";
