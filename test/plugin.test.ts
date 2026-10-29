@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
-import stanceUi, { ATTRIBUTION, RULES } from "../plugin/index.mjs";
+import stanceUi, { RULES } from "../plugin/index.mjs";
 import { parseRule } from "../plugin/rules.mjs";
 
 const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;

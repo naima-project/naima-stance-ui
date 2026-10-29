@@ -19,10 +19,13 @@
 // A scaffold file already in the project is never overwritten, only named as skipped; --no-scaffold skips them
 // all. Last, the chosen mood board is built, both themes, into <to>/tokens.css. Run as a command, it then installs
 // the project's npm packages (deno install, with the Deno that runs it) when the project has a package.json, so the
-// checks that follow find them in place; --no-install leaves that to the project.
+// checks that follow find them in place, and Playwright's Chromium for the browser checks when this machine has no copy
+// of the pinned build (checks/chromium.ts), into the project's gitignored .stance-ui/browsers/; --no-install leaves
+// both to the project, and the browser checks install the browser themselves when it is missing.
 
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
+import { ensureChromium } from "../checks/chromium.ts";
 import { loadConfig } from "../checks/config.ts";
 import { checkedLines } from "../checks/record.ts";
 import { buildTokens } from "./tokens.ts";
@@ -355,7 +358,11 @@ if (import.meta.main) {
       scaffold: !args.includes("--no-scaffold"),
     });
     for (const l of lines) console.log(l);
-    if (!args.includes("--status") && !args.includes("--no-install")) console.log(await install(project));
+    if (!args.includes("--status") && !args.includes("--no-install")) {
+      console.log(await install(project));
+      const failed = await ensureChromium(project, (l) => console.log(l.replace(/^stance ui: /, "")));
+      if (failed) console.log(`${failed}; the browser checks will try again`);
+    }
   } catch (e) {
     console.error(`stance ui: ${(e as Error).message}`);
     Deno.exit(2);

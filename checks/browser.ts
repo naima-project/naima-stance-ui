@@ -16,6 +16,7 @@ import { serveDir } from "@std/http/file-server";
 import { posix } from "node:path";
 import type { Page as PageConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
+import { launchChromium } from "./chromium.ts";
 
 export const BROWSER_CHECKS = ["a11y", "target-size", "reduced-motion"] as const;
 export type BrowserCheck = typeof BROWSER_CHECKS[number];
@@ -24,7 +25,6 @@ export type BrowserCheck = typeof BROWSER_CHECKS[number];
 export const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SCHEMES = ["light", "dark"] as const;
 const VIEWPORTS = { desktop: { width: 1280, height: 800 }, phone: { width: 390, height: 844 } } as const;
-const PLAYWRIGHT_INSTALL = "deno run -A npm:playwright@1.60.0 install chromium";
 
 /** One problem seen in one or more variants of a page (theme, viewport). */
 class Collector {
@@ -265,21 +265,13 @@ export async function browserChecks(
     (req) => serveDir(req, { fsRoot: root, quiet: true }),
   );
   const base = `http://127.0.0.1:${server.addr.port}`;
-  const { chromium } = await import("playwright");
   const axeSource: string = ((await import("axe-core")) as unknown as { default: { source: string } }).default.source;
-  let browser: import("playwright").Browser;
-  try {
-    browser = await chromium.launch();
-  } catch (e) {
+  const launched = await launchChromium(root);
+  if ("problem" in launched) {
     await server.shutdown();
-    return [{
-      check: only[0],
-      level: "problem",
-      message: `cannot start headless Chromium (${
-        (e as Error).message.split("\n")[0]
-      }): install it with ${PLAYWRIGHT_INSTALL}`,
-    }];
+    return [{ check: only[0], level: "problem", message: launched.problem }];
   }
+  const browser = launched.browser;
   const found = new Collector();
   try {
     for (const p of pages) {

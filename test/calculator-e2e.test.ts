@@ -3,6 +3,7 @@
 // (Playwright), in full motion and with reduced motion asked for.
 import { assert, assertEquals } from "@std/assert";
 import { serveDir } from "@std/http/file-server";
+import { launchChromium } from "../checks/chromium.ts";
 
 const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -19,8 +20,9 @@ Deno.test("the calculator shows a new operand: 3 + 3 shows “3 +” above and m
     { hostname: "127.0.0.1", port: 0, onListen: () => {} },
     (req) => serveDir(req, { fsRoot: `${root}/examples/calculator/dist`, quiet: true }),
   );
-  const { chromium } = await import("playwright");
-  const browser = await chromium.launch();
+  const launched = await launchChromium(root);
+  if ("problem" in launched) throw new Error(launched.problem);
+  const browser = launched.browser;
   try {
     for (const reducedMotion of ["no-preference", "reduce"] as const) {
       const context = await browser.newContext({ reducedMotion });

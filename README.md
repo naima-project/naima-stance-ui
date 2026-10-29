@@ -111,7 +111,12 @@ stance-ui.json                      this repository's own configuration of the c
 
 Everything runs with Deno 2. The npm packages (Svelte, Vite, svelte-check, Style Dictionary, postcss-value-parser,
 Playwright, axe-core) are listed in `package.json` at exact versions, and Deno installs them on first use. The browser
-checks need Playwright's Chromium once per machine: `deno run -A npm:playwright@1.60.0 install chromium`.
+checks need the Chromium build of that Playwright. They use it from `PLAYWRIGHT_BROWSERS_PATH` when that is set, from
+the project's `.stance-ui/browsers/`, or from Playwright's shared cache; when it is in none of them, adopt, or else the
+first browser check, installs it into `.stance-ui/browsers/` (which git ignores) and says so in one line; on a Linux
+distribution newer than those Playwright lists, it installs Playwright's build for the newest Ubuntu it knows. On Linux,
+Chromium needs system libraries too: when some are missing, the browser checks install them if they run as root, and
+otherwise fail, naming each missing package or library and the command that installs it.
 
 ## Tokens and mood boards
 
@@ -529,7 +534,8 @@ update can be compared with what the project changed.
    already has is never overwritten, and adopt prints `skipped <file>` for it. `--no-scaffold` writes none of them. Then
    it builds the mood board, both themes, into `src/lib/ui/tokens.css`, which `src/main.ts` imports. Last, when the
    project has a `package.json`, it installs the npm packages with `deno install`, run by the same Deno, so the checks
-   find them in place; `--no-install` skips that, and it says so when it cannot install them (with no network, say).
+   find them in place, and then Playwright's Chromium when this machine has no copy of the pinned build; `--no-install`
+   skips both, and it says so when it cannot install them (with no network, say).
 
 2. Build and run it. In an empty folder, these work straight after adopt, with no edit:
 
