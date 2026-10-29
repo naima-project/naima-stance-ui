@@ -26,7 +26,7 @@ Deno.test("the plugin's manifest has the shape Naima's contract 4 asks for", () 
     assert(["must", "should"].includes(r.strength));
     if (r.enforcedBy) assert(checks.has(r.enforcedBy), `${r.name}: enforced by ${r.enforcedBy}, not a check`);
   }
-  assertEquals(m.commands[0].runs, ["deno"]);
+  assertEquals(m.commands[0].runs, [Deno.execPath()]);
 });
 
 Deno.test("the plugin's checks report the stance's findings as Naima findings", async () => {
@@ -136,12 +136,26 @@ Deno.test("the edit hook is an agent hook Naima installs; the stance writes no s
   assertEquals(m.contributes["landing-reports"][0].runs, ["/opt/deno"]);
 });
 
-Deno.test("naima-stance.json, what naima stances reads, says what the plugin's manifest says", async () => {
-  const declared: Any = JSON.parse(await Deno.readTextFile(new URL("../naima-stance.json", import.meta.url)));
+Deno.test("naima-plugin.json, what Naima reads without running the plugin, says what the plugin's manifest says", async () => {
+  const declared: Any = JSON.parse(await Deno.readTextFile(new URL("../naima-plugin.json", import.meta.url)));
   const m: Any = stanceUi({}, { plugin: "stance-ui" });
-  assertEquals(declared.name, "ui");
+  assertEquals(declared.name, m.name);
   assertEquals(declared.kind, m.kind);
-  assertEquals(declared.plugin, "plugin/index.mjs");
+  assertEquals(declared.entry, "plugin/index.mjs");
+  assertEquals(declared.contract, m.contract);
   assertEquals(declared.examples, m.examples);
-  assertEquals(declared.attribution, ATTRIBUTION);
+  assertEquals(declared.attribution, m.attribution);
+});
+
+Deno.test("every option the stance-ui command's usage names is documented, as naima check asks", () => {
+  const m: Any = stanceUi({}, { plugin: "stance-ui" });
+  const command = m.commands.find((c: Any) => c.name === "stance-ui");
+  const documented = new Set(command.options.map((o: Any) => o.name));
+  for (const flag of command.usage.match(/--[a-z-]+/g)) assert(documented.has(flag), flag);
+});
+
+Deno.test("without a deno option, the stance runs the Deno that runs it, so Deno need not be on the PATH", () => {
+  const m: Any = stanceUi({}, { plugin: "stance-ui" });
+  assertEquals(m.checks[0].runs, [Deno.execPath()]);
+  assertEquals(stanceUi({ deno: "/opt/deno" }, { plugin: "stance-ui" }).checks[0].runs, ["/opt/deno"]);
 });

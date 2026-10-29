@@ -98,7 +98,7 @@ gallery/                            every widget on one page, built once per moo
 src/lib/platform/port.ts            the platform port: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
 platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt adds to a project
-naima-stance.json                   what makes the repository a stance to naima stances
+naima-plugin.json                   the plugin described as data, which Naima reads without running it
 demo/                               a small app wired to the store
 checks/                             the stance's checks (deno task check, deno task platforms)
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
@@ -567,9 +567,13 @@ adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain J
 own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from
 the plugin's checkout, so Deno must be on the PATH.
 
-`naima-stance.json`, at the root, says as data that this repository is a stance: its name, the kind `stance`, where its
-plugin's module is, its examples and who made it. `naima stances` reads that file to list the stance; when the stance is
-adopted, Naima loads the plugin and checks its kind again. A test keeps the file equal to what the plugin declares.
+`naima-plugin.json`, at the root, describes the plugin as data, so Naima can read it without running anything: its name,
+its kind (`stance`), its entry module, the plugin contract it is written for, its examples and who made it.
+`naima stances` reads it to list the stance, and when Naima loads the plugin it checks that the manifest says the same.
+A test keeps the two equal.
+
+The checks and scripts run with the Deno that runs Naima, so Deno need not be on the PATH; the plugin's `deno` option
+names another one.
 
 When a project customizes its mood board, its tokens or its widgets, the checks run again at two moments.
 

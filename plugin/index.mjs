@@ -133,9 +133,21 @@ const where = (f) => `${f.file ?? ""}${f.line ? `:${f.line}` : ""}`;
 /** The tools whose edits the hook follows, in Claude Code's terms. */
 const EDITS = "Edit|Write|MultiEdit";
 
+/**
+ * The Deno that runs Naima, when Naima runs on Deno: a machine may have Deno without it on the PATH (Naima started by
+ * its full path). Otherwise "deno", found on the PATH.
+ */
+function runningDeno() {
+  try {
+    return globalThis.Deno?.execPath?.() ?? "deno";
+  } catch {
+    return "deno";
+  }
+}
+
 export default function stanceUi(options = {}, api = {}) {
   const app = typeof options.app === "string" ? options.app : ".";
-  const deno = typeof options.deno === "string" ? options.deno : "deno";
+  const deno = typeof options.deno === "string" ? options.deno : runningDeno();
   const appRoot = (ctx) => resolve(ctx.root, app);
   const print = (ctx, stream) =>
   (
@@ -159,7 +171,11 @@ export default function stanceUi(options = {}, api = {}) {
         says: "the folder of the Svelte app, from the project's root: where stance-ui.json is",
         default: ".",
       },
-      { name: "deno", says: "the Deno executable that runs the stance's checks and scripts", default: "deno" },
+      {
+        name: "deno",
+        says: "the Deno executable that runs the stance's checks and scripts",
+        default: "the Deno that runs Naima, else deno on the PATH",
+      },
     ],
     contributes: {
       rules: RULES,
@@ -227,6 +243,10 @@ export default function stanceUi(options = {}, api = {}) {
         { name: "--tauri", says: "also copy the Tauri 2 shell to src-tauri/" },
         { name: "--server", says: "also copy the Deno port server to server/port-server.ts" },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
+        {
+          name: "--no-scaffold",
+          says: "copy the stance only, without the files a new project needs to build, test and run",
+        },
         { name: "--platforms", says: "with platforms: the platforms to try", default: "every one" },
       ],
       examples: [

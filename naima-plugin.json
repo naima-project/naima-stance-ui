@@ -1,7 +1,8 @@
 {
-  "name": "ui",
+  "name": "stance-ui",
   "kind": "stance",
-  "plugin": "plugin/index.mjs",
+  "entry": "plugin/index.mjs",
+  "contract": 4,
   "examples": ["examples/calculator"],
   "attribution": {
     "name": "UI stance",
