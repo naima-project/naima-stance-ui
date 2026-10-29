@@ -26,7 +26,7 @@
   });
   const digit = (d: number): Cap => ({ id: `d${d}`, key: { type: "digit", digit: d }, label: String(d), name: String(d), tone: "plain" });
   const caps: Cap[] = [
-    { id: "clear", key: { type: "clear" }, label: "AC", name: "All clear", tone: "quiet" },
+    { id: "clear", key: { type: "clear" }, label: "AC", name: "AC, all clear", tone: "quiet" },
     { id: "negate", key: { type: "negate" }, label: "±", name: "Change sign", tone: "quiet" },
     { id: "back", key: { type: "back" }, label: "⌫", name: "Delete last digit", tone: "quiet" },
     op("DIV", "÷", "Divide"),

@@ -40,6 +40,7 @@
       <Toolbar label="Task actions" justify="between">
         <Button variant="primary" type="submit" disabled={!tasks.allowed({ type: "add", title: draft })}>Add</Button>
         <Dropdown
+          align="end"
           label={shows.find((s) => s.value === filter.view.show)?.label ?? ""}
           choices={shows.map((s) => ({ ...s, disabled: s.value === filter.view.show }))}
           onselect={(v) => filter.choose(v as Show)}
