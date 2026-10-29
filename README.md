@@ -332,14 +332,14 @@ always copied, to `src/lib/ui/platform/port.ts`, and needs `@tauri-apps/api` amo
 The Tauri command line is `deno task tauri`, run from the app's folder (for the calculator, `examples/calculator`). Rust
 is needed for every platform but the web.
 
-| Platform | Build on    | Needs                                                                                                                                                                                                                                               | Build and run                                                                                                                                                                                                           |
-| -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web      | any         | Deno                                                                                                                                                                                                                                                | `deno task example:calculator:build`, then open `dist/index.html` from disk or serve `dist/` (with `servePort` from `platform/server.ts` when there is a backend)                                                       |
-| macOS    | macOS       | Xcode's command line tools                                                                                                                                                                                                                          | `deno task tauri build --bundles app`; the app is in `src-tauri/target/release/bundle/macos/`                                                                                                                           |
-| iOS      | macOS       | Xcode, the Rust target `aarch64-apple-ios-sim` (and `aarch64-apple-ios` for a device)                                                                                                                                                               | `deno task tauri ios init` once, then `deno task tauri ios build --target aarch64-sim --debug`; install the `.app` from `src-tauri/gen/apple/build/` with `xcrun simctl install booted <app>` and `xcrun simctl launch` |
-| Linux    | Linux       | `libwebkit2gtk-4.1-dev`, `build-essential`, `libxdo-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` (Debian and Ubuntu names)                                                                                                    | `deno task tauri build --no-bundle` (or with bundles: `.deb`, `.rpm`, AppImage); the binary is `src-tauri/target/release/app`                                                                                           |
-| Windows  | Windows     | the Visual Studio C++ build tools, and WebView2 (part of Windows 11)                                                                                                                                                                                | `deno task tauri build --no-bundle` (or with the NSIS or MSI installer); the binary is `src-tauri\target\release\app.exe`                                                                                               |
-| Android  | any desktop | the Android SDK with its platform tools, build tools, NDK and an emulator image, a JDK 17, and the Rust targets `aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`; `ANDROID_HOME` and `NDK_HOME` set | `deno task tauri android init` once, then `deno task tauri android build --apk --debug`; `adb install` the `.apk` from `src-tauri/gen/android/app/build/outputs/apk/`                                                   |
+| Platform | Build on    | Needs                                                                                                                                                                                                                                                                       | Build and run                                                                                                                                                                                                           |
+| -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web      | any         | Deno                                                                                                                                                                                                                                                                        | `deno task example:calculator:build`, then open `dist/index.html` from disk or serve `dist/` (with `servePort` from `platform/server.ts` when there is a backend)                                                       |
+| macOS    | macOS       | Xcode's command line tools                                                                                                                                                                                                                                                  | `deno task tauri build --bundles app`; the app is in `src-tauri/target/release/bundle/macos/`                                                                                                                           |
+| iOS      | macOS       | Xcode, the Rust target `aarch64-apple-ios-sim` (and `aarch64-apple-ios` for a device)                                                                                                                                                                                       | `deno task tauri ios init` once, then `deno task tauri ios build --target aarch64-sim --debug`; install the `.app` from `src-tauri/gen/apple/build/` with `xcrun simctl install booted <app>` and `xcrun simctl launch` |
+| Linux    | Linux       | `libwebkit2gtk-4.1-dev`, `build-essential`, `libxdo-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` (Debian and Ubuntu names)                                                                                                                            | `deno task tauri build --no-bundle` (or with bundles: `.deb`, `.rpm`, AppImage); the binary is `src-tauri/target/release/app`                                                                                           |
+| Windows  | Windows     | the Visual Studio C++ build tools, and WebView2 (part of Windows 11)                                                                                                                                                                                                        | `deno task tauri build --no-bundle` (or with the NSIS or MSI installer); the binary is `src-tauri\target\release\app.exe`                                                                                               |
+| Android  | any desktop | the Android SDK with its platform tools, build tools, a platform, the NDK, the emulator and an arm64 (or x86_64) system image; a JDK 17; the Rust targets `aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`; `JAVA_HOME` set | `deno task tauri android init` once, then `deno task tauri android build --apk --debug`; `adb install` the `.apk` from `src-tauri/gen/android/app/build/outputs/apk/`, with `ANDROID_HOME` and `NDK_HOME` set           |
 
 `src-tauri/gen/` holds the Xcode and Android Studio projects that the two `init` commands generate; the calculator
 leaves them out of git and makes them again when they are missing.
@@ -362,13 +362,13 @@ The end-to-end script is one JavaScript expression whose value is a promise of `
 page. The calculator's presses 1, +, 2 and = and reads 3 on the display. The same script runs on every platform; only
 what puts it in the page differs:
 
-| Platform       | Built by                      | Launched and made ready                                    | End-to-end through                                                                       | Screenshot                    |
-| -------------- | ----------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------- |
-| web            | the app's frontend build      | the stance's Deno server, in Chromium, Firefox and WebKit  | Playwright                                                                               | Playwright                    |
-| macOS          | `tauri build`                 | the app's binary                                           | the shell itself                                                                         | `screencapture` of its window |
-| iOS            | `tauri ios build` (simulator) | `xcrun simctl install` and `launch` on the booted iPhone   | the shell itself                                                                         | `xcrun simctl io screenshot`  |
-| Linux, Windows | `tauri build`                 | tauri-driver, when it and the system's WebDriver are there | WebDriver (`WebKitWebDriver` on Linux, `msedgedriver` on Windows); else the shell itself | WebDriver                     |
-| Android        | `tauri android build`         | `adb install` and launch on a running emulator or device   | not automated yet                                                                        | `adb exec-out screencap`      |
+| Platform       | Built by                      | Launched and made ready                                                                         | End-to-end through                                                                       | Screenshot                    |
+| -------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------- |
+| web            | the app's frontend build      | the stance's Deno server, in Chromium, Firefox and WebKit                                       | Playwright                                                                               | Playwright                    |
+| macOS          | `tauri build`                 | the app's binary                                                                                | the shell itself                                                                         | `screencapture` of its window |
+| iOS            | `tauri ios build` (simulator) | `xcrun simctl install` and `launch` on the booted iPhone                                        | the shell itself                                                                         | `xcrun simctl io screenshot`  |
+| Linux, Windows | `tauri build`                 | tauri-driver, when it and the system's WebDriver are there                                      | WebDriver (`WebKitWebDriver` on Linux, `msedgedriver` on Windows); else the shell itself | WebDriver                     |
+| Android        | `tauri android build`         | `adb install` and `am start` on a running emulator or device, or on an emulator the check boots | the WebView's DevTools socket (Chrome DevTools Protocol)                                 | `adb exec-out screencap`      |
 
 The shell itself runs the script when the environment variable `STANCE_UI_E2E` holds it: once the page has loaded it
 evaluates the script and prints `e2e: <report>`. Without the variable the shell does nothing of the kind. tauri-driver
@@ -376,6 +376,23 @@ does not support macOS's WKWebView, and iOS has no WebDriver for an app's webvie
 shell; WebKit in Playwright covers the same engine from outside. An app is ready when its page first calls the port: the
 shell prints `port: <command> -> ...` then. On iOS an app's standard output goes to the system log, so the check reads
 these lines with `xcrun simctl spawn <device> log stream` while it launches the app.
+
+On Android the app cannot be handed an environment variable, so the script goes in from outside, through the WebView's
+own debugging socket: a debug build's WebView opens `webview_devtools_remote_<pid>`, `adb forward` makes it a local
+port, and the check evaluates the script in the app's page with the Chrome DevTools Protocol's `Runtime.evaluate`. This
+is the same route Chrome's remote debugging takes, it needs no chromedriver matched to the WebView's version, and it
+runs the very script the other platforms run, where UIAutomator would have to press the keys by their position on the
+screen. The app is ready when its page shows where it runs, which it learns from the port's first answer. The check
+finds the SDK in `ANDROID_HOME` (or `ANDROID_SDK_ROOT`, or where Android Studio puts it) and the NDK in `NDK_HOME` (or
+the newest in the SDK's `ndk/` folder), and needs `JAVA_HOME` for Gradle. When no emulator or device is running it boots
+the AVD named in `STANCE_UI_AVD`, or the first one the emulator lists, with no window, waits until Android has finished
+booting, and shuts it down at the end. An AVD is made once:
+
+```sh
+sdkmanager "platform-tools" "build-tools;35.0.0" "platforms;android-36" "ndk;28.2.13676358" "emulator" \
+  "system-images;android-35;google_apis;arm64-v8a" "cmdline-tools;latest"
+avdmanager create avd -n stance_api35_arm64 -k "system-images;android-35;google_apis;arm64-v8a" -d pixel_7
+```
 
 A screenshot of a macOS window needs the Screen Recording permission (System Settings, Privacy & Security) for the
 program that runs the check, such as the terminal; without it the macOS line says so, and the rest of the check is
@@ -391,7 +408,7 @@ Each platform is reported at the furthest level it reached, and each level prove
 - **end-to-end passed**: the app works there: real keys pressed in the real page, the machines stepping, the display
   showing the right result.
 - **skipped**, with the reason: the machine cannot reach that platform (another operating system, no booted simulator,
-  no Android SDK or no running emulator, no display). A skipped platform is a note, never a pass.
+  no Android SDK, JDK or AVD, no display). A skipped platform is a note, never a pass.
 - **failed**: something that should have worked did not; this is the check's only problem, and it fails the check.
 
 ## The checks
