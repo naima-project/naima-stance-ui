@@ -15,6 +15,21 @@ export interface StanceConfig {
   allowImports: string[];
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
+  /** The colour pairs every theme must make legible: a contrast file (see tokens/contrast.json). */
+  contrast: string;
+  /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion) open headless. */
+  pages: Page[];
+}
+
+/** A page the browser checks open: an HTML file under the root, served over HTTP from the root. */
+export interface Page {
+  name: string;
+  /** The built HTML file, relative to the root. */
+  path: string;
+  /** A command run from the root before the page is opened, to build it: ["deno", "task", "build"]. */
+  build?: string[];
+  /** States of the page to check too, each reached by clicking these CSS selectors in order. */
+  states?: { name: string; click: string[] }[];
 }
 
 export const DEFAULTS: StanceConfig = {
@@ -24,6 +39,8 @@ export const DEFAULTS: StanceConfig = {
   store: ["src/lib/ui/store/store.svelte.ts"],
   allowImports: [],
   tsconfig: "tsconfig.json",
+  contrast: "tokens/contrast.json",
+  pages: [],
 };
 
 export async function loadConfig(root: string): Promise<StanceConfig> {
