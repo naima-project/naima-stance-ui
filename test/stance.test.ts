@@ -8,7 +8,7 @@ Deno.test("every mood board builds to the same custom properties", async () => {
   const dir = await Deno.makeTempDir();
   const names: string[][] = [];
   for (const mood of ["white", "dusk"]) {
-    const css = await Deno.readTextFile(await buildTokens(root, mood, `${dir}/${mood}.css`));
+    const css = await Deno.readTextFile(await buildTokens(`${root}/tokens/moods/${mood}`, `${dir}/${mood}.css`));
     assert(!/NaN|undefined|\[object/.test(css), css);
     names.push([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]).sort());
   }

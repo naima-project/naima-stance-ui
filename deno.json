@@ -26,6 +26,7 @@
     ]
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1.0.13"
+    "@std/assert": "jsr:@std/assert@1.0.13",
+    "@std/encoding": "jsr:@std/encoding@1.0.10"
   }
 }

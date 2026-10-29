@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@1.0.13": "1.0.13",
+    "jsr:@std/encoding@1.0.10": "1.0.10",
     "jsr:@std/internal@^1.0.6": "1.0.14",
     "npm:@sveltejs/vite-plugin-svelte@7.3.1": "7.3.1_svelte@5.57.3_vite@8.3.5",
     "npm:postcss-value-parser@4.2.0": "4.2.0",
@@ -17,6 +18,9 @@
       "dependencies": [
         "jsr:@std/internal"
       ]
+    },
+    "@std/encoding@1.0.10": {
+      "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
     },
     "@std/internal@1.0.14": {
       "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
@@ -1118,7 +1122,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@1.0.13"
+      "jsr:@std/assert@1.0.13",
+      "jsr:@std/encoding@1.0.10"
     ],
     "packageJson": {
       "dependencies": [

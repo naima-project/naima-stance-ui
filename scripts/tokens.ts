@@ -3,7 +3,7 @@
 // DTCG type as CSS, since the stable DTCG format (2025.10) gives colors, dimensions and durations as
 // objects, which Style Dictionary's built-in CSS transforms do not all read.
 //
-//   deno task tokens [--mood white] [--out dist/tokens.css]
+//   deno task tokens [--mood white | --tokens <folder>] [--out dist/tokens.css]
 
 import StyleDictionary from "style-dictionary";
 import type { TransformedToken } from "style-dictionary/types";
@@ -61,13 +61,12 @@ StyleDictionary.registerTransform({
   transform: (t: TransformedToken) => css(t.$type as string, t.$value),
 });
 
-/** Builds the mood board's CSS custom properties and returns the file written. */
-export async function buildTokens(root: string, mood: string, out: string): Promise<string> {
-  const dir = `${root}/tokens/moods/${mood}`;
+/** Builds the CSS custom properties of a folder of DTCG token files (one mood board) and returns the file written. */
+export async function buildTokens(dir: string, out: string, label = dir): Promise<string> {
   try {
     await Deno.stat(dir);
   } catch {
-    throw new Error(`no mood board "${mood}" in ${root}/tokens/moods`);
+    throw new Error(`no folder of tokens at ${dir}`);
   }
   const sd = new StyleDictionary({
     usesDtcg: true,
@@ -82,7 +81,7 @@ export async function buildTokens(root: string, mood: string, out: string): Prom
           format: "css/variables",
           options: {
             outputReferences: false,
-            fileHeader: () => [`mood board: ${mood}`, "generated from the DTCG tokens: do not edit"],
+            fileHeader: () => [`tokens: ${label}`, "generated from the DTCG tokens: do not edit"],
           },
         }],
       },
@@ -93,11 +92,13 @@ export async function buildTokens(root: string, mood: string, out: string): Prom
 }
 
 if (import.meta.main) {
-  const arg = (flag: string, fallback: string) => {
+  const arg = (flag: string) => {
     const i = Deno.args.indexOf(flag);
-    return i >= 0 && Deno.args[i + 1] ? Deno.args[i + 1] : fallback;
+    return i >= 0 ? Deno.args[i + 1] : undefined;
   };
-  const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
-  const written = await buildTokens(root, arg("--mood", "white"), arg("--out", "dist/tokens.css"));
-  console.log(written);
+  // In this repository, --mood names a mood board; in a project, --tokens names its folder of tokens.
+  const mood = arg("--mood");
+  const here = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+  const dir = arg("--tokens") ?? `${here}/tokens/moods/${mood ?? "white"}`;
+  console.log(await buildTokens(dir, arg("--out") ?? "dist/tokens.css", mood ? `mood board ${mood}` : dir));
 }
