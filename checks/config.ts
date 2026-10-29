@@ -15,6 +15,8 @@ export interface StanceConfig {
   allowImports: string[];
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
+  /** For the platforms check: the app's folder (where src-tauri is) and its end-to-end script, or null. */
+  platforms?: { app: string; e2e: string | null };
 }
 
 export const DEFAULTS: StanceConfig = {

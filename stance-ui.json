@@ -18,6 +18,10 @@
       "src/lib/store/store.svelte.ts"
     ],
     "allowImports": [],
-    "tsconfig": "tsconfig.json"
+    "tsconfig": "tsconfig.json",
+    "platforms": {
+      "app": "examples/calculator",
+      "e2e": "examples/calculator/e2e.js"
+    }
   }
 }
