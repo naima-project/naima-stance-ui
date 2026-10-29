@@ -515,7 +515,7 @@ came from the stance, and names each of them so they can be merged by hand. `--f
 
 ## As a Naima plugin
 
-`plugin/index.mjs` is written to Naima's plugin contract 2. It reads the rules in `rules/` (`plugin/rules.mjs`) and
+`plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
 check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`,
 `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. And it
@@ -528,15 +528,16 @@ When a project customizes its mood board, its tokens or its widgets, the checks 
 - **Before the change lands.** The plugin contributes a landing report, `ui-stance-checks`, to the coordination plugin's
   `landing-reports` point. `naima land` asks it before the trunk moves, on the branch's files: when the landing changes
   a file the checks read (a token file, a mood board, the contrast pairs, a widget, a component or `stance-ui.json`),
-  every check runs, browser checks included, and each problem refuses the landing. A checker that cannot run refuses it
-  too, since the change was not checked. A landing that changes none of those files runs nothing.
-- **Right after an agent's edit.** `naima init` and `naima update` run the plugin's setup step, `ui-edit-hook`, which,
-  in a project that uses Claude Code (it has `.claude/` or `CLAUDE.md`), adds a `PostToolUse` hook on
-  `Edit|Write|MultiEdit` to `.claude/settings.json`. It is added the way Naima adds its own hooks: beside the project's
-  hooks, an older form replaced where it stands, never twice. The hook runs `naima stance-ui hook`, which reads the
-  edited file from the hook's input and, when the checks read it, runs the fast ones (all but `svelte-check` and the
-  browser checks). It is silent when they pass; otherwise it prints the problems and exits 2, which Claude Code shows
-  the agent.
+  every check runs, browser checks included, and each problem refuses the landing. The report is a `refuses` one, so
+  Naima says the branch fails a check, and `--stale-proofs` does not let it through. A checker that cannot run refuses
+  it too, since the change was not checked. A landing that changes none of those files runs nothing.
+- **Right after an agent's edit.** The plugin contributes an agent hook, `ui-edit-hook`: a `PostToolUse` hook on
+  `Edit|Write|MultiEdit` that runs `naima stance-ui hook`. Naima installs it in the agent tool's settings
+  (`.claude/settings.json` for Claude Code) at `naima stance adopt`, `naima init` and `naima update`, beside the
+  project's own hooks and Naima's, and removes it if the stance is removed. The plugin itself writes none of the
+  project's settings. The hook reads the edited file from the hook's input and, when the checks read it, runs the fast
+  ones (all but `svelte-check` and the browser checks). It is silent when they pass; otherwise it prints the problems
+  and exits 2, which Claude Code shows the agent.
 
 `naima stance-ui status` then says which files the project customized since it adopted the stance and whether the checks
 passed after the last change.
@@ -559,29 +560,8 @@ Deno executable if it is not the one on the PATH.
 
 ### What Naima would need
 
-Naima's contract already supports a plugin like this one, and these things would make it better.
+Naima's contract already supports a plugin like this one, and this would make it better.
 
-- **A check cannot declare the programs it runs.** A command declares them with `runs`, and the launcher grants them,
-  but a check has no such field, so the plugin's checks rely on the launcher already allowing `deno`. A `runs` field on
-  checks, like the one on commands, would close that gap.
-- **A plugin pinned to the tip of its default branch is fetched empty.** Naima clones a git plugin with `--no-checkout`
-  and checks the pinned commit out only when `HEAD` differs from it. When the pin is the tip of the default branch,
-  `HEAD` already equals it, the checkout is skipped, the working tree stays empty, and the next load refuses the plugin
-  for having local changes.
-- **A landing check cannot refuse in its own words.** The only way a plugin refuses a landing is a landing report's
-  `blocks`, whose lines Naima presents as proofs not current: it tells the agent to run `naima verify` or
-  `naima metrics run --record`, and `--stale-proofs "<reason>"` lets the landing through. A failing stance check is not
-  a stale proof. A kind of landing check that refuses with its own message, and that only the owner can override, would
-  say what happened and keep the gate shut.
-- **A plugin cannot contribute agent hooks.** Naima's adapters (`src/core/adapters/`) are the only place that names an
-  agent tool and installs its hooks, and their hooks are Naima's own (session start, turn end, sub-agents). So this
-  plugin writes Claude Code's settings itself, from a setup step. A contribution point for agent hooks, such as
-  `{ name, on: "after-edit", paths, command }`, which each adapter turns into its tool's own hook (a `PostToolUse` entry
-  for Claude Code), would keep tool names out of plugins and give every tool with hooks the same behaviour.
-- **Nothing records that an agent reviewed a change against a rule.** The agent-verified rules ask the agent to record
-  its review as a note on the item it lands with. A landing trailer such as `Reviewed: <rule>`, given with
-  `naima land --reviewed <rule>` and required by a rule whose `verifiedBy` is `agent` when the landing touches the paths
-  the rule names, would let a check see that the review was made.
 - **A plugin cannot ship scaffolding as such.** Copying the widget set is a command of this plugin. A contribution point
   for scaffolds (files a plugin offers to copy into a project, with the version recorded) would let Naima list and
   update them for every stance in the same way.
