@@ -15,7 +15,8 @@
 // then. The end-to-end script (stance-ui.json's platforms.e2e) is one JavaScript expression whose value is a
 // promise of { ok, says }; the shell runs it when STANCE_UI_E2E holds it and prints "e2e: <report>".
 
-import { posix } from "node:path";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { TextLineStream } from "@std/streams/text-line-stream";
 import { decodeBase64 } from "@std/encoding/base64";
 import { portHandler } from "../platform/server.ts";
@@ -64,7 +65,7 @@ interface TauriConf {
   build: { frontendDist: string; beforeBuildCommand?: string | { script: string; cwd?: string } };
 }
 
-const STANCE = posix.resolve(new URL("..", import.meta.url).pathname);
+const STANCE = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const exe = (name: string) => Deno.build.os === "windows" ? `${name}.exe` : name;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -82,7 +83,7 @@ async function which(name: string, extra: string[] = []): Promise<string | null>
   const sep = Deno.build.os === "windows" ? ";" : ":";
   const dirs = [...(Deno.env.get("PATH") ?? "").split(sep), ...extra].filter(Boolean);
   for (const d of dirs) {
-    const p = posix.join(d.replaceAll("\\", "/"), exe(name));
+    const p = path.join(d.replaceAll("\\", "/"), exe(name));
     if (await exists(p)) return p;
   }
   return null;
@@ -199,9 +200,9 @@ async function buildWeb(ctx: Ctx): Promise<{ ok: boolean; dist: string; log: str
   const log = `${ctx.out}/web-build.log`;
   const before = ctx.conf.build.beforeBuildCommand;
   const script = typeof before === "string" ? before : before?.script;
-  const dist = posix.resolve(ctx.tauriDir, ctx.conf.build.frontendDist);
+  const dist = path.resolve(ctx.tauriDir, ctx.conf.build.frontendDist);
   if (script) {
-    const cwd = typeof before === "object" && before.cwd ? posix.resolve(ctx.app, before.cwd) : ctx.app;
+    const cwd = typeof before === "object" && before.cwd ? path.resolve(ctx.app, before.cwd) : ctx.app;
     const shell = Deno.build.os === "windows" ? ["cmd", "/c", script] : ["sh", "-c", script];
     const code = await runLogged(shell[0], shell.slice(1), { cwd, env: ctx.env, log });
     if (code !== 0) return { ok: false, dist, log };
@@ -598,12 +599,12 @@ export async function checkPlatforms(
   cfg: PlatformConfig,
   opts: { only?: Platform[]; out?: string } = {},
 ): Promise<PlatformReport[]> {
-  const app = posix.resolve(root, cfg.app);
+  const app = path.resolve(root, cfg.app);
   const tauriDir = `${app}/src-tauri`;
-  const out = posix.resolve(opts.out ?? `${root}/.stance-ui/platforms`);
+  const out = path.resolve(opts.out ?? `${root}/.stance-ui/platforms`);
   await Deno.mkdir(out, { recursive: true });
   const conf = JSON.parse(await Deno.readTextFile(`${tauriDir}/tauri.conf.json`)) as TauriConf;
-  const denoDir = posix.dirname(Deno.execPath());
+  const denoDir = path.dirname(Deno.execPath());
   const sep = Deno.build.os === "windows" ? ";" : ":";
   const progressFile = Deno.env.get("NAIMA_RUN_PROGRESS");
   const chosen = PLATFORMS.filter((p) => !opts.only || opts.only.includes(p));
@@ -613,10 +614,15 @@ export async function checkPlatforms(
     app,
     tauriDir,
     out,
-    script: cfg.e2e ? withoutHeader(await Deno.readTextFile(posix.resolve(root, cfg.e2e))) : null,
+    script: cfg.e2e ? withoutHeader(await Deno.readTextFile(path.resolve(root, cfg.e2e))) : null,
     conf,
     // The Deno running the check is the one the app's build commands find first.
-    env: { ...Deno.env.toObject(), PATH: `${denoDir}${sep}${Deno.env.get("PATH") ?? ""}`, NO_COLOR: "1" },
+    // (Windows spells it Path, and takes the two spellings as one variable: only one is passed on.)
+    env: {
+      ...Object.fromEntries(Object.entries(Deno.env.toObject()).filter(([k]) => k.toUpperCase() !== "PATH")),
+      PATH: `${denoDir}${sep}${Deno.env.get("PATH") ?? ""}`,
+      NO_COLOR: "1",
+    },
     progress: (stage) => {
       if (progressFile) {
         Deno.writeTextFileSync(
@@ -653,7 +659,7 @@ export async function checkPlatforms(
 
 /** One line per platform: the furthest level it reached, and what stopped it. */
 export function describeReport(r: PlatformReport, root: string): string {
-  const rel = (p?: string) => (p ? posix.relative(root, p) : "");
+  const rel = (p?: string) => (p ? path.relative(root, p) : "");
   const level = r.endToEnd
     ? "end-to-end passed"
     : r.launched
