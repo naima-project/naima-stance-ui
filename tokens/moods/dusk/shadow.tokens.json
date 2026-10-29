@@ -60,6 +60,98 @@
           "unit": "rem"
         }
       }
+    },
+    "key": {
+      "$value": [
+        {
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "hex": "#000000",
+            "alpha": 0.35
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "rem"
+          },
+          "offsetY": {
+            "value": 0.0625,
+            "unit": "rem"
+          },
+          "blur": {
+            "value": 0.125,
+            "unit": "rem"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "rem"
+          }
+        }
+      ]
+    },
+    "panel": {
+      "$value": [
+        {
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "hex": "#000000",
+            "alpha": 0.5
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "rem"
+          },
+          "offsetY": {
+            "value": 1.5,
+            "unit": "rem"
+          },
+          "blur": {
+            "value": 4,
+            "unit": "rem"
+          },
+          "spread": {
+            "value": -1,
+            "unit": "rem"
+          }
+        },
+        {
+          "color": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "hex": "#000000",
+            "alpha": 0.3
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "rem"
+          },
+          "offsetY": {
+            "value": 0.125,
+            "unit": "rem"
+          },
+          "blur": {
+            "value": 0.5,
+            "unit": "rem"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "rem"
+          }
+        }
+      ]
     }
   }
 }

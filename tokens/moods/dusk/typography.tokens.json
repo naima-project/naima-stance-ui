@@ -43,6 +43,24 @@
           "value": 1.5,
           "unit": "rem"
         }
+      },
+      "display": {
+        "$value": {
+          "value": 3.5,
+          "unit": "rem"
+        }
+      },
+      "display-md": {
+        "$value": {
+          "value": 2.75,
+          "unit": "rem"
+        }
+      },
+      "display-sm": {
+        "$value": {
+          "value": 2,
+          "unit": "rem"
+        }
       }
     },
     "weight": {
@@ -52,6 +70,9 @@
       },
       "strong": {
         "$value": 600
+      },
+      "light": {
+        "$value": 300
       }
     },
     "line-height": {
@@ -61,6 +82,21 @@
       },
       "normal": {
         "$value": 1.5
+      }
+    },
+    "letter-spacing": {
+      "$type": "dimension",
+      "display": {
+        "$value": {
+          "value": -0.0625,
+          "unit": "rem"
+        }
+      },
+      "label": {
+        "$value": {
+          "value": 0.05,
+          "unit": "rem"
+        }
       }
     }
   }

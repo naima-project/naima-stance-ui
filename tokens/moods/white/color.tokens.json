@@ -156,6 +156,50 @@
         "alpha": 0.32,
         "hex": "#000000"
       }
+    },
+    "key": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "hex": "#ffffff"
+      }
+    },
+    "key-hover": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.965,
+          0.965,
+          0.965
+        ],
+        "hex": "#f6f6f6"
+      }
+    },
+    "key-pressed": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.922,
+          0.922,
+          0.922
+        ],
+        "hex": "#ebebeb"
+      }
+    },
+    "accent-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.925,
+          0.925,
+          0.925
+        ],
+        "hex": "#ececec"
+      }
     }
   }
 }

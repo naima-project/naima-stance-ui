@@ -18,6 +18,18 @@
         "value": 624.9375,
         "unit": "rem"
       }
+    },
+    "lg": {
+      "$value": {
+        "value": 0.5,
+        "unit": "rem"
+      }
+    },
+    "xl": {
+      "$value": {
+        "value": 0.75,
+        "unit": "rem"
+      }
     }
   }
 }

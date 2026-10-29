@@ -13,6 +13,12 @@
           "value": 240,
           "unit": "ms"
         }
+      },
+      "instant": {
+        "$value": {
+          "value": 70,
+          "unit": "ms"
+        }
       }
     },
     "easing": {

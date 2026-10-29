@@ -42,6 +42,12 @@
         "value": 2.5,
         "unit": "rem"
       }
+    },
+    "3xl": {
+      "$value": {
+        "value": 4,
+        "unit": "rem"
+      }
     }
   },
   "size": {
@@ -67,6 +73,18 @@
     "dropdown-width": {
       "$value": {
         "value": 12,
+        "unit": "rem"
+      }
+    },
+    "key": {
+      "$value": {
+        "value": 4,
+        "unit": "rem"
+      }
+    },
+    "panel-width": {
+      "$value": {
+        "value": 22.5,
         "unit": "rem"
       }
     }
