@@ -1,0 +1,13 @@
+{
+  "nodeModulesDir": "manual",
+  "tasks": {
+    "tokens": "deno run -A scripts/tokens.ts",
+    "check": "deno run -A checks/cli.ts",
+    "test": "deno test -A test/",
+    "demo": "deno run -A npm:vite@8.3.5 demo",
+    "demo:build": "deno run -A scripts/tokens.ts --mood white --out demo/tokens.css && deno run -A npm:vite@8.3.5 build demo",
+    "adopt": "deno run -A scripts/adopt.ts"
+  },
+  "fmt": { "lineWidth": 120, "semiColons": true, "exclude": ["node_modules", "dist", "demo/dist"] },
+  "lint": { "exclude": ["node_modules", "dist", "demo/dist", "test/fixtures"] }
+}

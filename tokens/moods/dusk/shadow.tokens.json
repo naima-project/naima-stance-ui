@@ -1,0 +1,65 @@
+{
+  "shadow": {
+    "$type": "shadow",
+    "raised": {
+      "$value": {
+        "color": {
+          "colorSpace": "srgb",
+          "components": [
+            0,
+            0,
+            0
+          ],
+          "alpha": 0.4,
+          "hex": "#000000"
+        },
+        "offsetX": {
+          "value": 0,
+          "unit": "rem"
+        },
+        "offsetY": {
+          "value": 0.25,
+          "unit": "rem"
+        },
+        "blur": {
+          "value": 1,
+          "unit": "rem"
+        },
+        "spread": {
+          "value": 0,
+          "unit": "rem"
+        }
+      }
+    },
+    "overlay": {
+      "$value": {
+        "color": {
+          "colorSpace": "srgb",
+          "components": [
+            0,
+            0,
+            0
+          ],
+          "alpha": 0.8,
+          "hex": "#000000"
+        },
+        "offsetX": {
+          "value": 0,
+          "unit": "rem"
+        },
+        "offsetY": {
+          "value": 1,
+          "unit": "rem"
+        },
+        "blur": {
+          "value": 4,
+          "unit": "rem"
+        },
+        "spread": {
+          "value": 0,
+          "unit": "rem"
+        }
+      }
+    }
+  }
+}
