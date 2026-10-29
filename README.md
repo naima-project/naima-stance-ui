@@ -317,7 +317,13 @@ The shell itself runs the script when the environment variable `STANCE_UI_E2E` h
 evaluates the script and prints `e2e: <report>`. Without the variable the shell does nothing of the kind. tauri-driver
 does not support macOS's WKWebView, and iOS has no WebDriver for an app's webview, which is why those two go through the
 shell; WebKit in Playwright covers the same engine from outside. An app is ready when its page first calls the port: the
-shell prints `port: <command> -> ...` then.
+shell prints `port: <command> -> ...` then. On iOS an app's standard output goes to the system log, so the check reads
+these lines with `xcrun simctl spawn <device> log stream` while it launches the app.
+
+A screenshot of a macOS window needs the Screen Recording permission (System Settings, Privacy & Security) for the
+program that runs the check, such as the terminal; without it the macOS line says so, and the rest of the check is
+unaffected. On Linux, Playwright has builds only for the distributions it lists, so on another one the three browsers
+are reported skipped.
 
 Each platform is reported at the furthest level it reached, and each level proves something more:
 
@@ -466,6 +472,7 @@ Naima's contract already supports a plugin like this one, and three things would
 ## Developing
 
 ```sh
+deno task platforms      # build, launch and drive the calculator on every platform this machine reaches
 deno task test           # the checks against their fixtures, the copy, the plugin, the token build and the demo build
 deno task check          # this repository against its own stance, the browser checks on the gallery,
                          # the calculator and the demo included
