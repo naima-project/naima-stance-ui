@@ -7,10 +7,11 @@ enforcedBy: ui-no-raw-drag
 verifiedBy: ui-no-raw-drag
 ---
 
-Anything that can be moved by dragging is wrapped in the widget set's Draggable, whose `moves` prop is required and never
-empty: every direction it lists is also a button next to the thing and an arrow key on its handle. No other component
-handles a pointer, mouse or touch move, an HTML5 drag event or a `draggable` attribute, in its markup or its scripts.
-This is how WCAG 2.2 SC 2.5.7 (dragging movements) is met: dragging is only ever a shortcut for a single click or a key.
+Anything that can be moved by dragging is wrapped in the widget set's Draggable, whose `moves` prop is required and
+never empty: every direction it lists is also a button next to the thing and an arrow key on its handle. No other
+component handles a pointer, mouse or touch move, an HTML5 drag event or a `draggable` attribute, in its markup or its
+scripts. This is how WCAG 2.2 SC 2.5.7 (dragging movements) is met: dragging is only ever a shortcut for a single click
+or a key.
 
 ## Why
 

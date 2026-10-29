@@ -12,7 +12,8 @@ that information the user already gave in it is never asked for again: a later s
 chosen, unless asking again is needed for security (signing in again, for instance; a password typed twice to confirm it
 is not) or what was given is no longer valid. The values are carried through the process by its machine, in memory only:
 never written to storage, never sent anywhere the step does not need them, and dropped when the process ends. The agent
-records the review on the item the change lands with, as a note: `naima note <item> "ui-no-redundant-entry: reviewed,
+records the review on the item the change lands with, as a note:
+`naima note <item> "ui-no-redundant-entry: reviewed,
 <what it found>"`. This is WCAG 2.2 SC 3.3.7 (redundant entry).
 
 ## Why
