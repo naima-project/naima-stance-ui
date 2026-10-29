@@ -526,8 +526,10 @@ update can be compared with what the project changed.
    `package.json` with the npm packages at the stance's exact versions, `tsconfig.json`, `vite.config.ts`, `index.html`,
    `.gitignore`, and a minimal app wired to the store (`src/main.ts`, `src/App.svelte`, `src/app.svelte.ts`, a counter
    machine in `src/machines/` and its test in `test/`). These files are the project's from the start: a file the project
-   already has is never overwritten, and adopt prints `skipped <file>` for it. `--no-scaffold` writes none of them.
-   Last, it builds the mood board, both themes, into `src/lib/ui/tokens.css`, which `src/main.ts` imports.
+   already has is never overwritten, and adopt prints `skipped <file>` for it. `--no-scaffold` writes none of them. Then
+   it builds the mood board, both themes, into `src/lib/ui/tokens.css`, which `src/main.ts` imports. Last, when the
+   project has a `package.json`, it installs the npm packages with `deno install`, run by the same Deno, so the checks
+   find them in place; `--no-install` skips that, and it says so when it cannot install them (with no network, say).
 
 2. Build and run it. In an empty folder, these work straight after adopt, with no edit:
 

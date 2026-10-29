@@ -2,7 +2,7 @@
 // the stance's version and commit, and the sha256 of every file as copied. Later runs compare against that
 // record, so an update never overwrites a file the project changed without saying so.
 //
-//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force] [--no-scaffold]
+//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force] [--no-scaffold] [--no-install]
 //                                                                    copy (or update) the stance
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
@@ -17,7 +17,9 @@
 // versions), tsconfig.json, vite.config.ts, index.html, .gitignore, and a minimal app wired to the store
 // (src/main.ts, src/App.svelte, src/app.svelte.ts, a counter machine in src/machines/ and its test in test/).
 // A scaffold file already in the project is never overwritten, only named as skipped; --no-scaffold skips them
-// all. Last, the chosen mood board is built, both themes, into <to>/tokens.css.
+// all. Last, the chosen mood board is built, both themes, into <to>/tokens.css. Run as a command, it then installs
+// the project's npm packages (deno install, with the Deno that runs it) when the project has a package.json, so the
+// checks that follow find them in place; --no-install leaves that to the project.
 
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
@@ -317,6 +319,25 @@ export async function status(project: string): Promise<string[]> {
   return lines;
 }
 
+/**
+ * Installs the project's npm packages with the Deno that runs this script, when the project has a package.json: the
+ * checks run svelte-check and vite from them, and several checks starting at once must not each install them.
+ */
+async function install(project: string): Promise<string> {
+  if (!(await read(`${project}/package.json`))) return "no package.json: no npm packages to install";
+  const r = await new Deno.Command(Deno.execPath(), {
+    args: ["install", "--quiet"],
+    cwd: project,
+    stdout: "null",
+    stderr: "piped",
+  }).output();
+  if (r.success) return "installed the npm packages (deno install)";
+  const why = new TextDecoder().decode(r.stderr).trim().split("\n").at(-1) ?? "";
+  return `could not install the npm packages: run deno install in the project before its checks${
+    why ? ` (${why})` : ""
+  }`;
+}
+
 if (import.meta.main) {
   const args = Deno.args;
   const arg = (flag: string) => {
@@ -334,6 +355,7 @@ if (import.meta.main) {
       scaffold: !args.includes("--no-scaffold"),
     });
     for (const l of lines) console.log(l);
+    if (!args.includes("--status") && !args.includes("--no-install")) console.log(await install(project));
   } catch (e) {
     console.error(`stance ui: ${(e as Error).message}`);
     Deno.exit(2);

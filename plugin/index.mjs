@@ -236,7 +236,7 @@ export default function stanceUi(options = {}, api = {}) {
       says:
         "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, or builds and drives the app on every platform the machine reaches",
       usage:
-        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] | status | check | hook | platforms [--platforms <list>]",
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms [--platforms <list>]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
@@ -247,6 +247,7 @@ export default function stanceUi(options = {}, api = {}) {
           name: "--no-scaffold",
           says: "copy the stance only, without the files a new project needs to build, test and run",
         },
+        { name: "--no-install", says: "do not install the project's npm packages (deno install) after the copy" },
         { name: "--platforms", says: "with platforms: the platforms to try", default: "every one" },
       ],
       examples: [
@@ -296,7 +297,7 @@ export default function stanceUi(options = {}, api = {}) {
           return runScript(deno, "hook.ts", [...project, "--root", ctx.root, ...rest], out, err, "inherit");
         }
         err(
-          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] | status | check | hook | platforms",
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms",
         );
         return 2;
       },
