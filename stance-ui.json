@@ -12,12 +12,111 @@
     ],
     "components": [
       "demo",
-      "examples/calculator"
+      "examples/calculator",
+      "gallery"
     ],
     "store": [
       "src/lib/store/store.svelte.ts"
     ],
     "allowImports": [],
-    "tsconfig": "tsconfig.json"
+    "tsconfig": "tsconfig.json",
+    "contrast": "tokens/contrast.json",
+    "pages": [
+      {
+        "name": "widgets on white",
+        "path": "gallery/dist/white/index.html",
+        "build": [
+          "deno",
+          "task",
+          "gallery:build"
+        ],
+        "states": [
+          {
+            "name": "menu open",
+            "click": [
+              "[aria-haspopup=menu]"
+            ]
+          },
+          {
+            "name": "dialog open",
+            "click": [
+              "button:has-text('Open the dialog')"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "widgets on dusk",
+        "path": "gallery/dist/dusk/index.html",
+        "build": [
+          "deno",
+          "task",
+          "gallery:build"
+        ],
+        "states": [
+          {
+            "name": "menu open",
+            "click": [
+              "[aria-haspopup=menu]"
+            ]
+          },
+          {
+            "name": "dialog open",
+            "click": [
+              "button:has-text('Open the dialog')"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "widgets on calm",
+        "path": "gallery/dist/calm/index.html",
+        "build": [
+          "deno",
+          "task",
+          "gallery:build"
+        ],
+        "states": [
+          {
+            "name": "menu open",
+            "click": [
+              "[aria-haspopup=menu]"
+            ]
+          },
+          {
+            "name": "dialog open",
+            "click": [
+              "button:has-text('Open the dialog')"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "calculator",
+        "path": "examples/calculator/dist/index.html",
+        "build": [
+          "deno",
+          "task",
+          "example:calculator:build"
+        ]
+      },
+      {
+        "name": "demo",
+        "path": "demo/dist/index.html",
+        "build": [
+          "deno",
+          "task",
+          "demo:build"
+        ],
+        "states": [
+          {
+            "name": "menu open",
+            "click": [
+              "[aria-haspopup=menu]"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

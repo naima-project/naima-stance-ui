@@ -5,9 +5,19 @@ import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
-import { compareMoods, cssName, readTokenFiles, type Token, validate } from "./tokens.ts";
+import { readThemes } from "../scripts/tokens.ts";
+import { BROWSER_CHECKS, type BrowserCheck, browserChecks } from "./browser.ts";
+import { checkContrast, readPairs } from "./contrast.ts";
+import { compareMoods, cssName, readNamedFiles, type Token, validate } from "./tokens.ts";
 
-export const CHECKS = ["tokens", "no-raw-literals", "component-imports", "svelte-check"] as const;
+export const CHECKS = [
+  "tokens",
+  "contrast",
+  "no-raw-literals",
+  "component-imports",
+  "svelte-check",
+  ...BROWSER_CHECKS,
+] as const;
 export type CheckName = typeof CHECKS[number];
 
 const norm = (p: string) => posix.normalize(p).replace(/\/+$/, "");
@@ -32,26 +42,88 @@ async function svelteFiles(root: string, dir: string): Promise<string[]> {
   return out.sort();
 }
 
-/** The token check, and the token names components may use. */
-async function tokenCheck(root: string, cfg: StanceConfig): Promise<{ findings: Finding[]; names: Set<string> }> {
-  const read = await readTokenFiles(`${root}/${cfg.tokens}`, norm(cfg.tokens));
-  const { tokens, findings } = validate(read.files);
-  findings.unshift(...read.findings);
+/** Every theme of the mood board in `label`, its tokens validated, and the findings about it. */
+async function readMood(
+  root: string,
+  label: string,
+): Promise<{ themes: Map<string, Map<string, Token>>; findings: Finding[] }> {
+  const dir = `${root}/${label}`;
+  const findings: Finding[] = [];
+  const themes = new Map<string, Map<string, Token>>();
+  let resolved;
+  try {
+    resolved = await readThemes(dir);
+  } catch {
+    return {
+      themes,
+      findings: [{ check: "tokens", level: "problem", file: label, message: "no such folder of tokens" }],
+    };
+  }
+  for (const e of resolved.errors) {
+    findings.push({ check: "tokens", level: "problem", file: `${label}/${resolved.resolver ?? ""}`, message: e });
+  }
+  for (const theme of resolved.themes) {
+    if (theme.files.length === 0) {
+      findings.push({ check: "tokens", level: "problem", file: label, message: "holds no *.tokens.json file" });
+    }
+    const read = await readNamedFiles(dir, label, theme.files);
+    const v = validate(read.files);
+    findings.push(...read.findings, ...v.findings);
+    themes.set(theme.name, v.tokens);
+  }
+  // A file shared by every theme is validated once per theme: say each thing once.
+  const seen = new Set<string>();
+  return { themes, findings: findings.filter((f) => !seen.has(JSON.stringify(f)) && !!seen.add(JSON.stringify(f))) };
+}
+
+const themed = (label: string, theme: string) => theme === "default" ? label : `${label} (${theme})`;
+
+/** The token and contrast checks, and the token names components may use. */
+async function tokenCheck(
+  root: string,
+  cfg: StanceConfig,
+): Promise<{ findings: Finding[]; contrast: Finding[]; names: Set<string> }> {
+  const own = norm(cfg.tokens);
+  const moods = new Map<string, Map<string, Map<string, Token>>>();
+  const findings: Finding[] = [];
+  const project = await readMood(root, own);
+  findings.push(...project.findings);
+  moods.set(own, project.themes);
   if (cfg.moods) {
-    const moods = new Map<string, Map<string, Token>>();
     const names = (await Array.fromAsync(Deno.readDir(`${root}/${cfg.moods}`))).filter((e) => e.isDirectory).map((e) =>
       e.name
     ).sort();
     for (const mood of names) {
       const label = `${norm(cfg.moods)}/${mood}`;
-      const r = await readTokenFiles(`${root}/${label}`, label);
-      const v = validate(r.files);
-      if (label !== norm(cfg.tokens)) findings.push(...r.findings, ...v.findings);
-      moods.set(label, v.tokens);
+      if (label === own) continue;
+      const m = await readMood(root, label);
+      findings.push(...m.findings);
+      moods.set(label, m.themes);
     }
-    findings.push(...compareMoods(moods));
   }
-  return { findings, names: new Set([...tokens.keys()].map(cssName)) };
+  // Every theme of every mood board defines the same tokens: they are interchangeable.
+  const all = new Map<string, Map<string, Token>>();
+  for (const [label, themes] of [...moods].sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [theme, tokens] of themes) all.set(themed(label, theme), tokens);
+  }
+  findings.push(...compareMoods(all));
+
+  const contrast: Finding[] = [];
+  const file = norm(cfg.contrast);
+  let json: unknown;
+  try {
+    json = JSON.parse(await Deno.readTextFile(`${root}/${file}`));
+  } catch (e) {
+    contrast.push({ check: "contrast", level: "problem", file, message: `no contrast pairs: ${(e as Error).message}` });
+  }
+  if (json !== undefined) {
+    const { pairs, findings: bad } = readPairs(json, file);
+    contrast.push(...bad);
+    for (const [label, tokens] of all) contrast.push(...checkContrast(label, tokens, pairs));
+  }
+  const names = new Set<string>();
+  for (const tokens of project.themes.values()) for (const k of tokens.keys()) names.add(cssName(k));
+  return { findings, contrast, names };
 }
 
 /** svelte-check on the project: its type errors are problems, its warnings notes. */
@@ -117,8 +189,9 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   const root = posix.resolve(dir);
   const cfg = await loadConfig(root);
   const findings: Finding[] = [];
-  const { findings: tokenFindings, names } = await tokenCheck(root, cfg);
+  const { findings: tokenFindings, contrast, names } = await tokenCheck(root, cfg);
   if (only.includes("tokens")) findings.push(...tokenFindings);
+  if (only.includes("contrast")) findings.push(...contrast);
   const widgetDirs = cfg.widgets.map(norm);
   const stores = new Set(cfg.store.map((s) => norm(s).replace(/\.(ts|js)$/, "")));
   const inWidgets = (f: string) => widgetDirs.some((d) => f.startsWith(d + "/"));
@@ -138,5 +211,7 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
     }
   }
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));
+  const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
+  findings.push(...await browserChecks(root, cfg.pages, browser));
   return findings;
 }

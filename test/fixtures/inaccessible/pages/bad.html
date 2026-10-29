@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inaccessible</title>
+    <style>
+    body {
+      margin: 0;
+      padding: 1rem;
+      background: #ffffff;
+      color: #1a1a1a;
+      font-family: system-ui;
+    }
+    .faint {
+      color: #bbbbbb;
+    }
+    .tiny {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      margin: 0;
+      border: 1px solid #1a1a1a;
+      background: #ffffff;
+    }
+    .moving {
+      transition: transform 200ms;
+    }
+    button:focus {
+      outline: none;
+    }
+    .wide {
+      width: 600px;
+    }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="faint">Text too faint to read.</p>
+      <input />
+      <div><button class="tiny" type="button">a</button><button class="tiny" type="button">b</button></div>
+      <button class="moving" type="button">Moves</button>
+      <p class="wide">A line that does not reflow.</p>
+    </main>
+  </body>
+</html>

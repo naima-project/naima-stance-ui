@@ -1,0 +1,14 @@
+{
+  "pairs": [
+    {
+      "kind": "text",
+      "use": "text",
+      "fg": [
+        "color.text"
+      ],
+      "bg": [
+        "color.surface"
+      ]
+    }
+  ]
+}

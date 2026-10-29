@@ -69,3 +69,44 @@ Deno.test("this repository holds to its own stance", async () => {
   const fs = await runChecks(new URL("..", import.meta.url).pathname);
   assertEquals(fs.filter((f) => f.level === "problem"), []);
 });
+
+Deno.test("every colour pair is checked in every theme: one below its minimum is refused", async () => {
+  const fs = await problems("inaccessible", ["contrast"]);
+  has(fs, "contrast", "tokens (dark): color.text on color.surface: 2.");
+  has(fs, "contrast", "below 4.5:1 for text");
+  has(fs, "contrast", "tokens (dark): color.focus on color.surface");
+  has(fs, "contrast", "below 3:1 for a control or a focus ring");
+  assertEquals(fs.length, 2);
+});
+
+Deno.test("an inaccessible page fails axe at WCAG 2.2 AA, the keyboard walk and reflow, in both themes", async () => {
+  const fs = await problems("inaccessible", ["a11y"]);
+  for (
+    const text of [
+      "html-has-lang",
+      "color-contrast",
+      "label: Form elements must have labels",
+      'button "Moves" shows no focus ring when focused',
+      "at 320 CSS px wide the page scrolls sideways",
+    ]
+  ) has(fs, "a11y", text);
+  assert(fs.some((f) => f.message.includes("light, desktop") && f.message.includes("dark, phone")));
+});
+
+Deno.test("targets under 24 by 24 CSS px next to each other are refused", async () => {
+  const fs = await problems("inaccessible", ["target-size"]);
+  has(fs, "target-size", 'button "a" is 16×16 CSS px, too close to other targets');
+  has(fs, "target-size", 'button "b" is 16×16 CSS px');
+});
+
+Deno.test("a transition that ignores reduced motion is refused", async () => {
+  const fs = await problems("inaccessible", ["reduced-motion"]);
+  has(fs, "reduced-motion", 'button "Moves" has a transition of 0.2s');
+  assertEquals(fs.length, 1);
+});
+
+Deno.test("a project with no pages to open fails the browser checks rather than passing them", async () => {
+  const fs = await problems("violating", ["a11y", "target-size", "reduced-motion"]);
+  assertEquals(fs.map((f) => f.check).sort(), ["a11y", "reduced-motion", "target-size"]);
+  has(fs, "a11y", "no pages to open");
+});
