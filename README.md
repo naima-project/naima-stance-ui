@@ -101,6 +101,7 @@ platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt add
 demo/                               a small app wired to the store
 checks/                             the stance's checks (deno task check, deno task platforms)
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
+scaffold/                           the starting app adopt writes into a new project
 scripts/hook.ts                     reruns the fast checks after an agent's edit
 plugin/index.mjs                    the stance as a Naima plugin
 test/                               tests of the checks, the copy, the plugin and the demo
@@ -260,6 +261,32 @@ written directly as a class. A generated machine can replace either of them with
 deno task demo         # the demo with Vite's dev server
 deno task demo:build   # builds the white mood board and the demo into demo/dist
 ```
+
+### From a machine's port to the page
+
+A machine never touches the page. What it decides reaches the DOM in one of two ways, and nothing else in the app writes
+to the page.
+
+- **What is shown, and announced, is read from its view.** A component renders a field of the view; text a screen reader
+  should hear when it changes goes in a live region (`<Text live="polite">`, or `aria-live` on an `<output>`).
+- **What is done, a focus moved, something stored or sent, is an output carried out by the port** that `app.svelte.ts`
+  passes the machine when it makes it. The port is where `document`, `localStorage` and `fetch` (or the platform port's
+  `call`) appear; an answer comes back as one of the machine's inputs.
+
+```ts
+// app.svelte.ts: the counter's port moves the focus once the page shows the new state
+counter: new Counter({ limit: 3 }, {
+  reached: () => tick().then(() => document.getElementById("reset")?.focus()),
+}),
+```
+
+```svelte
+<!-- App.svelte: the view, announced; the transitions, called -->
+<Text live="polite">{counter.view.said}</Text>
+<Button id="reset" disabled={!counter.allowed({ type: "reset" })} onclick={() => counter.reset()}>Start over</Button>
+```
+
+The theme machine works the same way: `documentTheme()` is its port, setting `data-theme` on the root element.
 
 ## Examples
 
@@ -488,24 +515,40 @@ update can be compared with what the project changed.
    ```
 
    This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
-   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the mood board with both themes and
-   the contrast pairs to `tokens/`, and the token build to `scripts/stance-ui-tokens.ts` (use `--to` for another place
-   than `src/lib/ui`). It writes `stance-ui.json`, which records the stance's version and commit, the mood board, and
-   the sha256 of every file as it was copied, and which configures the checks.
+   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform port to
+   `src/lib/ui/platform/`, the mood board with both themes and the contrast pairs to `tokens/`, and the token build to
+   `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes `stance-ui.json`, which
+   records the stance's version and commit, the mood board, and the sha256 of every file as it was copied, and which
+   configures the checks.
 
-2. Add `svelte`, `svelte-check`, `style-dictionary` and `postcss-value-parser` to the project's development dependencies
-   if it does not have them, and build the tokens into the app's CSS:
+   It then writes what a new project needs to build and run, from `scaffold/`: `deno.json` with its tasks,
+   `package.json` with the npm packages at the stance's exact versions, `tsconfig.json`, `vite.config.ts`, `index.html`,
+   `.gitignore`, and a minimal app wired to the store (`src/main.ts`, `src/App.svelte`, `src/app.svelte.ts`, a counter
+   machine in `src/machines/` and its test in `test/`). These files are the project's from the start: a file the project
+   already has is never overwritten, and adopt prints `skipped <file>` for it. `--no-scaffold` writes none of them.
+   Last, it builds the mood board, both themes, into `src/lib/ui/tokens.css`, which `src/main.ts` imports.
+
+2. Build and run it. In an empty folder, these work straight after adopt, with no edit:
 
    ```sh
-   deno run -A scripts/stance-ui-tokens.ts --tokens tokens --out src/lib/ui/tokens.css
+   deno task dev     # the tokens, then Vite's dev server
+   deno task build   # the tokens, then the app into dist/
+   deno task test    # the tests in test/
+   deno task check   # the type check (svelte-check)
    ```
 
-3. Make the app's store with `createStore`, with a `Theme` machine among its machines, mount the root component with
-   `storeContext(store)`, and read it in components with `useStore`.
+   **Tests go in `test/`, outside `tsconfig.json`'s `include`.** The type check reads `src/` only (and skips any
+   `*.test.ts`); `deno test` type-checks and runs the tests itself. A test imports the plain logic of a machine (its
+   `initial`, `step` and `allowed`, as `src/machines/counter.ts` has them), which runs without Svelte and without a
+   browser.
 
-4. List the app's built pages under `check.pages` in `stance-ui.json`, so the browser checks can open them.
+3. Replace the counter with the app's machines, in the store made in `src/app.svelte.ts`, and its page with the app's
+   components. The theme machine stays.
 
-5. Run the checks, from this repository or through Naima (below).
+4. `stance-ui.json` lists the scaffold's page, `dist/index.html`, built by `deno task build`, under `check.pages`; add
+   the app's other pages and states there, so the browser checks open them.
+
+5. Run the stance's checks, from this repository (`deno task check --project <app folder>`) or through Naima (below).
 
 Later, `deno task adopt --project <app folder> --status` lists the files the project customized since the copy (their
 sha256 is no longer the one recorded), the files that are newer in the stance, and, for each check, whether it passed

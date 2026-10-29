@@ -2,7 +2,7 @@
 // the stance's version and commit, and the sha256 of every file as copied. Later runs compare against that
 // record, so an update never overwrites a file the project changed without saying so.
 //
-//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force]
+//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force] [--no-scaffold]
 //                                                                    copy (or update) the stance
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
@@ -11,11 +11,19 @@
 // <to>/platform/, the chosen mood board with its themes and the contrast pairs to tokens/, and the token build to
 // scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to src-tauri/; with --server, the Deno port server
 // to server/port-server.ts. stance-ui.json records the copy and configures `deno task check`.
+//
+// Then the scaffold, which a new project needs to build and run and which belongs to the project from the start:
+// deno.json (tasks tokens, dev, build, check, test), package.json (the npm packages at the stance's exact
+// versions), tsconfig.json, vite.config.ts, index.html, .gitignore, and a minimal app wired to the store
+// (src/main.ts, src/App.svelte, src/app.svelte.ts, a counter machine in src/machines/ and its test in test/).
+// A scaffold file already in the project is never overwritten, only named as skipped; --no-scaffold skips them
+// all. Last, the chosen mood board is built, both themes, into <to>/tokens.css.
 
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
 import { loadConfig } from "../checks/config.ts";
 import { checkedLines } from "../checks/record.ts";
+import { buildTokens } from "./tokens.ts";
 
 const STANCE = posix.resolve(new URL("..", import.meta.url).pathname);
 const RECORD = "stance-ui.json";
@@ -99,10 +107,107 @@ async function loadRecord(project: string): Promise<Record | null> {
   }
 }
 
+const json = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
+
+/**
+ * The scaffold's files, path in the project → content: the configuration made here from the stance's own
+ * (its exact package versions, its compiler options), and the templates of scaffold/, their imports of the
+ * stance's copy pointed at `to`.
+ */
+async function scaffoldFiles(to: string, tauri: boolean): Promise<Map<string, string>> {
+  const pkg = JSON.parse(await Deno.readTextFile(`${STANCE}/package.json`)) as {
+    devDependencies: { [name: string]: string };
+  };
+  const denoJson = JSON.parse(await Deno.readTextFile(`${STANCE}/deno.json`)) as {
+    imports: { [name: string]: string };
+  };
+  const tsconfig = JSON.parse(await Deno.readTextFile(`${STANCE}/tsconfig.json`)) as { compilerOptions: object };
+  const v = (name: string) => {
+    const version = pkg.devDependencies[name];
+    if (!version) throw new Error(`the stance's package.json has no ${name}`);
+    return version;
+  };
+  const npm = [
+    "@sveltejs/vite-plugin-svelte",
+    "@tauri-apps/api",
+    "style-dictionary",
+    "svelte",
+    "svelte-check",
+    "typescript",
+    "vite",
+    ...(tauri ? ["@tauri-apps/cli"] : []),
+  ];
+  const tokensCss = `${to}/tokens.css`;
+  const vite = `deno run -A npm:vite@${v("vite")}`;
+  const files = new Map<string, string>();
+  files.set(
+    "deno.json",
+    json({
+      nodeModulesDir: "auto",
+      tasks: {
+        tokens: `deno run -A scripts/stance-ui-tokens.ts --tokens tokens --out ${tokensCss}`,
+        dev: `deno task tokens && ${vite}`,
+        build: `deno task tokens && ${vite} build --logLevel warn`,
+        check: `deno run -A npm:svelte-check@${v("svelte-check")} --tsconfig ./tsconfig.json`,
+        test: "deno test -A test/",
+        ...(tauri ? { tauri: `deno run -A npm:@tauri-apps/cli@${v("@tauri-apps/cli")}` } : {}),
+      },
+      imports: { "@std/assert": denoJson.imports["@std/assert"] },
+      fmt: { exclude: ["node_modules", "dist", ".stance-ui"] },
+      lint: { exclude: ["node_modules", "dist", ".stance-ui"] },
+    }),
+  );
+  files.set(
+    "package.json",
+    json({
+      private: true,
+      type: "module",
+      devDependencies: Object.fromEntries(npm.sort().map((n) => [n, v(n)])),
+    }),
+  );
+  // The type check reads the app's sources only; the tests are in test/, type-checked by deno test.
+  const include = ["src/**/*.ts", "src/**/*.svelte"];
+  if (!to.startsWith("src/")) include.push(`${to}/**/*.ts`, `${to}/**/*.svelte`);
+  files.set("tsconfig.json", json({ compilerOptions: tsconfig.compilerOptions, include, exclude: ["**/*.test.ts"] }));
+  // The templates import the copy at its default place, src/lib/ui; elsewhere, the import is rewritten.
+  const rel = posix.relative("src", to);
+  const ui = rel.startsWith(".") ? rel : `./${rel}`;
+  const walk = async (dir: string) => {
+    for await (const e of Deno.readDir(`${STANCE}/scaffold/${dir}`)) {
+      const path = dir ? `${dir}/${e.name}` : e.name;
+      if (e.isDirectory) await walk(path);
+      else if (e.isFile) {
+        let text = await Deno.readTextFile(`${STANCE}/scaffold/${path}`);
+        if (path.startsWith("src/")) text = text.replaceAll(`"./lib/ui/`, `"${ui}/`);
+        files.set(path === "gitignore" ? ".gitignore" : path, text);
+      }
+    }
+  };
+  await walk("");
+  files.set(".gitignore", files.get(".gitignore")! + `${tokensCss}\n`);
+  return new Map([...files].sort());
+}
+
+/** Writes the scaffold's files the project does not have yet, and names those it keeps. */
+async function scaffold(project: string, to: string, tauri: boolean): Promise<string[]> {
+  const lines: string[] = [];
+  for (const [path, text] of await scaffoldFiles(to, tauri)) {
+    const target = `${project}/${path}`;
+    if (await read(target)) {
+      lines.push(`skipped ${path}: the project has one`);
+      continue;
+    }
+    await Deno.mkdir(posix.dirname(target), { recursive: true });
+    await Deno.writeTextFile(target, text);
+    lines.push(`created ${path}`);
+  }
+  return lines;
+}
+
 /** Copies the stance into the project. Returns the lines to print, and throws when it refuses. */
 export async function adopt(
   project: string,
-  opts: { mood?: string; to?: string; force?: boolean; tauri?: boolean; server?: boolean },
+  opts: { mood?: string; to?: string; force?: boolean; tauri?: boolean; server?: boolean; scaffold?: boolean },
 ): Promise<string[]> {
   const before = await loadRecord(project);
   const mood = opts.mood ?? before?.mood ?? "white";
@@ -166,13 +271,19 @@ export async function adopt(
       allowImports: [],
       tsconfig: "tsconfig.json",
       contrast: "tokens/contrast.json",
-      pages: [],
+      // The scaffold's page, built by its build task; a project without the scaffold lists its own.
+      pages: opts.scaffold === false
+        ? []
+        : [{ name: "app", path: "dist/index.html", build: ["deno", "task", "build"] }],
     },
   };
-  await Deno.writeTextFile(`${project}/${RECORD}`, JSON.stringify(out, null, 2) + "\n");
+  await Deno.writeTextFile(`${project}/${RECORD}`, json(out));
   lines.push(
     `recorded stance ui ${out.stance.version} (${out.stance.commit.slice(0, 12)}), mood ${mood}, in ${RECORD}`,
   );
+  if (opts.scaffold !== false) lines.push(...await scaffold(project, to, platforms.tauri));
+  await buildTokens(`${project}/tokens`, `${project}/${to}/tokens.css`, "tokens");
+  lines.push(`built ${to}/tokens.css: mood ${mood}, light and dark`);
   return lines;
 }
 
@@ -220,6 +331,7 @@ if (import.meta.main) {
       force: args.includes("--force"),
       tauri: args.includes("--tauri"),
       server: args.includes("--server"),
+      scaffold: !args.includes("--no-scaffold"),
     });
     for (const l of lines) console.log(l);
   } catch (e) {

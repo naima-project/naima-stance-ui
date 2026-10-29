@@ -199,7 +199,7 @@ export default function stanceUi(options = {}, api = {}) {
       "the UI stance by makebecome: logic without UI, one store written by transitions, design tokens in light and dark, accessible at WCAG 2.2 AA, a compositional widget set",
     about:
       "A stance is a set of authored, opinionated choices and rules a project adopts. This one, by makebecome, is about user interfaces: the app's logic is code with no UI; one deep-reactive Svelte 5 store holds every state machine and is written only through their transitions; machines are composed of simpler ones and modelled first; components keep only their own UI state; every colour, size and duration is a DTCG design token; the mood board is chosen at design time, with a light and a dark theme the user can choose; the interface meets EN 301 549 and WCAG 2.2 AA; the widget set is compositional. " +
-      "Its rules are listed by `naima rules`; its checks run with `naima check` and need Deno on the PATH, and the browser checks need Playwright's Chromium; `naima stance-ui adopt` copies the widget set, the store and a mood board into the project.",
+      "Its rules are listed by `naima rules`; its checks run with `naima check` and need Deno on the PATH, and the browser checks need Playwright's Chromium; `naima stance-ui adopt` copies the widget set, the store and a mood board into the project, and scaffolds what a new project needs to build, test and run (never overwriting a file it has).",
     options: [
       {
         name: "app",
@@ -262,7 +262,7 @@ export default function stanceUi(options = {}, api = {}) {
       says:
         "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, or builds and drives the app on every platform the machine reaches",
       usage:
-        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | hook | platforms [--platforms <list>]",
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] | status | check | hook | platforms [--platforms <list>]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
@@ -318,7 +318,7 @@ export default function stanceUi(options = {}, api = {}) {
           return runScript(deno, "hook.ts", [...project, "--root", ctx.root, ...rest], out, err, "inherit");
         }
         err(
-          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | hook | platforms",
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] | status | check | hook | platforms",
         );
         return 2;
       },

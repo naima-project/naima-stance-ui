@@ -41,3 +41,52 @@ Deno.test("a file that was never the stance's is not overwritten", async () => {
     await Deno.remove(project, { recursive: true });
   }
 });
+
+/** Runs a task of the project, as its owner would, and fails with its output when it fails. */
+async function task(project: string, name: string): Promise<void> {
+  const out = await new Deno.Command(Deno.execPath(), {
+    args: ["task", name],
+    cwd: project,
+    env: { NO_COLOR: "1" },
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  const text = new TextDecoder();
+  assertEquals(out.code, 0, `deno task ${name}:\n${text.decode(out.stdout)}\n${text.decode(out.stderr)}`);
+}
+
+Deno.test("an empty folder adopts the stance, builds, and passes every check with no hand edit", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    const lines = await adopt(project, { mood: "calm" });
+    for (const f of ["deno.json", "package.json", "tsconfig.json", "vite.config.ts", "index.html", "src/App.svelte"]) {
+      assert(lines.includes(`created ${f}`), f);
+    }
+    assert(lines.includes("built src/lib/ui/tokens.css: mood calm, light and dark"));
+    await task(project, "build");
+    await task(project, "test");
+    await task(project, "check");
+    const fs = await runChecks(project);
+    assertEquals(fs.filter((f) => f.level === "problem"), []);
+
+    // Run again, the scaffold is the project's: nothing of it is overwritten, and each file is named as skipped.
+    await Deno.writeTextFile(`${project}/index.html`, "<!doctype html>\n");
+    const again = await adopt(project, {});
+    assert(again.includes("skipped index.html: the project has one"));
+    assertEquals(await Deno.readTextFile(`${project}/index.html`), "<!doctype html>\n");
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});
+
+Deno.test("the scaffold imports the copy where --to put it", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    await adopt(project, { to: "src/ui" });
+    assert((await Deno.readTextFile(`${project}/src/main.ts`)).includes(`from "./ui/store/store.svelte.ts"`));
+    assert((await Deno.readTextFile(`${project}/deno.json`)).includes("--out src/ui/tokens.css"));
+    await Deno.stat(`${project}/src/ui/tokens.css`);
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});
