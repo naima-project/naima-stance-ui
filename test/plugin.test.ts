@@ -1,16 +1,16 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
-import stanceUi, { installHook, RULES } from "../plugin/index.mjs";
+import stanceUi, { RULES } from "../plugin/index.mjs";
 import { parseRule } from "../plugin/rules.mjs";
 
 const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
-Deno.test("the plugin's manifest has the shape Naima's contract 2 asks for", () => {
+Deno.test("the plugin's manifest has the shape Naima's contract 4 asks for", () => {
   const m: Any = stanceUi({}, { plugin: "stance-ui" });
   assertEquals(m.name, "stance-ui");
-  assertEquals(m.contract, 2);
+  assertEquals(m.contract, 4);
   assert(m.says && m.about);
   assertEquals(m.optional, ["rules", "landing-reports"]);
   const checks = new Set(m.checks.map((c: Any) => c.name));
@@ -99,14 +99,15 @@ Deno.test("a landing that changes what the checks read is refused while one fail
   assertEquals(report.name, "ui-stance-checks");
   assert(m.optional.includes("landing-reports"));
   const ctx = { root: fixture("") };
-  const at = (changed: string[]) => report.blocks(ctx, { branch: "b", from: "a", to: "b", changed });
+  const at = (changed: string[]) => report.refuses(ctx, { branch: "b", from: "a", to: "b", changed });
   assertEquals(await at(["README.md", "clean/src/App.svelte"]), []);
   const lines: string[] = await at(["violating/src/Dragging.svelte"]);
   assert(lines.some((l) => l.startsWith("no-raw-drag: src/Dragging.svelte:")), lines.join("\n"));
   assert(lines.some((l) => l.startsWith("auth-only: ")));
   // A checker that cannot run holds the landing rather than letting it through unchecked.
   const broken: Any = stanceUi({ app: "violating", deno: "no-such-deno" }, { plugin: "stance-ui" });
-  const held = await broken.contributes["landing-reports"][0].blocks(ctx, {
+  assertEquals(report.blocks, undefined, "a failing check refuses the landing: it is not a proof out of date");
+  const held = await broken.contributes["landing-reports"][0].refuses(ctx, {
     branch: "b",
     from: "a",
     to: "b",
@@ -115,38 +116,19 @@ Deno.test("a landing that changes what the checks read is refused while one fail
   assert(held.length === 1 && held[0].includes("could not run"), held.join("\n"));
 });
 
-Deno.test("the edit hook goes into Claude Code's settings beside the project's own hooks, once", async () => {
-  const root = await Deno.makeTempDir();
-  try {
-    const program = `${root}/naima-tracker/naima`;
-    assertEquals(installHook(root, program), []); // no sign of Claude Code: nothing written
-    await Deno.mkdir(`${root}/.claude`);
-    const own = { matcher: "Bash", hooks: [{ type: "command", command: "echo mine" }] };
-    await Deno.writeTextFile(
-      `${root}/.claude/settings.json`,
-      JSON.stringify({ model: "x", hooks: { PostToolUse: [own] } }),
-    );
-    assert(installHook(root, program)[0].startsWith("installed"));
-    assertEquals(installHook(root, program), []);
-    const settings = JSON.parse(await Deno.readTextFile(`${root}/.claude/settings.json`));
-    assertEquals(settings.model, "x");
-    assertEquals(settings.hooks.PostToolUse.length, 2);
-    assertEquals(settings.hooks.PostToolUse[0], own);
-    assertEquals(settings.hooks.PostToolUse[1], {
-      matcher: "Edit|Write|MultiEdit",
-      hooks: [{
-        type: "command",
-        command: 'deno run -A "$CLAUDE_PROJECT_DIR/naima-tracker/naima/naima.ts" stance-ui hook',
-      }],
-    });
-    // Naima moved: the hook's older form is replaced where it stands.
-    assert(installHook(root, `${root}/elsewhere/naima`)[0].startsWith("updated"));
-    const moved = JSON.parse(await Deno.readTextFile(`${root}/.claude/settings.json`)).hooks.PostToolUse;
-    assertEquals(moved.length, 2);
-    assert(moved[1].hooks[0].command.includes("/elsewhere/naima/naima.ts"));
-    const m: Any = stanceUi({}, { plugin: "stance-ui" });
-    assertEquals(m.setup[0].name, "ui-edit-hook");
-  } finally {
-    await Deno.remove(root, { recursive: true });
-  }
+Deno.test("the edit hook is an agent hook Naima installs; the stance writes no settings file, and declares what its checks run", () => {
+  const m: Any = stanceUi({ deno: "/opt/deno" }, { plugin: "stance-ui" });
+  assertEquals(m.contract, 4);
+  assertEquals(m.setup, undefined);
+  assertEquals(m.contributes["agent-hooks"], [{
+    name: "ui-edit-hook",
+    says: "after an agent edits tokens, widgets or components, the stance's fast checks run again",
+    tool: "claude-code",
+    event: "PostToolUse",
+    matcher: "Edit|Write|MultiEdit",
+    command: ["stance-ui", "hook"],
+  }]);
+  assert(m.commands.some((c: Any) => c.name === "stance-ui"), "the command the hook runs is the stance's own");
+  assert(m.checks.every((c: Any) => c.runs.length === 1 && c.runs[0] === "/opt/deno"));
+  assertEquals(m.contributes["landing-reports"][0].runs, ["/opt/deno"]);
 });

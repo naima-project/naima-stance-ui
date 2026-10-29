@@ -10,12 +10,12 @@
 //                                 "options": { "app": "." } } } }
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, posix, relative, resolve, sep } from "node:path";
+import { join, posix, relative, resolve, sep } from "node:path";
 import { readRules } from "./rules.mjs";
 
-const CONTRACT = 2;
+// Contract 4: agent hooks, landing checks that refuse, and the programs a check runs.
+const CONTRACT = 4;
 /** The examples the stance ships, each a project that follows it (see the README's "Examples"). */
 export const EXAMPLES = [
   { name: "calculator", path: "examples/calculator", says: "a four-operation calculator on the calm mood board" },
@@ -130,57 +130,8 @@ function runScript(deno, script, args, out, err, stdin = "ignore") {
 
 const where = (f) => `${f.file ?? ""}${f.line ? `:${f.line}` : ""}`;
 
-/** Claude Code's project settings, where its hooks are, from the project's root. */
-const CLAUDE_SETTINGS = join(".claude", "settings.json");
-/** The tools whose edits the hook follows. */
+/** The tools whose edits the hook follows, in Claude Code's terms. */
 const EDITS = "Edit|Write|MultiEdit";
-const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-const commandsOf = (entry) =>
-  isObject(entry) && Array.isArray(entry.hooks)
-    ? entry.hooks.flatMap((h) => (isObject(h) && typeof h.command === "string" ? [h.command] : []))
-    : [];
-const isOurs = (command) => command.trimEnd().endsWith(" stance-ui hook");
-
-/**
- * Puts the stance's hook into Claude Code's project settings, the way Naima puts its own hooks there: added to what
- * the file holds, an older form replaced where it stands, never twice. The hook runs `naima stance-ui hook` after
- * every edit, which reruns the fast checks when the edit touched a file they read. Only for a project that uses
- * Claude Code (it has .claude/ or CLAUDE.md); returns the lines to say.
- */
-export function installHook(root, program) {
-  if (!existsSync(join(root, ".claude")) && !existsSync(join(root, "CLAUDE.md"))) return [];
-  const launcher = relative(root, join(program, "naima.ts")).split(sep).join(posix.sep);
-  const command = `deno run -A "$CLAUDE_PROJECT_DIR/${launcher}" stance-ui hook`;
-  const entry = { matcher: EDITS, hooks: [{ type: "command", command }] };
-  const path = join(root, CLAUDE_SETTINGS);
-  const add = `add to ${CLAUDE_SETTINGS} by hand: "hooks": { "PostToolUse": [ ${JSON.stringify(entry)} ] }`;
-  let settings = {};
-  if (existsSync(path)) {
-    try {
-      settings = JSON.parse(readFileSync(path, "utf8"));
-    } catch {
-      return [`the UI stance's edit hook is not installed: ${CLAUDE_SETTINGS} is not plain JSON; ${add}`];
-    }
-    if (!isObject(settings)) {
-      return [`the UI stance's edit hook is not installed: ${CLAUDE_SETTINGS} is not an object; ${add}`];
-    }
-  }
-  const hooks = settings.hooks ?? {};
-  const list = isObject(hooks) ? (hooks.PostToolUse ?? []) : null;
-  if (!Array.isArray(list)) {
-    return [`the UI stance's edit hook is not installed: its hooks are not as expected; ${add}`];
-  }
-  const at = list.findIndex((e) => commandsOf(e).some(isOurs));
-  if (at !== -1 && JSON.stringify(list[at]) === JSON.stringify(entry)) return [];
-  const next = at === -1 ? [...list, entry] : list.map((e, i) => (i === at ? entry : e));
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify({ ...settings, hooks: { ...hooks, PostToolUse: next } }, null, 2) + "\n");
-  return [
-    `${
-      at === -1 ? "installed" : "updated"
-    } the UI stance's edit hook in ${CLAUDE_SETTINGS}: after an agent edits tokens, widgets or components, the stance's fast checks run again`,
-  ];
-}
 
 export default function stanceUi(options = {}, api = {}) {
   const app = typeof options.app === "string" ? options.app : ".";
@@ -214,7 +165,8 @@ export default function stanceUi(options = {}, api = {}) {
         name: "ui-stance-checks",
         says:
           "a landing that changes a file the UI stance's checks read (tokens, mood boards, contrast pairs, widgets, components, stance-ui.json) is refused while any of its checks fails on the branch's files",
-        async blocks(ctx, landing) {
+        runs: [deno],
+        async refuses(ctx, landing) {
           const root = appRoot(ctx);
           const changed = landing.changed
             .map((f) => relative(root, resolve(ctx.root, f)).split(sep).join(posix.sep))
@@ -237,17 +189,21 @@ export default function stanceUi(options = {}, api = {}) {
           }
         },
       }],
+      // Naima installs it in the agent tool's settings and removes it with the stance: the stance writes none of the host's files.
+      "agent-hooks": [{
+        name: "ui-edit-hook",
+        says: "after an agent edits tokens, widgets or components, the stance's fast checks run again",
+        tool: "claude-code",
+        event: "PostToolUse",
+        matcher: EDITS,
+        command: [api.plugin ?? "stance-ui", "hook"],
+      }],
     },
     optional: ["rules", "landing-reports"],
-    setup: [{
-      name: "ui-edit-hook",
-      says:
-        "in a project that uses Claude Code, a PostToolUse hook in .claude/settings.json that reruns the UI stance's fast checks after an agent edits a file they read",
-      install: (ctx) => (ctx.program ? installHook(ctx.root, ctx.program) : []),
-    }],
     checks: CHECKS.map((c) => ({
       name: c.name,
       says: c.says,
+      runs: [deno],
       async run(ctx) {
         const { findings } = await runChecker(deno, ["--project", appRoot(ctx), "--only", c.runs, "--json"]);
         return findings.map((f) => ({
