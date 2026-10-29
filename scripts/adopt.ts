@@ -5,8 +5,8 @@
 //   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--force]   copy (or update) the stance
 //   deno task adopt --project <dir> --status                                     what changed, here and there
 //
-// What is copied: the widget set to <to>/components/, the store module to <to>/store/, the chosen mood
-// board to tokens/, and the token build to scripts/stance-ui-tokens.ts. stance-ui.json records the copy and
+// What is copied: the widget set to <to>/components/, the store module to <to>/store/, the theme machine
+// and its port to <to>/theme/, the chosen mood board with its themes and the contrast pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. stance-ui.json records the copy and
 // configures `deno task check`.
 
 import { posix } from "node:path";
@@ -41,11 +41,19 @@ async function plan(mood: string, to: string): Promise<Map<string, string>> {
     if (e.isFile) files.set(`src/lib/components/${e.name}`, `${to}/components/${e.name}`);
   }
   files.set("src/lib/store/store.svelte.ts", `${to}/store/store.svelte.ts`);
+  for await (const e of Deno.readDir(`${STANCE}/src/lib/theme`)) {
+    if (e.isFile) files.set(`src/lib/theme/${e.name}`, `${to}/theme/${e.name}`);
+  }
   const moodDir = `tokens/moods/${mood}`;
-  try {
-    for await (const e of Deno.readDir(`${STANCE}/${moodDir}`)) {
-      if (e.isFile) files.set(`${moodDir}/${e.name}`, `tokens/${e.name}`);
+  // The mood board with its themes, sub-folders included.
+  const walk = async (rel: string) => {
+    for await (const e of Deno.readDir(`${STANCE}/${moodDir}${rel}`)) {
+      if (e.isDirectory) await walk(`${rel}/${e.name}`);
+      else if (e.isFile) files.set(`${moodDir}${rel}/${e.name}`, `tokens${rel}/${e.name}`);
     }
+  };
+  try {
+    await walk("");
   } catch {
     throw new Error(
       `no mood board "${mood}"; the stance has ${
@@ -53,6 +61,7 @@ async function plan(mood: string, to: string): Promise<Map<string, string>> {
       }`,
     );
   }
+  files.set("tokens/contrast.json", "tokens/contrast.json");
   files.set("scripts/tokens.ts", "scripts/stance-ui-tokens.ts");
   return new Map([...files].sort());
 }
@@ -123,6 +132,8 @@ export async function adopt(project: string, opts: { mood?: string; to?: string;
       store: [`${to}/store/store.svelte.ts`],
       allowImports: [],
       tsconfig: "tsconfig.json",
+      contrast: "tokens/contrast.json",
+      pages: [],
     },
   };
   await Deno.writeTextFile(`${project}/${RECORD}`, JSON.stringify(out, null, 2) + "\n");
