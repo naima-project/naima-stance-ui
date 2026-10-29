@@ -9,7 +9,8 @@
 //   ios       tauri ios build for the simulator; simctl install and launch with the script; simctl screenshot
 //   linux     tauri build; through tauri-driver (WebDriver) when it and WebKitWebDriver are installed, else
 //   windows   launched with the script; tauri-driver needs msedgedriver on Windows
-//   android   tauri android build; adb install and launch on a running emulator or device; adb screencap
+//   android   tauri android build; adb install and launch on a running emulator or device, or on an emulator the
+//             check boots without a window; the script through the WebView's DevTools socket; adb screencap
 //
 // The app is ready when its page first calls the platform port: the Tauri shell prints "port: <command>"
 // then. The end-to-end script (stance-ui.json's platforms.e2e) is one JavaScript expression whose value is a
@@ -576,47 +577,269 @@ async function desktop(ctx: Ctx, platform: "linux" | "windows"): Promise<Platfor
   return r;
 }
 
+/** Where an Android SDK is, from ANDROID_HOME or ANDROID_SDK_ROOT, else the place Android Studio puts it. */
+async function androidSdk(): Promise<string | null> {
+  const home = Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "";
+  const local = Deno.env.get("LOCALAPPDATA") ?? "";
+  for (
+    const d of [
+      Deno.env.get("ANDROID_HOME"),
+      Deno.env.get("ANDROID_SDK_ROOT"),
+      `${home}/Library/Android/sdk`,
+      `${home}/Android/Sdk`,
+      `${local}/Android/Sdk`,
+    ]
+  ) {
+    if (d && (await exists(`${d}/platform-tools`))) return d;
+  }
+  return null;
+}
+
+/** The NDK: NDK_HOME, else the newest one installed side by side in the SDK. */
+async function androidNdk(sdk: string): Promise<string | null> {
+  const env = Deno.env.get("NDK_HOME");
+  if (env && (await exists(env))) return env;
+  try {
+    const versions = (await Array.fromAsync(Deno.readDir(`${sdk}/ndk`))).filter((e) => e.isDirectory).map((e) =>
+      e.name
+    );
+    const num = (v: string) => v.split(".").map(Number);
+    versions.sort((a, b) => {
+      const [x, y] = [num(a), num(b)];
+      for (let i = 0; i < Math.max(x.length, y.length); i++) {
+        if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
+      }
+      return 0;
+    });
+    return versions.length ? `${sdk}/ndk/${versions.at(-1)}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** One command of adb, to its end; its standard output as text, and whether it succeeded. */
+async function adbOut(adb: string, args: string[]): Promise<{ ok: boolean; out: string }> {
+  const o = await new Deno.Command(adb, { args, stdout: "piped", stderr: "piped" }).output();
+  return { ok: o.success, out: new TextDecoder().decode(o.stdout).trim() };
+}
+
+/** The serials of the emulators and devices adb sees as ready. */
+async function adbDevices(adb: string): Promise<string[]> {
+  return (await adbOut(adb, ["devices"])).out.split("\n").slice(1).map((l) => l.split("\t"))
+    .filter((f) => f[1] === "device").map((f) => f[0]);
+}
+
+/**
+ * Boots an emulator without a window when none is running: the AVD named by STANCE_UI_AVD, else the first the
+ * emulator lists. Resolves with its serial once Android says it has finished booting, or with why it could not.
+ */
+async function bootEmulator(
+  ctx: Ctx,
+  sdk: string,
+  adb: string,
+  log: string,
+): Promise<{ serial: string; emulator: Launched } | { why: string }> {
+  const bin = await which("emulator", [`${sdk}/emulator`]);
+  if (!bin) return { why: "no emulator or device is running, and the SDK has no emulator to start" };
+  const avds = new TextDecoder().decode(
+    (await new Deno.Command(bin, { args: ["-list-avds"], stdout: "piped", stderr: "null" }).output()).stdout,
+  ).split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("INFO"));
+  const avd = Deno.env.get("STANCE_UI_AVD") ?? avds[0];
+  if (!avd) return { why: "no emulator or device is running, and there is no AVD to start (avdmanager create avd)" };
+  const before = new Set(await adbDevices(adb));
+  const emulator = new Launched(bin, [
+    "-avd",
+    avd,
+    "-no-window",
+    "-no-audio",
+    "-no-boot-anim",
+    "-no-snapshot-save",
+  ], { cwd: ctx.app, env: ctx.env, log });
+  // A cold boot takes a minute or two; Android sets sys.boot_completed when it is done.
+  let ended = false;
+  emulator.ended.then(() => (ended = true));
+  for (let i = 0; i < 150 && !ended; i++) {
+    for (const serial of await adbDevices(adb)) {
+      if (before.has(serial) || !serial.startsWith("emulator-")) continue;
+      if ((await adbOut(adb, ["-s", serial, "shell", "getprop", "sys.boot_completed"])).out === "1") {
+        return { serial, emulator };
+      }
+    }
+    await sleep(2000);
+  }
+  await emulator.stop();
+  return {
+    why: ended ? `the emulator ${avd} ended while booting; see ${log}` : `the emulator ${avd} did not boot in 5 min`,
+  };
+}
+
+/** A minimal Chrome DevTools Protocol client: evaluates an expression in a page and awaits its promise. */
+function cdpEvaluate(wsUrl: string, expression: string, ms: number): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(wsUrl);
+    const timer = setTimeout(
+      () => (ws.close(), reject(new Error(`no answer from the page within ${ms / 1000} s`))),
+      ms,
+    );
+    ws.onopen = () =>
+      ws.send(JSON.stringify({
+        id: 1,
+        method: "Runtime.evaluate",
+        params: { expression, awaitPromise: true, returnByValue: true },
+      }));
+    ws.onerror = () => (clearTimeout(timer), reject(new Error("the page's DevTools socket failed")));
+    ws.onmessage = (e) => {
+      const m = JSON.parse(String(e.data)) as {
+        id?: number;
+        result?: { result?: { value?: unknown }; exceptionDetails?: { exception?: { description?: string } } };
+        error?: { message: string };
+      };
+      if (m.id !== 1) return;
+      clearTimeout(timer);
+      ws.close();
+      if (m.error) reject(new Error(m.error.message));
+      else if (m.result?.exceptionDetails) {
+        reject(new Error(m.result.exceptionDetails.exception?.description ?? "the expression threw"));
+      } else resolve(m.result?.result?.value);
+    };
+  });
+}
+
+/** Ready on Android: the page shows where it runs, which it learns from the port's first answer. */
+const ANDROID_READY = `new Promise((resolve) => {
+  const host = () => document.querySelector(".host")?.textContent?.trim();
+  if (host()) return resolve(host());
+  const o = new MutationObserver(() => host() && (o.disconnect(), resolve(host())));
+  o.observe(document, { subtree: true, childList: true, characterData: true });
+})`;
+
+/**
+ * Android: tauri android build; adb install and launch on a running emulator or device, or on an emulator the
+ * check boots without a window and shuts down after. The end-to-end script runs through the WebView's DevTools
+ * socket (a debug build's WebView allows debugging): adb forwards it, and the check evaluates the script there.
+ */
 async function android(ctx: Ctx): Promise<PlatformReport> {
   const r: PlatformReport = { platform: "android", built: false, launched: false, endToEnd: false };
-  const sdk = Deno.env.get("ANDROID_HOME") ?? Deno.env.get("ANDROID_SDK_ROOT");
-  if (!sdk || !(await exists(sdk))) {
-    return { ...r, skipped: "no Android SDK (ANDROID_HOME): install it with the NDK, a JDK and an emulator" };
-  }
-  if (!Deno.env.get("NDK_HOME")) return { ...r, skipped: "no Android NDK (NDK_HOME)" };
-  const adb = await which("adb", [`${sdk}/platform-tools`]);
-  if (!adb) return { ...r, skipped: "no adb in the SDK's platform-tools" };
-  const devices = new TextDecoder().decode(
-    (await new Deno.Command(adb, { args: ["devices"], stdout: "piped" })
-      .output()).stdout,
-  ).split("\n").slice(1).filter((l) => /\tdevice$/.test(l));
-  if (!devices.length) return { ...r, skipped: "no emulator or device is running (emulator -avd <name>)" };
+  const sdk = await androidSdk();
+  if (!sdk) return { ...r, skipped: "no Android SDK with its platform tools (ANDROID_HOME)" };
+  const ndk = await androidNdk(sdk);
+  if (!ndk) return { ...r, skipped: "no Android NDK (NDK_HOME, or the SDK's ndk folder)" };
+  const java = Deno.env.get("JAVA_HOME") ? `${Deno.env.get("JAVA_HOME")}/bin/java` : await which("java");
+  if (!java || !(await exists(java))) return { ...r, skipped: "no JDK (JAVA_HOME): the Android build needs JDK 17" };
+  const adb = `${sdk}/platform-tools/${exe("adb")}`;
+  if (!(await exists(adb))) return { ...r, skipped: "no adb in the SDK's platform-tools" };
+  const env = { ...ctx.env, ANDROID_HOME: sdk, NDK_HOME: ndk };
+  const actx = { ...ctx, env };
   r.log = `${ctx.out}/android-build.log`;
+  await Deno.writeTextFile(r.log, "");
   if (!(await exists(`${ctx.tauriDir}/gen/android`))) {
-    if ((await tauri(ctx, ["android", "init", "--ci"], r.log)) !== 0) {
+    if ((await tauri(actx, ["android", "init", "--ci"], r.log)) !== 0) {
       return { ...r, failed: "tauri android init failed" };
     }
-    await nativeIcons(ctx, r.log!);
+    await nativeIcons(actx, r.log);
   }
-  if ((await tauri(ctx, ["android", "build", "--apk", "--debug", "--ci"], r.log)) !== 0) {
+  if ((await tauri(actx, ["android", "build", "--apk", "--debug", "--ci"], r.log)) !== 0) {
     return { ...r, failed: "tauri android build failed" };
   }
   const apk = await findFile(`${ctx.tauriDir}/gen/android/app/build/outputs/apk`, ".apk");
   if (!apk) return { ...r, failed: "tauri android build made no .apk" };
   r.built = true;
-  const run = (args: string[]) => runLogged(adb, args, { cwd: ctx.app, env: ctx.env, log: r.log! });
-  if ((await run(["install", "-r", apk])) !== 0) return { ...r, failed: "adb install failed" };
-  if ((await run(["shell", "monkey", "-p", ctx.conf.identifier, "1"])) !== 0) {
-    return { ...r, failed: "the app did not start" };
+
+  let serial = (await adbDevices(adb))[0];
+  let emulator: Launched | null = null;
+  if (!serial) {
+    ctx.progress("android: booting the emulator");
+    const booted = await bootEmulator(ctx, sdk, adb, `${ctx.out}/android-emulator.log`);
+    if ("why" in booted) return { ...r, skipped: booted.why };
+    ({ serial, emulator } = booted);
   }
-  await sleep(5000);
-  r.launched = true;
-  const png = await new Deno.Command(adb, { args: ["exec-out", "screencap", "-p"], stdout: "piped" }).output();
-  if (png.success) {
-    r.screenshot = `${ctx.out}/android.png`;
-    await Deno.writeFile(r.screenshot, png.stdout);
+  const log = `${ctx.out}/android-launch.log`;
+  r.log = log;
+  await Deno.writeTextFile(log, "");
+  const run = (args: string[]) => runLogged(adb, ["-s", serial, ...args], { cwd: ctx.app, env, log });
+  let forwarded: string | null = null;
+  try {
+    if ((await run(["install", "-r", apk])) !== 0) return { ...r, failed: "adb install failed" };
+    await run(["shell", "am", "force-stop", ctx.conf.identifier]);
+    const activity = (await adbOut(adb, [
+      "-s",
+      serial,
+      "shell",
+      "cmd",
+      "package",
+      "resolve-activity",
+      "--brief",
+      "-c",
+      "android.intent.category.LAUNCHER",
+      ctx.conf.identifier,
+    ])).out.split("\n").at(-1)?.trim() ?? "";
+    if (!activity.includes("/") || (await run(["shell", "am", "start", "-W", "-n", activity])) !== 0) {
+      return { ...r, failed: `the app did not start (launcher activity: ${activity || "none"})` };
+    }
+    // The app's WebView opens a DevTools socket named after the app's process.
+    let socket = "";
+    for (let i = 0; i < 60 && !socket; i++) {
+      const pid = (await adbOut(adb, ["-s", serial, "shell", "pidof", ctx.conf.identifier])).out;
+      const unix = (await adbOut(adb, ["-s", serial, "shell", "cat", "/proc/net/unix"])).out;
+      if (pid) socket = unix.match(new RegExp(`@(webview_devtools_remote_${pid})\\b`))?.[1] ?? "";
+      if (!socket) await sleep(1000);
+    }
+    if (!socket) {
+      return { ...r, failed: "the app's WebView opened no DevTools socket within 60 s (is the build a debug one?)" };
+    }
+    const port = (await adbOut(adb, ["-s", serial, "forward", "tcp:0", `localabstract:${socket}`])).out;
+    forwarded = `tcp:${port}`;
+    // The WebView starts on a blank page and then loads the app's, which ends the first page's context: the
+    // check waits on the app's page, and tries again when a load replaces the page under it.
+    let page: { webSocketDebuggerUrl?: string; type?: string; url?: string } | undefined;
+    let notReady = "the WebView's DevTools list no page of the app";
+    for (let i = 0; i < 30 && !r.launched; i++) {
+      const list = await fetch(`http://127.0.0.1:${port}/json`).then((x) => x.json()).catch(() => []) as {
+        webSocketDebuggerUrl?: string;
+        type?: string;
+        url?: string;
+      }[];
+      page = list.find((p) => p.type === "page" && p.webSocketDebuggerUrl && /^https?:/.test(p.url ?? ""));
+      if (page?.webSocketDebuggerUrl) {
+        try {
+          await cdpEvaluate(page.webSocketDebuggerUrl, ANDROID_READY, 90_000);
+          r.launched = true;
+          break;
+        } catch (e) {
+          notReady = (e as Error).message;
+          if (!/context|destroyed|navigat/i.test(notReady)) break;
+        }
+      }
+      await sleep(1000);
+    }
+    if (!r.launched || !page?.webSocketDebuggerUrl) return { ...r, failed: `the app did not get ready: ${notReady}` };
+    r.launched = true;
+    if (ctx.script) {
+      const rep = await cdpEvaluate(page.webSocketDebuggerUrl, ctx.script, 60_000).catch((e: Error) => ({
+        ok: false,
+        says: e.message,
+      })) as { ok?: boolean; says?: string } | undefined;
+      r.endToEnd = rep?.ok === true;
+      r.says = String(rep?.says ?? "");
+      if (!r.endToEnd) r.failed = `end-to-end: ${r.says}`;
+    }
+    await sleep(800); // the last frame painted
+    const png = await new Deno.Command(adb, { args: ["-s", serial, "exec-out", "screencap", "-p"], stdout: "piped" })
+      .output();
+    if (png.success && png.stdout.length) {
+      r.screenshot = `${ctx.out}/android.png`;
+      await Deno.writeFile(r.screenshot, png.stdout);
+    } else r.noScreenshot = "adb exec-out screencap gave no image";
+    return r;
+  } finally {
+    if (forwarded) await adbOut(adb, ["-s", serial, "forward", "--remove", forwarded]);
+    await adbOut(adb, ["-s", serial, "shell", "am", "force-stop", ctx.conf.identifier]);
+    if (emulator) {
+      await adbOut(adb, ["-s", serial, "emu", "kill"]);
+      await Promise.race([emulator.ended, sleep(30_000)]);
+      await emulator.stop();
+    }
   }
-  r.skipped = "end-to-end is not automated on Android yet: the app cannot be handed the script there";
-  return r;
 }
 
 async function findFile(dir: string, suffix: string): Promise<string | null> {
