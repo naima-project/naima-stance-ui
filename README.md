@@ -43,22 +43,34 @@ can be loaded into Naima as a plugin.
 
 6. **The mood board is chosen at design time.** A mood board is a complete set of token values, and every mood board
    defines the same tokens. A project chooses one while it is being designed and builds it into its CSS. The app does
-   not switch between mood boards while it runs.
+   not switch between mood boards while it runs. It does switch between the mood board's light and dark themes (rule 8).
 
 7. **Larger components are built from smaller ones.** The widget set has primitives and components composed from them,
    and a new component is built from existing ones before anything is written from scratch. Focus, keyboard handling and
    labels are then written once, in the smallest component that needs them.
 
-Rules 1, 2, 4, 5 and 6 are checked by machine (see [the checks](#the-checks)). Rules 3 and 7 are conventions, followed
-in review.
+8. **Every mood board has a light and a dark theme, and the user's choice is app state.** Both themes define the same
+   tokens. The app follows the system's `prefers-color-scheme` unless the user chose a theme. That choice is held by the
+   theme machine in the store and changes only through its transition, whose port sets `data-theme` on the page. Both
+   themes reach 4.5:1 for text and 3:1 for controls and focus rings.
+
+9. **The interface meets EN 301 549 and WCAG 2.2 at level AA.** See [accessibility](#accessibility) for what that asks
+   of every widget and page.
+
+Rules 1, 2, 4, 5, 6, 8 and 9 are checked by machine (see [the checks](#the-checks)); the parts of rule 9 a machine
+cannot see are listed with it. Rules 3 and 7 are conventions, followed in review.
 
 ## What is here
 
 ```
-tokens/moods/<name>/*.tokens.json   the mood boards, in the DTCG format
-scripts/tokens.ts                   builds one mood board into CSS custom properties
+tokens/moods/<name>/                the mood boards, in the DTCG format: mood.resolver.json, the shared files,
+                                    and themes/light and themes/dark
+tokens/contrast.json                the colour pairs every theme must make legible
+scripts/tokens.ts                   builds one mood board, both themes, into CSS custom properties
 src/lib/components/                 the widget set
 src/lib/store/store.svelte.ts       createStore, storeContext, useStore, snapshot
+src/lib/theme/                      the theme machine and its port for the page
+gallery/                            every widget on one page, built once per mood board
 demo/                               a small app wired to the store
 checks/                             the stance's checks (deno task check)
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
@@ -67,23 +79,36 @@ test/                               tests of the checks, the copy, the plugin an
 stance-ui.json                      this repository's own configuration of the checks
 ```
 
-Everything runs with Deno 2. The npm packages (Svelte, Vite, svelte-check, Style Dictionary, postcss-value-parser) are
-listed in `package.json` at exact versions, and Deno installs them on first use.
+Everything runs with Deno 2. The npm packages (Svelte, Vite, svelte-check, Style Dictionary, postcss-value-parser,
+Playwright, axe-core) are listed in `package.json` at exact versions, and Deno installs them on first use. The browser
+checks need Playwright's Chromium once per machine: `deno run -A npm:playwright@1.60.0 install chromium`.
 
 ## Tokens and mood boards
 
 There are three mood boards. `white` is white and minimal, like Naima's own interface: black text on white, thin grey
 rules, one dark accent and almost no shadow. `dusk` is dark and warm: light text on a deep blue-grey, an amber accent, a
 serif face, softer corners and deeper shadows. `calm` is minimal without being bare: warm paper under soft graphite
-text, one clay accent, light numerals, generous round shapes and quiet shadows. Each one has six files, for colour,
-typography, spacing (with sizes and border widths), radius, shadow and motion, and all define exactly the same token
-names.
+text, one clay accent, light numerals, generous round shapes and quiet shadows. Each mood board comes in a light and a
+dark theme: `white` turns to near-white on near-black, `dusk` (dark by nature) gets a light theme of blue-grey text on
+warm stone with a burnt-amber accent, and `calm` turns to warm charcoal with a lighter clay.
+
+A mood board is a folder. Typography, spacing (with sizes and border widths), radius and motion are shared by both
+themes and sit at its top; colour and shadow change with the theme and sit in `themes/light/` and `themes/dark/`.
+`mood.resolver.json` ties them together in the [DTCG Resolver Module](https://www.designtokens.org/TR/drafts/resolver/)
+format, version 2025.10: one set of shared files, then one modifier, `theme`, whose contexts are `light` and `dark`.
+Every theme of every mood board defines exactly the same token names.
 
 The tokens use the stable DTCG format, in which a colour is an object with a colour space and components, and a
 dimension or a duration is an object with a value and a unit. The build uses Style Dictionary 5, the usual tool for DTCG
 tokens, which reads the files and resolves aliases. Its built-in CSS transforms do not write all of these object values,
 so `scripts/tokens.ts` registers one value transform that writes each DTCG type as CSS. A token's CSS name is its path
 joined with dashes, so `color.surface-raised` becomes `--color-surface-raised`.
+
+The build writes both themes into one CSS file. The default theme (light) is on `:root`, with
+`color-scheme: light
+dark`. The dark theme's values replace it when the system prefers dark and the page does not say
+`data-theme="light"`, and whenever the page says `data-theme="dark"`. When the system asks for reduced motion, every
+duration token is `0s`, so nothing the widgets animate moves.
 
 ```sh
 deno task tokens --mood dusk --out dist/tokens.css
@@ -101,7 +126,54 @@ hears `onclose`.
 
 `Grid` lays its children on equal columns, and `Keycap` is the large key of a keypad (a calculator, a PIN pad): its tone
 says what kind of key it is, `active` marks a key that stays selected, and `echo` shows it pressed for a moment when the
-keyboard pressed it.
+keyboard pressed it. `ThemeSwitch` is a segmented control of three choices (follow the system, light, dark) on native
+radio buttons; it takes the current choice and reports a new one, and the app passes that to the theme machine.
+
+```ts
+const store = createStore({ theme: new Theme({ initial: savedTheme() }, documentTheme()), ... });
+```
+
+```svelte
+<ThemeSwitch value={theme.view.choice} onchange={(c) => theme.choose(c)} />
+```
+
+`documentTheme()` is the theme machine's port in a browser: it sets or removes `data-theme` on the root element and
+remembers the choice in `localStorage`, which `savedTheme()` reads back at the next visit.
+
+`gallery/` shows every widget, in its states, on one page. `deno task gallery:build` builds it once per mood board into
+`gallery/dist/<mood>/`, so that the browser checks see every widget in every mood board and both themes.
+
+## Accessibility
+
+The default of the stance is to meet the European accessibility rules. The European Accessibility Act (Directive (EU)
+2019/882) has applied since 28 June 2025, and its harmonised standard for ICT is EN 301 549. The version that gives
+presumption of conformity today is V3.2.1 (2021), which takes over WCAG 2.1 level AA. EN 301 549 V4.1.1 was published on
+2 September 2026 and moves the baseline to WCAG 2.2 level AA; it carries presumption of conformity once the Commission
+cites it in the Official Journal of the EU, expected for December 2026
+([Ireland's National Disability Authority](https://nda.ie/news/en301549-published),
+[Deque on V4.1.1](https://www.deque.com/blog/en-301-549-v4-1-1-is-final-what-changed-what-it-means-and-what-you-should-do/),
+[the standard at ETSI](https://www.etsi.org/deliver/etsi_en/301500_301599/301549/04.01.01_60/en_301549v040101p.pdf)).
+The stance follows WCAG 2.2 level AA, which meets V3.2.1's web clauses and is what V4.1.1 asks for.
+
+Every widget and page of the stance:
+
+- gives assistive technology a name, a role and a state for each control (SC 4.1.2), with the visible label inside the
+  name (SC 2.5.3), and states the page's language (SC 3.1.1);
+- works from the keyboard alone (SC 2.1.1), with a focus ring at least two pixels wide in the focus colour, 3:1 against
+  the surfaces (SC 2.4.7, 1.4.11), and never hidden under other content (SC 2.4.11);
+- gives every pointer target at least 24 by 24 CSS px (SC 2.5.8);
+- stops every transition and animation when the system asks for reduced motion;
+- resizes text to 200% (SC 1.4.4) and reflows at 320 CSS px wide without scrolling sideways (SC 1.4.10), since every
+  size is in `rem`;
+- tells nothing by colour alone (SC 1.4.1): an error is said in text, a chosen option also changes weight;
+- reaches 4.5:1 for text and 3:1 for controls in both themes (SC 1.4.3, 1.4.11);
+- identifies an input's error in text tied to it (`aria-invalid`, `aria-describedby`, SC 3.3.1).
+
+Four criteria new in WCAG 2.2 are about what an app does rather than how a widget is built, and no check can see them,
+so they are followed in review: anything done by dragging has a single-pointer alternative (SC 2.5.7); help, where there
+is any, is in the same place on every page (SC 3.2.6); signing in never asks to solve, remember or transcribe anything
+without an alternative (SC 3.3.8); and nothing already entered is asked for again in the same process (SC 3.3.7). The
+checks below cover what a machine can decide; they do not replace a test with assistive technology.
 
 ## The store and the machines
 
@@ -137,16 +209,17 @@ deno task demo:build   # builds the white mood board and the demo into demo/dist
 
 A stance ships examples that follow it to the letter, for agents and people to start from.
 
-`examples/calculator/` is a four-operation calculator on the `calm` mood board. Its logic is in `logic/` and holds no
-UI. The control (which keys act, when an operand starts and ends, what follows a result or an error) is an mCRL2 model,
-`logic/model/core.mcrl2`, with seven properties in `logic/model/properties/` (no deadlock, clearing always reachable,
-operands within the digit limit, an error only starts over, a calculation answered once, equals asking nothing without a
-second operand). naima-codegen generates the control's Svelte machine from it and checks that the generated code stays
-inside the model. The numbers are the registers' business, `logic/registers.ts`: exact rationals, so one third times
-three is one, rounded only when shown. The two run in parallel in `logic/calculator.svelte.ts`, the control's outputs
-telling the registers what to do and the registers' verdict on a calculation coming back as the control's input. The one
-store holds the calculator; the components (`Display`, `Keypad`, `Calculator`) read it and press keys, built from `Grid`
-and `Keycap`. Every key is always taken, as on a pocket calculator, and the keyboard presses the same keys.
+`examples/calculator/` is a four-operation calculator on the `calm` mood board, in its light and dark theme, with the
+theme switch under it. Its logic is in `logic/` and holds no UI. The control (which keys act, when an operand starts and
+ends, what follows a result or an error) is an mCRL2 model, `logic/model/core.mcrl2`, with seven properties in
+`logic/model/properties/` (no deadlock, clearing always reachable, operands within the digit limit, an error only starts
+over, a calculation answered once, equals asking nothing without a second operand). naima-codegen generates the
+control's Svelte machine from it and checks that the generated code stays inside the model. The numbers are the
+registers' business, `logic/registers.ts`: exact rationals, so one third times three is one, rounded only when shown.
+The two run in parallel in `logic/calculator.svelte.ts`, the control's outputs telling the registers what to do and the
+registers' verdict on a calculation coming back as the control's input. The one store holds the calculator; the
+components (`Display`, `Keypad`, `Calculator`) read it and press keys, built from `Grid` and `Keycap`. Every key is
+always taken, as on a pocket calculator, and the keyboard presses the same keys.
 
 ```sh
 deno task example:calculator          # run it
@@ -169,9 +242,17 @@ deno task check --only tokens,no-raw-literals --json
 | `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                        |
 | `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                |
 | `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                      |
+| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                           |
+| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                     |
+| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                       |
+| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                               |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
-are read as JSON and walked as data. Two things are outside what a static check can see. A style value computed by an
+are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
+served over HTTP on the loopback address for the run. Each page is opened in the light and the dark theme (through
+`prefers-color-scheme`) and on a desktop (1280 by 800) and a phone (390 by 844), and in each state its configuration
+reaches by clicking. A problem names the page, the state and every variant it was seen in. A project that lists no page
+fails them rather than passing unseen. Two things are outside what a static check can see. A style value computed by an
 expression (`style:width={w}`) is not checked. And whether a component's own `$state` is really UI state, rather than
 app state kept in the wrong place, is a judgment left to review.
 
@@ -186,12 +267,22 @@ app state kept in the wrong place, is a judgment left to review.
     "components": ["src"],
     "store": ["src/lib/ui/store/store.svelte.ts"],
     "allowImports": [],
-    "tsconfig": "tsconfig.json"
+    "tsconfig": "tsconfig.json",
+    "contrast": "tokens/contrast.json",
+    "pages": [
+      {
+        "name": "home",
+        "path": "dist/index.html",
+        "build": ["deno", "task", "build"],
+        "states": [{ "name": "menu open", "click": ["[aria-haspopup=menu]"] }]
+      }
+    ]
   }
 }
 ```
 
-`moods` is optional, and `tsconfig` set to `null` skips the type check.
+`moods` is optional, and `tsconfig` set to `null` skips the type check. A page's `path` is its built HTML file; `build`
+is run from the root before the pages are opened, once for each distinct command; `click` takes Playwright selectors.
 
 ## Adopting the stance in a project
 
@@ -205,10 +296,11 @@ update can be compared with what the project changed.
    deno task adopt --project <app folder> --mood white
    ```
 
-   This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the mood board to
-   `tokens/`, and the token build to `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It
-   writes `stance-ui.json`, which records the stance's version and commit, the mood board, and the sha256 of every file
-   as it was copied, and which configures the checks.
+   This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
+   and its port to `src/lib/ui/theme/`, the mood board with both themes and the contrast pairs to `tokens/`, and the
+   token build to `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes
+   `stance-ui.json`, which records the stance's version and commit, the mood board, and the sha256 of every file as it
+   was copied, and which configures the checks.
 
 2. Add `svelte`, `svelte-check`, `style-dictionary` and `postcss-value-parser` to the project's development dependencies
    if it does not have them, and build the tokens into the app's CSS:
@@ -217,10 +309,12 @@ update can be compared with what the project changed.
    deno run -A scripts/stance-ui-tokens.ts --tokens tokens --out src/lib/ui/tokens.css
    ```
 
-3. Make the app's store with `createStore`, mount the root component with `storeContext(store)`, and read it in
-   components with `useStore`.
+3. Make the app's store with `createStore`, with a `Theme` machine among its machines, mount the root component with
+   `storeContext(store)`, and read it in components with `useStore`.
 
-4. Run the checks, from this repository or through Naima (below).
+4. List the app's built pages under `check.pages` in `stance-ui.json`, so the browser checks can open them.
+
+5. Run the checks, from this repository or through Naima (below).
 
 Later, `deno task adopt --project <app folder> --status` lists the files the project changed since the copy and the
 files that are newer in the stance. Running `adopt` again updates the files the project has not changed. It refuses to
@@ -229,12 +323,12 @@ them so they can be merged by hand. `--force` overwrites them anyway.
 
 ## As a Naima plugin
 
-`plugin/index.mjs` is written to Naima's plugin contract 2. It ships the seven rules above to the rules point, so
+`plugin/index.mjs` is written to Naima's plugin contract 2. It ships the nine rules above to the rules point, so
 `naima rules` lists them for every agent of the project. It contributes one Naima check per stance check (`ui-tokens`,
-`ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`), so `naima check` runs them. And it adds
-`naima stance-ui adopt | status | check`. The plugin file is plain JavaScript and imports only the runtime's own
-modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from the
-plugin's checkout, so Deno must be on the PATH.
+`ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`, `ui-a11y`, `ui-target-size`,
+`ui-reduced-motion`), so `naima check` runs them. And it adds `naima stance-ui adopt | status | check`. The plugin file
+is plain JavaScript and imports only the runtime's own modules, so it loads under Deno, Node and Bun alike. The checks
+themselves run in a child process under Deno, from the plugin's checkout, so Deno must be on the PATH.
 
 The plugin is added from git, pinned by commit, so that the whole repository is fetched with it:
 
@@ -270,13 +364,17 @@ Naima's contract already supports a plugin like this one, and three things would
 ## Developing
 
 ```sh
-deno task test         # the checks against their fixtures, the copy, the plugin, the token build and the demo build
-deno task check        # this repository against its own stance
+deno task test           # the checks against their fixtures, the copy, the plugin, the token build and the demo build
+deno task check          # this repository against its own stance, the browser checks on the gallery,
+                         # the calculator and the demo included
+deno task gallery        # the widget gallery with Vite's dev server
 deno fmt && deno lint
 ```
 
 `test/fixtures/clean` is a small project that passes every check. `test/fixtures/violating` breaks each rule in each way
-the checks know. `test/fixtures/types` writes to the store around its transitions and must fail the type check.
+the checks know. `test/fixtures/inaccessible` has a dark theme below the contrast minimums and a page that fails axe,
+the keyboard walk, reflow, the target size and reduced motion. `test/fixtures/types` writes to the store around its
+transitions and must fail the type check.
 
 ## Licence
 
