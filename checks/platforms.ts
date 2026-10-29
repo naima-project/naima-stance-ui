@@ -630,8 +630,8 @@ async function adbDevices(adb: string): Promise<string[]> {
 }
 
 /**
- * Boots an emulator without a window when none is running: the AVD named by STANCE_UI_AVD, else the first the
- * emulator lists. Resolves with its serial once Android says it has finished booting, or with why it could not.
+ * Boots an emulator without a window when none is running: the AVD named by STANCE_UI_AVD, else the first whose
+ * name starts with `stance_`, else the first the emulator lists. Resolves with its serial once Android says it has finished booting, or with why it could not.
  */
 async function bootEmulator(
   ctx: Ctx,
@@ -644,7 +644,7 @@ async function bootEmulator(
   const avds = new TextDecoder().decode(
     (await new Deno.Command(bin, { args: ["-list-avds"], stdout: "piped", stderr: "null" }).output()).stdout,
   ).split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("INFO"));
-  const avd = Deno.env.get("STANCE_UI_AVD") ?? avds[0];
+  const avd = Deno.env.get("STANCE_UI_AVD") ?? avds.find((a) => a.startsWith("stance_")) ?? avds[0];
   if (!avd) return { why: "no emulator or device is running, and there is no AVD to start (avdmanager create avd)" };
   const before = new Set(await adbDevices(adb));
   const emulator = new Launched(bin, [

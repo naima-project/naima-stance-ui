@@ -385,8 +385,8 @@ runs the very script the other platforms run, where UIAutomator would have to pr
 screen. The app is ready when its page shows where it runs, which it learns from the port's first answer. The check
 finds the SDK in `ANDROID_HOME` (or `ANDROID_SDK_ROOT`, or where Android Studio puts it) and the NDK in `NDK_HOME` (or
 the newest in the SDK's `ndk/` folder), and needs `JAVA_HOME` for Gradle. When no emulator or device is running it boots
-the AVD named in `STANCE_UI_AVD`, or the first one the emulator lists, with no window, waits until Android has finished
-booting, and shuts it down at the end. An AVD is made once:
+the AVD named in `STANCE_UI_AVD`, else the first whose name starts with `stance_`, else the first one the emulator
+lists, with no window, waits until Android has finished booting, and shuts it down at the end. An AVD is made once:
 
 ```sh
 sdkmanager "platform-tools" "build-tools;35.0.0" "platforms;android-36" "ndk;28.2.13676358" "emulator" \
