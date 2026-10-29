@@ -15,6 +15,7 @@
     "jsr:@std/net@^1.0.7": "1.0.7",
     "jsr:@std/path@^1.1.6": "1.1.6",
     "jsr:@std/streams@^1.2.0": "1.2.0",
+    "jsr:@std/yaml@1.0.9": "1.0.9",
     "npm:@sveltejs/vite-plugin-svelte@7.3.1": "7.3.1_svelte@5.57.3_vite@8.3.5",
     "npm:axe-core@4.14.0": "4.14.0",
     "npm:playwright@1.60.0": "1.60.0",
@@ -81,6 +82,9 @@
     },
     "@std/streams@1.2.0": {
       "integrity": "256b934254778f2bf45f5713b934209ff29e9b4b7fd4ec095219966813758c5f"
+    },
+    "@std/yaml@1.0.9": {
+      "integrity": "6bad3dc766dd85b4b37eabcba81b6aa4eac7a392792ae29abcfb0f90602d55bb"
     }
   },
   "npm": {
@@ -1203,7 +1207,8 @@
     "dependencies": [
       "jsr:@std/assert@1.0.13",
       "jsr:@std/encoding@1.0.10",
-      "jsr:@std/http@1.1.4"
+      "jsr:@std/http@1.1.4",
+      "jsr:@std/yaml@1.0.9"
     ],
     "packageJson": {
       "dependencies": [

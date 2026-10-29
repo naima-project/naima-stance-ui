@@ -1,5 +1,7 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
+import { parse as parseYaml } from "@std/yaml";
 import stanceUi, { RULES } from "../plugin/index.mjs";
+import { parseRule } from "../plugin/rules.mjs";
 
 const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
 // deno-lint-ignore no-explicit-any
@@ -50,4 +52,43 @@ Deno.test("the manifest declares the stance's attribution, its version the packa
   const pkg = JSON.parse(await Deno.readTextFile(new URL("../package.json", import.meta.url)));
   assertEquals(a.version, pkg.version);
   assertEquals(a.license, pkg.license);
+});
+
+Deno.test("the rules are data: each file's front matter reads the same as YAML, and a bad one is refused", async () => {
+  const dir = new URL("../rules/", import.meta.url).pathname;
+  const names = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".md")).map((e) => e.name);
+  assertEquals(names.length, RULES.length);
+  for (const r of RULES) {
+    const text = await Deno.readTextFile(`${dir}/${r.name}.md`);
+    const front = parseYaml(text.split("\n---\n")[0].slice(4)) as Record<string, unknown>;
+    for (const [k, v] of Object.entries(front)) assertEquals((r as Any)[k], v, `${r.name}: ${k}`);
+    assert(r.verifiedBy === "agent" || r.verifiedBy === r.enforcedBy, r.name);
+  }
+  for (
+    const [bad, why] of [
+      ["---\nname: a\n---\n", "title is missing"],
+      ["---\nname: a\ntitle: one: two\n---\n", "quote it"],
+      [
+        "---\nname: a\ntitle: t\naudience: all\nstrength: must\nverifiedBy: agent\n---\ntext\n\n## Why\n\nr\n",
+        "audience",
+      ],
+      ["---\nname: a\ntitle: t\naudience: agents\nstrength: must\nverifiedBy: agent\n---\ntext\n", '"## Why"'],
+      ["---\nname: a\nshade: t\n---\n", "not a field"],
+    ]
+  ) assertThrows(() => parseRule("a.md", bad), Error, why);
+  assertEquals(
+    parseRule(
+      "a.md",
+      "---\nname: a\ntitle: 'It''s one'\naudience: agents\nstrength: should\nverifiedBy: agent\n---\n\nline one\nline two\n\nnext\n\n## Why\n\nbecause\n",
+    ),
+    {
+      name: "a",
+      title: "It's one",
+      audience: "agents",
+      strength: "should",
+      verifiedBy: "agent",
+      text: "line one line two\n\nnext",
+      why: "because",
+    },
+  );
 });

@@ -12,6 +12,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
+import { readRules } from "./rules.mjs";
 
 const CONTRACT = 2;
 /** The examples the stance ships, each a project that follows it (see the README's "Examples"). */
@@ -75,106 +76,8 @@ const CHECKS = [
   },
 ];
 
-/** The stance's rules, as the rules plugin's `rules` point takes them. */
-export const RULES = [
-  {
-    name: "ui-logic-without-ui",
-    title: "The app's logic is code with no UI",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Everything the app decides (what may happen now, what happens next, what is sent where) lives in plain TypeScript modules that import nothing of the UI, and the components only show it. The two are fully decoupled: the logic runs and is tested without a browser, and the UI can be replaced without touching it.",
-    why:
-      "logic inside components can only be tested through the screen, is copied between components that need it, and changes whenever the look does.",
-    enforcedBy: "ui-component-imports",
-  },
-  {
-    name: "ui-one-store-written-by-transitions",
-    title: "One central store holds every state machine and is written only through their transitions",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "The app's state is one deep-reactive Svelte 5 store ($state, made once with createStore), which holds every state machine of the app. A machine has the shape naima-codegen emits: a read-only view of its state, allowed(event), and one method per input, its transitions. Nothing changes the state except those methods; side effects are the machine's outputs, carried out by a port passed to it.",
-    why:
-      "one store read by everyone and written by transitions alone makes every change of state a step of a machine that can be checked, replayed and tested, instead of an assignment anywhere in the UI.",
-    enforcedBy: "ui-svelte-check",
-  },
-  {
-    name: "ui-machines-composed-and-modelled-first",
-    title: "Machines are composed of simpler ones, and modelled first",
-    audience: "everyone",
-    strength: "should",
-    text:
-      "A machine is built from simpler ones as far as the formalism allows: machines side by side are their product; machines that synchronise on shared actions are parallel processes. Each is modelled first in mCRL2 and its code generated with naima-codegen, with its properties checked. Only where a model is clearly, justifiably useless overhead (a few states, no concurrency, nothing worth proving) is the machine written directly as a .svelte.ts class in the same shape, with the reason in a comment at its top.",
-    why:
-      "behaviour with states fails in the orders of events nobody tested; a model checker explores every order, and small machines composed are small models to check.",
-  },
-  {
-    name: "ui-components-keep-only-local-ui-state",
-    title: "Components keep only their own UI state, read the store and call transitions",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "A component may keep state that is purely its own and means nothing to the app: whether a dropdown is open, the caps lock, the text being typed before it is sent. Everything else it reads from the store's views and changes by calling a machine's transition. A component imports Svelte, other components and the store module; anything else only as a type. A widget of the set is generic and does not even read the store: it takes props and reports through callbacks.",
-    why:
-      "state kept in a component is invisible to the machines, so the app's behaviour would depend on what is mounted; generic widgets are what makes them reusable across projects.",
-    enforcedBy: "ui-component-imports",
-  },
-  {
-    name: "ui-design-tokens-only",
-    title: "Every colour, size and duration is a design token",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "The design's values are design tokens in the W3C Design Tokens (DTCG) format, built to CSS custom properties, and a component uses them only as var(--token): no hex, rgb() or named colour, no px, rem or ms, not in a <style>, a style attribute, a style: directive or an SVG paint attribute. Percentages, fr, viewport units and unitless numbers describe layout and stay allowed.",
-    why:
-      "a value written in a component is a design decision nobody can find or change in one place, and it breaks the next mood board.",
-    enforcedBy: "ui-no-raw-literals",
-  },
-  {
-    name: "ui-mood-board-chosen-at-design-time",
-    title: "The mood board is chosen at design time",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "A mood board is a complete set of token values, and every mood board defines the same tokens. The project chooses one while it is designed and builds it into its CSS; the app does not switch between mood boards at run time. What does switch at run time is the theme within the mood board, light or dark (see the rule on light and dark).",
-    why:
-      "a mood board is a design choice, made once and reviewed; the same token names in every mood board are what lets a project change its choice without touching a component.",
-    enforcedBy: "ui-tokens",
-  },
-  {
-    name: "ui-light-and-dark",
-    title: "Every mood board has a light and a dark theme, and the user's choice is app state",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Each mood board has a light and a dark theme, declared by a DTCG resolver file, with the same token names. The app follows prefers-color-scheme unless the user chose a theme; that choice is held by the theme machine in the store and changes only through its transition, whose port sets data-theme on the page. Both themes reach 4.5:1 for text and 3:1 for controls and focus rings, for every pair in the contrast file.",
-    why:
-      "a theme that is only light fails people who need a dark screen, and a dark theme added later is never checked; a choice kept outside the store is app state no machine knows about.",
-    enforcedBy: "ui-contrast",
-  },
-  {
-    name: "ui-accessible",
-    title: "The interface meets EN 301 549 and WCAG 2.2 at level AA",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Every widget and page meets the European Accessibility Act's harmonised standard, EN 301 549, and WCAG 2.2 level AA: names, roles and states for assistive technology; everything works from the keyboard with a visible focus that is never hidden; targets of at least 24 by 24 CSS px; motion stops when reduced motion is asked for; text resizes to 200% and the page reflows at 320 CSS px; nothing is told by colour alone; an input's error is said in text and tied to it; the page states its language. Dragging always has a single-pointer alternative, help sits in the same place on every page, a sign-in never asks to solve or remember a puzzle, and nothing already entered is asked for again in the same process.",
-    why:
-      "the European Accessibility Act has applied since 28 June 2025; an inaccessible interface shuts people out, and accessibility added at the end is never finished.",
-    enforcedBy: "ui-a11y",
-  },
-  {
-    name: "ui-compositional-widget-set",
-    title: "Larger components are built from smaller ones",
-    audience: "everyone",
-    strength: "should",
-    text:
-      "The widget set has primitives (Button, Text, Input, Checkbox, Icon, Stack, Cluster, Grid, Keycap) and components composed from them (Field, Dropdown, Dialog, Card, Toolbar, ThemeSwitch); a new component is built from existing ones before it is written from scratch. The set is copied into the project with `naima stance-ui adopt`, as source the project owns, and stance-ui.json records the stance's version so that later updates can be compared.",
-    why:
-      "composition keeps the look and the behaviour (focus, keyboard, labels) consistent, since each is written once, in the smallest component that needs it.",
-  },
-];
+/** The stance's rules, read from rules/, one Markdown file each (plugin/rules.mjs), as the `rules` point takes them. */
+export const RULES = readRules(join(STANCE, "rules"));
 
 /** Runs the stance's checker on the app and returns its findings, or throws with why it could not. */
 function runChecker(deno, args) {
