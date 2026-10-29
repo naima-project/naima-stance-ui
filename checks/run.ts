@@ -5,6 +5,7 @@ import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
+import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVE } from "./primitives.ts";
 import { readThemes } from "../scripts/tokens.ts";
 import { BROWSER_CHECKS, type BrowserCheck, browserChecks } from "./browser.ts";
 import { checkContrast, readPairs } from "./contrast.ts";
@@ -16,6 +17,8 @@ export const CHECKS = [
   "no-raw-literals",
   "component-imports",
   "svelte-check",
+  "no-raw-drag",
+  "auth-only",
   ...BROWSER_CHECKS,
 ] as const;
 export type CheckName = typeof CHECKS[number];
@@ -200,6 +203,15 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   for (const file of [...files].sort()) {
     const source = await Deno.readTextFile(`${root}/${file}`);
     if (only.includes("no-raw-literals")) findings.push(...checkLiterals(file, source, names));
+    if (only.includes("no-raw-drag") || only.includes("auth-only")) {
+      const base = posix.basename(file);
+      const found = checkPrimitives(file, source, {
+        drag: inWidgets(file) && base === DRAG_PRIMITIVE,
+        auth: inWidgets(file) && base === AUTH_COMPONENT,
+      });
+      if (only.includes("no-raw-drag")) findings.push(...found.drag);
+      if (only.includes("auth-only")) findings.push(...found.auth);
+    }
     if (only.includes("component-imports")) {
       findings.push(...checkImports(file, source, {
         widget: inWidgets(file),

@@ -110,3 +110,39 @@ Deno.test("a project with no pages to open fails the browser checks rather than 
   assertEquals(fs.map((f) => f.check).sort(), ["a11y", "reduced-motion", "target-size"]);
   has(fs, "a11y", "no pages to open");
 });
+
+Deno.test("dragging outside the drag primitive is refused, in the markup and in the scripts", async () => {
+  const fs = await problems("violating", ["no-raw-drag"]);
+  for (
+    const text of [
+      "Dragging.svelte: listens to touchmove",
+      "Dragging.svelte: handles dragstart", // el.ondragstart = …
+      "Dragging.svelte: captures the pointer",
+      "Dragging.svelte: handles pointermove",
+      "Dragging.svelte: is draggable (HTML5 drag and drop)",
+      "Dragging.svelte: handles mousemove", // on:mousemove
+      "Dragging.svelte: handles drop",
+    ]
+  ) has(fs, "no-raw-drag", text);
+  assertEquals(fs.length, 7); // draggable="false" and a pointerdown alone are not dragging
+  assert(fs.every((f) => f.message.includes("SC 2.5.7")));
+});
+
+Deno.test("a password or a one-time code asked for outside the sign-in component is refused", async () => {
+  const fs = await problems("violating", ["auth-only"]);
+  for (
+    const text of [
+      'forms/SignIn.svelte: asks for a password (type="password")',
+      'asks for a secret (autocomplete="one-time-code")',
+      'asks for a secret (autocomplete="new-password")',
+      "forms/SignIn.svelte: makes a password field",
+    ]
+  ) has(fs, "auth-only", text);
+  // type="password", the one in an expression, the one on a component, the code, the new password, the script's
+  assertEquals(fs.length, 6);
+  assert(fs.every((f) => f.message.includes("SC 3.3.8")));
+});
+
+Deno.test("the widget set's Draggable and Auth are the ones allowed to drag and to ask for secrets", async () => {
+  assertEquals(await problems("clean", ["no-raw-drag", "auth-only"]), []);
+});
