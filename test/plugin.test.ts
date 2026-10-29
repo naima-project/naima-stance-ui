@@ -38,3 +38,16 @@ Deno.test("the plugin's checks report the stance's findings as Naima findings", 
     assertEquals(await c.run({ root: fixture("clean") }), [], c.name);
   }
 });
+
+Deno.test("the manifest declares the stance's attribution, its version the package's", async () => {
+  const m: Any = stanceUi({}, { plugin: "stance-ui" });
+  const a = m.attribution;
+  for (const k of ["name", "homepage", "source", "license", "version"]) {
+    assert(typeof a[k] === "string" && a[k].trim(), k);
+  }
+  assertEquals(a.authors, ["make become"]);
+  assertEquals(a.license, "MIT");
+  const pkg = JSON.parse(await Deno.readTextFile(new URL("../package.json", import.meta.url)));
+  assertEquals(a.version, pkg.version);
+  assertEquals(a.license, pkg.license);
+});
