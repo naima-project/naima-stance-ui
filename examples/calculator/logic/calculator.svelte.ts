@@ -6,21 +6,10 @@ import { Control } from "./generated/typescript/control/control.svelte.ts";
 import type { Op, Phase } from "./generated/typescript/control/control.svelte.ts";
 import * as R from "./registers.ts";
 import { type Key, keyFor, keyId } from "./keys.ts";
+import * as V from "./view.ts";
+import type { CalculatorView } from "./view.ts";
 
-export type { Key, Op, Phase };
-
-export interface CalculatorView {
-  readonly phase: Phase;
-  /** The operator waiting for its second operand, for the key that shows it. */
-  readonly pending: Op;
-  /** The main line: the number typed, the running value or the result, or what went wrong. */
-  readonly display: string;
-  /** The line above it: "12 +" while the second operand is awaited, "12 + 7 =" after a result. */
-  readonly expression: string;
-  readonly fault: R.Fault | null;
-}
-
-const FAULT_TEXT: Record<R.Fault, string> = { "divide-by-zero": "Can’t divide by zero", "too-large": "Too large" };
+export type { CalculatorView, Key, Op, Phase };
 
 export class Calculator {
   readonly view: CalculatorView;
@@ -34,7 +23,7 @@ export class Calculator {
       dot: (fresh) => (this.#registers = R.dot(this.#registers, fresh)),
       drop: () => (this.#registers = R.drop(this.#registers)),
       flip: () => (this.#registers = R.flip(this.#registers)),
-      reset: () => (this.#registers = R.reset()),
+      reset: () => (this.#registers = R.reset(this.#registers)),
       apply: (op) => {
         this.#registers = R.apply(this.#registers, op);
         if (this.#registers.fault) this.#control.fault();
@@ -48,26 +37,22 @@ export class Calculator {
         return control.phase;
       },
       get pending() {
-        return control.phase === "AFTER_OP" || control.phase === "SECOND" ? control.op : "NONE";
+        return V.pending(control.phase, control.op);
       },
       get fault() {
         return registers().fault;
       },
       get display() {
-        const r = registers();
-        if (r.fault) return FAULT_TEXT[r.fault];
-        if (control.phase === "FIRST" || control.phase === "SECOND") return R.formatTyped(r.typed, r.negative);
-        return r.value ? R.format(r.value) : "0";
+        return V.display(control.phase, registers());
       },
       get expression() {
-        const r = registers();
-        if ((control.phase === "AFTER_OP" || control.phase === "SECOND") && control.op !== "NONE" && r.value) {
-          return `${R.format(r.value)} ${R.SYMBOL[control.op]}`;
-        }
-        if (control.phase === "DONE" && r.last && r.last.op !== "NONE") {
-          return `${R.format(r.last.left)} ${R.SYMBOL[r.last.op]} ${R.format(r.last.right)} =`;
-        }
-        return "";
+        return V.expression(control.phase, control.op, registers());
+      },
+      get entry() {
+        return registers().entries;
+      },
+      get spoken() {
+        return V.spoken(control.phase, control.op, registers());
       },
     };
   }

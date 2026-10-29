@@ -275,7 +275,11 @@ registers' business, `logic/registers.ts`: exact rationals, so one third times t
 The two run in parallel in `logic/calculator.svelte.ts`, the control's outputs telling the registers what to do and the
 registers' verdict on a calculation coming back as the control's input. The one store holds the calculator; the
 components (`Display`, `Keypad`, `Calculator`) read it and press keys, built from `Grid` and `Keycap`. Every key is
-always taken, as on a pocket calculator, and the keyboard presses the same keys.
+always taken, as on a pocket calculator, and the keyboard presses the same keys. What the display shows is read in
+`logic/view.ts`: a quieter expression line ("3 +") above the number, a count of the keys entered into an operand that
+lifts the number in for a moment at each entry, even when it shows what it showed before (the second 3 of 3 + 3), and
+the text a screen reader announces at each entry ("3 + 3"). With reduced motion the lift has no duration and the
+expression line alone marks the new operand.
 
 ```sh
 deno task example:calculator          # run it

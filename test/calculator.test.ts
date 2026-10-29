@@ -5,9 +5,12 @@ import { assertEquals } from "@std/assert";
 import * as C from "../examples/calculator/logic/generated/typescript/control/control.ts";
 import * as R from "../examples/calculator/logic/registers.ts";
 import { type Key, keyFor } from "../examples/calculator/logic/keys.ts";
+import * as V from "../examples/calculator/logic/view.ts";
 
-/** Presses keys on a fresh calculator and returns what the display shows. */
-function run(keys: string): { phase: C.Phase; display: string } {
+/** Presses keys on a fresh calculator and returns what the display shows, its lines read as the view reads them. */
+function run(
+  keys: string,
+): { phase: C.Phase; display: string; expression: string; spoken: string; entry: number } {
   let regs = R.empty;
   let st = C.initial({ limit: 12 }).state;
   const send = (ev: C.Event) => {
@@ -19,7 +22,7 @@ function run(keys: string): { phase: C.Phase; display: string } {
       else if (a.type === "dot") regs = R.dot(regs, a.fresh);
       else if (a.type === "drop") regs = R.drop(regs);
       else if (a.type === "flip") regs = R.flip(regs);
-      else if (a.type === "reset") regs = R.reset();
+      else if (a.type === "reset") regs = R.reset(regs);
       else if (a.type === "apply") {
         regs = R.apply(regs, a.op);
         send({ type: regs.fault ? "fault" : "ok" });
@@ -33,14 +36,14 @@ function run(keys: string): { phase: C.Phase; display: string } {
     else send({ type: k.type } as C.Event);
   }
   const phase = st.phase;
-  const display = regs.fault
-    ? regs.fault
-    : phase === "FIRST" || phase === "SECOND"
-    ? R.formatTyped(regs.typed, regs.negative)
-    : regs.value
-    ? R.format(regs.value)
-    : "0";
-  return { phase, display };
+  const display = regs.fault ? regs.fault : V.display(phase, regs);
+  return {
+    phase,
+    display,
+    expression: V.expression(phase, st.op, regs),
+    spoken: V.spoken(phase, st.op, regs),
+    entry: regs.entries,
+  };
 }
 
 Deno.test("the four operations, chained left to right", () => {
@@ -76,4 +79,19 @@ Deno.test("an operand holds at most twelve digits", () => {
 Deno.test("sign change, after a result too", () => {
   assertEquals(run("5 _ + 2 =").display, "−3");
   assertEquals(run("6 * 7 = _").display, "−42");
+});
+
+Deno.test("a new operand is always visible: 3 + 3 shows the expression and marks the second 3", () => {
+  const before = run("3 +");
+  assertEquals([before.display, before.expression, before.spoken], ["3", "3 +", "3 +"]);
+  const after = run("3 + 3");
+  assertEquals([after.phase, after.display, after.expression, after.spoken], ["SECOND", "3", "3 +", "3 + 3"]);
+  // The second 3 leaves the main line as it was, so the entry counter is what marks it.
+  assertEquals(after.entry, before.entry + 1);
+  assertEquals(run("3 + 3 =").spoken, "3 + 3 = 6");
+  // An entry is counted across a clear and a fault too, so the next one is marked as well.
+  assertEquals(run("5 Escape 5").entry, 2);
+  assertEquals(run("1 / 0 = 1").entry, 3);
+  // A key past the digit limit enters nothing, and is not marked.
+  assertEquals(run("1 2 3 4 5 6 7 8 9 0 1 2 3").entry, 12);
 });

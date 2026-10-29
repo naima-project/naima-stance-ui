@@ -28,9 +28,11 @@ export interface Registers {
   /** The last operation that ran, for the expression line: "12 + 7 =". */
   readonly last: { readonly left: Rat; readonly op: Op; readonly right: Rat } | null;
   readonly fault: Fault | null;
+  /** How many keys have been entered into an operand since the start, never reset: each one is shown. */
+  readonly entries: number;
 }
 
-export const empty: Registers = { typed: "", negative: false, value: null, last: null, fault: null };
+export const empty: Registers = { typed: "", negative: false, value: null, last: null, fault: null, entries: 0 };
 
 const ZERO: Rat = { n: 0n, d: 1n };
 const abs = (x: bigint) => (x < 0n ? -x : x);
@@ -79,12 +81,12 @@ function tooLarge(r: Rat): boolean {
 export function enter(s: Registers, digit: number, fresh: boolean): Registers {
   const base = fresh ? { ...s, typed: "", negative: false, fault: null, last: null } : s;
   const typed = base.typed === "0" ? String(digit) : base.typed + String(digit);
-  return { ...base, typed };
+  return { ...base, typed, entries: s.entries + 1 };
 }
 
 export function dot(s: Registers, fresh: boolean): Registers {
   const base = fresh ? { ...s, typed: "", negative: false, fault: null, last: null } : s;
-  return { ...base, typed: (base.typed === "" ? "0" : base.typed) + "." };
+  return { ...base, typed: (base.typed === "" ? "0" : base.typed) + ".", entries: s.entries + 1 };
 }
 
 export function drop(s: Registers): Registers {
@@ -103,13 +105,20 @@ export function apply(s: Registers, op: Op): Registers {
   const right = s.typed === "" && s.value !== null && op === "NONE" ? s.value : parse(s.typed, s.negative);
   const left = s.value ?? ZERO;
   const r = op === "NONE" ? right : combine(left, op, right);
-  if (typeof r === "string") return { ...empty, fault: r };
-  if (tooLarge(r)) return { ...empty, fault: "too-large" };
-  return { typed: "", negative: false, value: r, last: op === "NONE" ? s.last : { left, op, right }, fault: null };
+  if (typeof r === "string") return { ...empty, fault: r, entries: s.entries };
+  if (tooLarge(r)) return { ...empty, fault: "too-large", entries: s.entries };
+  return {
+    typed: "",
+    negative: false,
+    value: r,
+    last: op === "NONE" ? s.last : { left, op, right },
+    fault: null,
+    entries: s.entries,
+  };
 }
 
-export function reset(): Registers {
-  return empty;
+export function reset(s: Registers = empty): Registers {
+  return { ...empty, entries: s.entries };
 }
 
 // ---- reading
