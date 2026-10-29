@@ -416,7 +416,7 @@ async function findApp(dir: string): Promise<string | null> {
     for (const e of entries) {
       const p = `${d}/${e.name}`;
       if (e.isDirectory && e.name.endsWith(".app")) {
-        if (!p.includes("iphonesimulator") && !p.includes("simulator")) continue;
+        if (!/simulator|-sim\//.test(p)) continue;
         const at = (await Deno.stat(p)).mtime?.getTime() ?? 0;
         if (!best || at > best.at) best = { path: p, at };
       } else if (e.isDirectory) await walk(p, depth + 1);
@@ -586,6 +586,12 @@ function reachable(): Map<Platform, string | null> {
   ]);
 }
 
+/**
+ * The script as an expression to wrap: without its leading comment lines, which a driver that passes it on as one
+ * line would let swallow the rest, and without the statement's final semicolon.
+ */
+const withoutHeader = (src: string) => src.replace(/^(\s*\/\/[^\n]*\n)+/, "").trim().replace(/;$/, "");
+
 /** Builds, launches and drives the app on every platform it can; returns one report per platform. */
 export async function checkPlatforms(
   root: string,
@@ -607,7 +613,7 @@ export async function checkPlatforms(
     app,
     tauriDir,
     out,
-    script: cfg.e2e ? await Deno.readTextFile(posix.resolve(root, cfg.e2e)) : null,
+    script: cfg.e2e ? withoutHeader(await Deno.readTextFile(posix.resolve(root, cfg.e2e))) : null,
     conf,
     // The Deno running the check is the one the app's build commands find first.
     env: { ...Deno.env.toObject(), PATH: `${denoDir}${sep}${Deno.env.get("PATH") ?? ""}`, NO_COLOR: "1" },

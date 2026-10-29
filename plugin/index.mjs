@@ -202,13 +202,17 @@ export default function stanceUi(options = {}, api = {}) {
     commands: [{
       name: "stance-ui",
       says: "copies the UI stance into the project, says what changed since, or runs its checks",
-      usage: "naima stance-ui adopt [--mood <name>] [--to <dir>] [--force] | status | check",
+      usage:
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | platforms [--platforms <list>]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
+        { name: "--tauri", says: "also copy the Tauri 2 shell to src-tauri/" },
+        { name: "--server", says: "also copy the Deno port server to server/port-server.ts" },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
+        { name: "--platforms", says: "with platforms: the platforms to try", default: "every one" },
       ],
-      examples: ["stance-ui adopt --mood white", "stance-ui status", "stance-ui check"],
+      examples: ["stance-ui adopt --mood white --tauri", "stance-ui status", "stance-ui check", "stance-ui platforms"],
       enforces: "nothing: it copies the stance and reports; the checks hold the rules",
       runs: [deno],
       async run(args, ctx) {
@@ -218,13 +222,34 @@ export default function stanceUi(options = {}, api = {}) {
         const project = ["--project", appRoot(ctx)];
         if (sub === "adopt") return runScript(deno, "adopt.ts", [...project, ...rest], out, err);
         if (sub === "status") return runScript(deno, "adopt.ts", [...project, "--status"], out, err);
+        if (sub === "platforms") {
+          // Builds and launches the app on every platform this machine reaches: long, so never a Naima check.
+          const child = spawn(deno, [
+            "run",
+            "-A",
+            "--quiet",
+            join(STANCE, "checks", "cli.ts"),
+            ...project,
+            "--only",
+            "platforms",
+            ...rest,
+          ], { cwd: STANCE, stdio: ["ignore", "pipe", "pipe"] });
+          child.stdout.on("data", (d) => out(String(d).trimEnd()));
+          child.stderr.on("data", (d) => err(String(d).trimEnd()));
+          return new Promise((done) => {
+            child.on("error", (e) => (err(`cannot run ${deno}: ${e.message}`), done(2)));
+            child.on("close", (code) => done(code ?? 2));
+          });
+        }
         if (sub === "check") {
           const { code, findings } = await runChecker(deno, [...project, "--json"]);
           for (const f of findings) out(`${f.level} [${f.check}] ${where(f)}${where(f) ? ": " : ""}${f.message}`);
           if (!findings.length) out("stance ui: no problem");
           return code === 0 ? 0 : 1;
         }
-        err("usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--force] | status | check");
+        err(
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | platforms",
+        );
         return 2;
       },
     }],

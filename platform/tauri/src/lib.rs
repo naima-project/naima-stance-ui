@@ -16,7 +16,11 @@ fn e2e_report(report: serde_json::Value) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let e2e = std::env::var("STANCE_UI_E2E").ok().filter(|s| !s.trim().is_empty());
+    // The script is an expression: a final semicolon, as a formatter leaves it, would end it too early.
+    let e2e = std::env::var("STANCE_UI_E2E")
+        .ok()
+        .map(|s| s.trim().trim_end_matches(';').to_string())
+        .filter(|s| !s.is_empty());
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![port::describe, e2e_report])
         .on_page_load(move |webview, payload| {
