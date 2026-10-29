@@ -57,8 +57,30 @@ can be loaded into Naima as a plugin.
 9. **The interface meets EN 301 549 and WCAG 2.2 at level AA.** See [accessibility](#accessibility) for what that asks
    of every widget and page.
 
-Rules 1, 2, 4, 5, 6, 8 and 9 are checked by machine (see [the checks](#the-checks)); the parts of rule 9 a machine
-cannot see are listed with it. Rules 3 and 7 are conventions, followed in review.
+10. **Dragging is done only through the `Draggable` widget**, which always offers every move as a button and an arrow
+    key too (SC 2.5.7).
+
+11. **A password or a one-time code is asked for only by the `Auth` widget**, the sign-in form that meets accessible
+    authentication (SC 3.3.8).
+
+12. **Nothing entered is asked for again in the same process** (SC 3.3.7), unless security needs it or the value is no
+    longer valid; the values are carried in memory for the process only, never stored.
+
+13. **Help, where there is any, is in the same place on every page** (SC 3.2.6).
+
+14. **The app runs on six platforms from one code base, and only the platform port differs**: a web page, and the Tauri
+    2 app on Windows, Linux, macOS, Android and iOS (see [Platforms](#platforms)).
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10 and 11 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13 and 14
+are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and the
+agent records the review as a note on the item the change lands with.
+
+Each rule is a Markdown file in `rules/`, one per rule, which the Naima plugin reads and ships to `naima rules`. Its
+front matter holds `name`, `title`, `audience` (agents, people or everyone), `strength` (must or should), optionally
+`ack` and `enforcedBy` (the Naima check that holds it), and `verifiedBy`: that check, or `agent` for a convention an
+agent verifies. The text of the rule follows, then a section `## Why` with its reason. The front matter is a strict
+subset of YAML (one `name: value` per line, or a list of `- value` lines), so it is read without a YAML library and
+means the same to one.
 
 ## What is here
 
@@ -66,10 +88,12 @@ cannot see are listed with it. Rules 3 and 7 are conventions, followed in review
 tokens/moods/<name>/                the mood boards, in the DTCG format: mood.resolver.json, the shared files,
                                     and themes/light and themes/dark
 tokens/contrast.json                the colour pairs every theme must make legible
+rules/                              the stance's rules, one Markdown file each
 scripts/tokens.ts                   builds one mood board, both themes, into CSS custom properties
 src/lib/components/                 the widget set
 src/lib/store/store.svelte.ts       createStore, storeContext, useStore, snapshot
 src/lib/theme/                      the theme machine and its port for the page
+src/lib/auth/                       the sign-in machine and its passkey helper for the browser
 gallery/                            every widget on one page, built once per mood board
 src/lib/platform/port.ts            the platform port: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
@@ -77,6 +101,7 @@ platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt add
 demo/                               a small app wired to the store
 checks/                             the stance's checks (deno task check, deno task platforms)
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
+scripts/hook.ts                     reruns the fast checks after an agent's edit
 plugin/index.mjs                    the stance as a Naima plugin
 test/                               tests of the checks, the copy, the plugin and the demo
 stance-ui.json                      this repository's own configuration of the checks
@@ -143,6 +168,31 @@ const store = createStore({ theme: new Theme({ initial: savedTheme() }, document
 `documentTheme()` is the theme machine's port in a browser: it sets or removes `data-theme` on the root element and
 remembers the choice in `localStorage`, which `savedTheme()` reads back at the next visit.
 
+`Draggable` is the only widget that handles dragging. It wraps the thing that moves, and its `moves` prop is required
+and never empty: each direction it lists is also a button beside the thing and an arrow key on its handle, so dragging
+is only ever a shortcut. A drag reports one move each time the pointer has travelled the thing's own height (or width),
+so dragging a row of a list by one row moves it by one place. What a move does is the caller's, through `onmove`, and
+`canMove` says whether one can happen now.
+
+```svelte
+<Draggable label={item} moves={["up", "down"]} canMove={(way) => list.allowed({ type: "move", item, way })}
+  onmove={(way) => list.move(item, way)}>{item}</Draggable>
+```
+
+`Auth` is the sign-in form, and the only place a password or a one-time code is asked for. It is built from `Field`,
+`Checkbox`, `Button` and `Text`: a username field (`autocomplete="username"`, with `webauthn` when a passkey is
+offered), a password field (`autocomplete="current-password"`) whose text can be shown, a button for a passkey, and a
+step for a one-time code (`autocomplete="one-time-code"`). It never blocks pasting, asks no puzzle, and says every error
+in text tied to its field. Its logic is the sign-in machine, `Auth` in `src/lib/auth/auth.svelte.ts`, kept in the store
+like any other: it holds the step and the username, never the password, and its port checks what was entered. The port's
+`passkey` is optional; `webauthnPasskey(options, verify)` in `src/lib/auth/webauthn.ts` makes one from the service's two
+calls and the browser's Web Authentication API. A project that needs a sign-up form adds it to its own copy of `Auth`.
+
+```svelte
+<Auth view={auth.view} onpassword={(u, p) => auth.password(u, p)} onpasskey={() => auth.passkey()}
+  oncode={(c) => auth.code(c)} onback={() => auth.back()} />
+```
+
 `gallery/` shows every widget, in its states, on one page. `deno task gallery:build` builds it once per mood board into
 `gallery/dist/<mood>/`, so that the browser checks see every widget in every mood board and both themes.
 
@@ -172,11 +222,14 @@ Every widget and page of the stance:
 - reaches 4.5:1 for text and 3:1 for controls in both themes (SC 1.4.3, 1.4.11);
 - identifies an input's error in text tied to it (`aria-invalid`, `aria-describedby`, SC 3.3.1).
 
-Four criteria new in WCAG 2.2 are about what an app does rather than how a widget is built, and no check can see them,
-so they are followed in review: anything done by dragging has a single-pointer alternative (SC 2.5.7); help, where there
-is any, is in the same place on every page (SC 3.2.6); signing in never asks to solve, remember or transcribe anything
-without an alternative (SC 3.3.8); and nothing already entered is asked for again in the same process (SC 3.3.7). The
-checks below cover what a machine can decide; they do not replace a test with assistive technology.
+Four criteria new in WCAG 2.2 are about what an app does rather than how a widget is built. Two of them are made
+checkable by giving them one widget each: anything done by dragging goes through `Draggable`, which always has a
+single-pointer alternative (SC 2.5.7), and signing in goes through `Auth`, which asks nothing to solve, remember or
+transcribe (SC 3.3.8); the checks `no-raw-drag` and `auth-only` refuse a drag or a secret anywhere else. The other two
+are rules that agents verify, since no check can see them: help, where there is any, is in the same place on every page
+(SC 3.2.6), and nothing already entered is asked for again in the same process (SC 3.3.7). The stance has no form
+machine that remembers entered values across a process: carrying them is each process's machine's job, in memory only.
+The checks below cover what a machine can decide; they do not replace a test with assistive technology.
 
 ## The store and the machines
 
@@ -345,16 +398,18 @@ deno task check --project <app folder>   # any project with a stance-ui.json
 deno task check --only tokens,no-raw-literals --json
 ```
 
-| Check               | What it holds                                                                                                                                                                                                   |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types. |
-| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                        |
-| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                |
-| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                      |
-| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                           |
-| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                     |
-| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                       |
-| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                               |
+| Check               | What it holds                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                 |
+| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                        |
+| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                |
+| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                      |
+| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                           |
+| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.       |
+| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script. |
+| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                     |
+| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                       |
+| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                               |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
@@ -364,6 +419,12 @@ reaches by clicking. A problem names the page, the state and every variant it wa
 fails them rather than passing unseen. Two things are outside what a static check can see. A style value computed by an
 expression (`style:width={w}`) is not checked. And whether a component's own `$state` is really UI state, rather than
 app state kept in the wrong place, is a judgment left to review.
+
+Every run of `deno task check` records, in `stance-ui.checked.json` beside `stance-ui.json`, whether each check passed,
+how many problems it found, when, and a fingerprint of the files the checks read. `stance-ui status` compares it with
+the files as they are now. The record describes one checkout, so it belongs in the project's `.gitignore`. With
+`--changed '<json list of files>'`, the checks run only when one of those files is one they read; `--no-record` skips
+the record.
 
 `stance-ui.json` at the app's root says where things are. Paths are relative to that root.
 
@@ -406,10 +467,10 @@ update can be compared with what the project changed.
    ```
 
    This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
-   and its port to `src/lib/ui/theme/`, the mood board with both themes and the contrast pairs to `tokens/`, and the
-   token build to `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes
-   `stance-ui.json`, which records the stance's version and commit, the mood board, and the sha256 of every file as it
-   was copied, and which configures the checks.
+   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the mood board with both themes and
+   the contrast pairs to `tokens/`, and the token build to `scripts/stance-ui-tokens.ts` (use `--to` for another place
+   than `src/lib/ui`). It writes `stance-ui.json`, which records the stance's version and commit, the mood board, and
+   the sha256 of every file as it was copied, and which configures the checks.
 
 2. Add `svelte`, `svelte-check`, `style-dictionary` and `postcss-value-parser` to the project's development dependencies
    if it does not have them, and build the tokens into the app's CSS:
@@ -425,19 +486,39 @@ update can be compared with what the project changed.
 
 5. Run the checks, from this repository or through Naima (below).
 
-Later, `deno task adopt --project <app folder> --status` lists the files the project changed since the copy and the
-files that are newer in the stance. Running `adopt` again updates the files the project has not changed. It refuses to
-overwrite a file the project did change, or one that was there before and never came from the stance, and names each of
-them so they can be merged by hand. `--force` overwrites them anyway.
+Later, `deno task adopt --project <app folder> --status` lists the files the project customized since the copy (their
+sha256 is no longer the one recorded), the files that are newer in the stance, and, for each check, whether it passed
+after the last change to the files it reads, failed, or has not run since. Running `adopt` again updates the files the
+project has not changed. It refuses to overwrite a file the project did change, or one that was there before and never
+came from the stance, and names each of them so they can be merged by hand. `--force` overwrites them anyway.
 
 ## As a Naima plugin
 
-`plugin/index.mjs` is written to Naima's plugin contract 2. It ships the nine rules above to the rules point, so
-`naima rules` lists them for every agent of the project. It contributes one Naima check per stance check (`ui-tokens`,
-`ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`, `ui-a11y`, `ui-target-size`,
-`ui-reduced-motion`), so `naima check` runs them. And it adds `naima stance-ui adopt | status | check`. The plugin file
-is plain JavaScript and imports only the runtime's own modules, so it loads under Deno, Node and Bun alike. The checks
-themselves run in a child process under Deno, from the plugin's checkout, so Deno must be on the PATH.
+`plugin/index.mjs` is written to Naima's plugin contract 2. It reads the rules in `rules/` (`plugin/rules.mjs`) and
+ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
+check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`,
+`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. And it
+adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's
+own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from
+the plugin's checkout, so Deno must be on the PATH.
+
+When a project customizes its mood board, its tokens or its widgets, the checks run again at two moments.
+
+- **Before the change lands.** The plugin contributes a landing report, `ui-stance-checks`, to the coordination plugin's
+  `landing-reports` point. `naima land` asks it before the trunk moves, on the branch's files: when the landing changes
+  a file the checks read (a token file, a mood board, the contrast pairs, a widget, a component or `stance-ui.json`),
+  every check runs, browser checks included, and each problem refuses the landing. A checker that cannot run refuses it
+  too, since the change was not checked. A landing that changes none of those files runs nothing.
+- **Right after an agent's edit.** `naima init` and `naima update` run the plugin's setup step, `ui-edit-hook`, which,
+  in a project that uses Claude Code (it has `.claude/` or `CLAUDE.md`), adds a `PostToolUse` hook on
+  `Edit|Write|MultiEdit` to `.claude/settings.json`. It is added the way Naima adds its own hooks: beside the project's
+  hooks, an older form replaced where it stands, never twice. The hook runs `naima stance-ui hook`, which reads the
+  edited file from the hook's input and, when the checks read it, runs the fast ones (all but `svelte-check` and the
+  browser checks). It is silent when they pass; otherwise it prints the problems and exits 2, which Claude Code shows
+  the agent.
+
+`naima stance-ui status` then says which files the project customized since it adopted the stance and whether the checks
+passed after the last change.
 
 The plugin is added from git, pinned by commit, so that the whole repository is fetched with it:
 
@@ -457,7 +538,7 @@ Deno executable if it is not the one on the PATH.
 
 ### What Naima would need
 
-Naima's contract already supports a plugin like this one, and three things would make it better.
+Naima's contract already supports a plugin like this one, and these things would make it better.
 
 - **A check cannot declare the programs it runs.** A command declares them with `runs`, and the launcher grants them,
   but a check has no such field, so the plugin's checks rely on the launcher already allowing `deno`. A `runs` field on
@@ -466,6 +547,20 @@ Naima's contract already supports a plugin like this one, and three things would
   and checks the pinned commit out only when `HEAD` differs from it. When the pin is the tip of the default branch,
   `HEAD` already equals it, the checkout is skipped, the working tree stays empty, and the next load refuses the plugin
   for having local changes.
+- **A landing check cannot refuse in its own words.** The only way a plugin refuses a landing is a landing report's
+  `blocks`, whose lines Naima presents as proofs not current: it tells the agent to run `naima verify` or
+  `naima metrics run --record`, and `--stale-proofs "<reason>"` lets the landing through. A failing stance check is not
+  a stale proof. A kind of landing check that refuses with its own message, and that only the owner can override, would
+  say what happened and keep the gate shut.
+- **A plugin cannot contribute agent hooks.** Naima's adapters (`src/core/adapters/`) are the only place that names an
+  agent tool and installs its hooks, and their hooks are Naima's own (session start, turn end, sub-agents). So this
+  plugin writes Claude Code's settings itself, from a setup step. A contribution point for agent hooks, such as
+  `{ name, on: "after-edit", paths, command }`, which each adapter turns into its tool's own hook (a `PostToolUse` entry
+  for Claude Code), would keep tool names out of plugins and give every tool with hooks the same behaviour.
+- **Nothing records that an agent reviewed a change against a rule.** The agent-verified rules ask the agent to record
+  its review as a note on the item it lands with. A landing trailer such as `Reviewed: <rule>`, given with
+  `naima land --reviewed <rule>` and required by a rule whose `verifiedBy` is `agent` when the landing touches the paths
+  the rule names, would let a check see that the review was made.
 - **A plugin cannot ship scaffolding as such.** Copying the widget set is a command of this plugin. A contribution point
   for scaffolds (files a plugin offers to copy into a project, with the version recorded) would let Naima list and
   update them for every stance in the same way.

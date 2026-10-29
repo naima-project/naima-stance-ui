@@ -7,13 +7,15 @@
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
 // What is copied: the widget set to <to>/components/, the store module to <to>/store/, the theme machine
-// and its port to <to>/theme/, the platform port to <to>/platform/, the chosen mood board with its themes and
-// the contrast pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2
-// shell to src-tauri/; with --server, the Deno port server to server/port-server.ts. stance-ui.json records
-// the copy and configures `deno task check`.
+// and its port to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform port to
+// <to>/platform/, the chosen mood board with its themes and the contrast pairs to tokens/, and the token build to
+// scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to src-tauri/; with --server, the Deno port server
+// to server/port-server.ts. stance-ui.json records the copy and configures `deno task check`.
 
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
+import { loadConfig } from "../checks/config.ts";
+import { checkedLines } from "../checks/record.ts";
 
 const STANCE = posix.resolve(new URL("..", import.meta.url).pathname);
 const RECORD = "stance-ui.json";
@@ -50,8 +52,10 @@ async function plan(
     if (e.isFile) files.set(`src/lib/components/${e.name}`, `${to}/components/${e.name}`);
   }
   files.set("src/lib/store/store.svelte.ts", `${to}/store/store.svelte.ts`);
-  for await (const e of Deno.readDir(`${STANCE}/src/lib/theme`)) {
-    if (e.isFile) files.set(`src/lib/theme/${e.name}`, `${to}/theme/${e.name}`);
+  for (const dir of ["theme", "auth"]) {
+    for await (const e of Deno.readDir(`${STANCE}/src/lib/${dir}`)) {
+      if (e.isFile) files.set(`src/lib/${dir}/${e.name}`, `${to}/${dir}/${e.name}`);
+    }
   }
   files.set("src/lib/platform/port.ts", `${to}/platform/port.ts`);
   if (platforms.server) files.set("platform/server.ts", "server/port-server.ts");
@@ -172,10 +176,20 @@ export async function adopt(
   return lines;
 }
 
-/** What changed since the copy: in the project (edited files) and in the stance (newer files). */
+/**
+ * What changed since the copy: in the project (files customized, their hash no longer the one copied) and in the
+ * stance (newer files); then, for each check, whether it passed after the last change to the files it reads.
+ */
 export async function status(project: string): Promise<string[]> {
   const record = await loadRecord(project);
   if (!record) throw new Error(`${RECORD} not found: the stance was never copied into this project`);
+  if (!record.stance?.commit || !record.files) {
+    // Configured for the checks by hand, never copied by adopt: there is no copy to compare with.
+    return [
+      `${RECORD} records no copy of the stance: nothing to compare`,
+      ...await checkedLines(project, await loadConfig(project)),
+    ];
+  }
   const lines = [
     `copied from stance ui ${record.stance.version} (${record.stance.commit.slice(0, 12)}), mood ${record.mood}`,
   ];
@@ -188,6 +202,7 @@ export async function status(project: string): Promise<string[]> {
     else if ((await sha(there)) !== sha256) lines.push(`newer in the stance: ${from} → ${dest}`);
   }
   if (lines.length === 1) lines.push("nothing changed on either side");
+  lines.push(...await checkedLines(project, await loadConfig(project)));
   return lines;
 }
 

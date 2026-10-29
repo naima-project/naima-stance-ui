@@ -10,14 +10,26 @@
 //                                 "options": { "app": "." } } } }
 
 import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { join, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
+import { readRules } from "./rules.mjs";
 
 const CONTRACT = 2;
 /** The examples the stance ships, each a project that follows it (see the README's "Examples"). */
 export const EXAMPLES = [
   { name: "calculator", path: "examples/calculator", says: "a four-operation calculator on the calm mood board" },
 ];
+
+/** Who made the stance, where it is published, its licence and version: what `naima credits` prints (provisional in Naima). */
+export const ATTRIBUTION = {
+  name: "UI stance",
+  homepage: "https://make-become.github.io/",
+  source: "https://github.com/naima-project/naima-stance-ui",
+  authors: ["make become"],
+  license: "MIT",
+  version: "0.1.0",
+};
 const STANCE = fileURLToPath(new URL("..", import.meta.url));
 
 const CHECKS = [
@@ -48,6 +60,18 @@ const CHECKS = [
     says: "svelte-check passes: types hold, and nothing writes the store around its transitions",
   },
   {
+    name: "ui-no-raw-drag",
+    runs: "no-raw-drag",
+    says:
+      "only the widget set's Draggable handles dragging, so every drag has the same moves as buttons and keys (WCAG 2.2 SC 2.5.7)",
+  },
+  {
+    name: "ui-auth-only",
+    runs: "auth-only",
+    says:
+      "only the widget set's Auth asks for a password or a one-time code, so every sign-in is accessible (WCAG 2.2 SC 3.3.8)",
+  },
+  {
     name: "ui-a11y",
     runs: "a11y",
     says:
@@ -65,106 +89,8 @@ const CHECKS = [
   },
 ];
 
-/** The stance's rules, as the rules plugin's `rules` point takes them. */
-export const RULES = [
-  {
-    name: "ui-logic-without-ui",
-    title: "The app's logic is code with no UI",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Everything the app decides (what may happen now, what happens next, what is sent where) lives in plain TypeScript modules that import nothing of the UI, and the components only show it. The two are fully decoupled: the logic runs and is tested without a browser, and the UI can be replaced without touching it.",
-    why:
-      "logic inside components can only be tested through the screen, is copied between components that need it, and changes whenever the look does.",
-    enforcedBy: "ui-component-imports",
-  },
-  {
-    name: "ui-one-store-written-by-transitions",
-    title: "One central store holds every state machine and is written only through their transitions",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "The app's state is one deep-reactive Svelte 5 store ($state, made once with createStore), which holds every state machine of the app. A machine has the shape naima-codegen emits: a read-only view of its state, allowed(event), and one method per input, its transitions. Nothing changes the state except those methods; side effects are the machine's outputs, carried out by a port passed to it.",
-    why:
-      "one store read by everyone and written by transitions alone makes every change of state a step of a machine that can be checked, replayed and tested, instead of an assignment anywhere in the UI.",
-    enforcedBy: "ui-svelte-check",
-  },
-  {
-    name: "ui-machines-composed-and-modelled-first",
-    title: "Machines are composed of simpler ones, and modelled first",
-    audience: "everyone",
-    strength: "should",
-    text:
-      "A machine is built from simpler ones as far as the formalism allows: machines side by side are their product; machines that synchronise on shared actions are parallel processes. Each is modelled first in mCRL2 and its code generated with naima-codegen, with its properties checked. Only where a model is clearly, justifiably useless overhead (a few states, no concurrency, nothing worth proving) is the machine written directly as a .svelte.ts class in the same shape, with the reason in a comment at its top.",
-    why:
-      "behaviour with states fails in the orders of events nobody tested; a model checker explores every order, and small machines composed are small models to check.",
-  },
-  {
-    name: "ui-components-keep-only-local-ui-state",
-    title: "Components keep only their own UI state, read the store and call transitions",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "A component may keep state that is purely its own and means nothing to the app: whether a dropdown is open, the caps lock, the text being typed before it is sent. Everything else it reads from the store's views and changes by calling a machine's transition. A component imports Svelte, other components and the store module; anything else only as a type. A widget of the set is generic and does not even read the store: it takes props and reports through callbacks.",
-    why:
-      "state kept in a component is invisible to the machines, so the app's behaviour would depend on what is mounted; generic widgets are what makes them reusable across projects.",
-    enforcedBy: "ui-component-imports",
-  },
-  {
-    name: "ui-design-tokens-only",
-    title: "Every colour, size and duration is a design token",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "The design's values are design tokens in the W3C Design Tokens (DTCG) format, built to CSS custom properties, and a component uses them only as var(--token): no hex, rgb() or named colour, no px, rem or ms, not in a <style>, a style attribute, a style: directive or an SVG paint attribute. Percentages, fr, viewport units and unitless numbers describe layout and stay allowed.",
-    why:
-      "a value written in a component is a design decision nobody can find or change in one place, and it breaks the next mood board.",
-    enforcedBy: "ui-no-raw-literals",
-  },
-  {
-    name: "ui-mood-board-chosen-at-design-time",
-    title: "The mood board is chosen at design time",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "A mood board is a complete set of token values, and every mood board defines the same tokens. The project chooses one while it is designed and builds it into its CSS; the app does not switch between mood boards at run time. What does switch at run time is the theme within the mood board, light or dark (see the rule on light and dark).",
-    why:
-      "a mood board is a design choice, made once and reviewed; the same token names in every mood board are what lets a project change its choice without touching a component.",
-    enforcedBy: "ui-tokens",
-  },
-  {
-    name: "ui-light-and-dark",
-    title: "Every mood board has a light and a dark theme, and the user's choice is app state",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Each mood board has a light and a dark theme, declared by a DTCG resolver file, with the same token names. The app follows prefers-color-scheme unless the user chose a theme; that choice is held by the theme machine in the store and changes only through its transition, whose port sets data-theme on the page. Both themes reach 4.5:1 for text and 3:1 for controls and focus rings, for every pair in the contrast file.",
-    why:
-      "a theme that is only light fails people who need a dark screen, and a dark theme added later is never checked; a choice kept outside the store is app state no machine knows about.",
-    enforcedBy: "ui-contrast",
-  },
-  {
-    name: "ui-accessible",
-    title: "The interface meets EN 301 549 and WCAG 2.2 at level AA",
-    audience: "everyone",
-    strength: "must",
-    text:
-      "Every widget and page meets the European Accessibility Act's harmonised standard, EN 301 549, and WCAG 2.2 level AA: names, roles and states for assistive technology; everything works from the keyboard with a visible focus that is never hidden; targets of at least 24 by 24 CSS px; motion stops when reduced motion is asked for; text resizes to 200% and the page reflows at 320 CSS px; nothing is told by colour alone; an input's error is said in text and tied to it; the page states its language. Dragging always has a single-pointer alternative, help sits in the same place on every page, a sign-in never asks to solve or remember a puzzle, and nothing already entered is asked for again in the same process.",
-    why:
-      "the European Accessibility Act has applied since 28 June 2025; an inaccessible interface shuts people out, and accessibility added at the end is never finished.",
-    enforcedBy: "ui-a11y",
-  },
-  {
-    name: "ui-compositional-widget-set",
-    title: "Larger components are built from smaller ones",
-    audience: "everyone",
-    strength: "should",
-    text:
-      "The widget set has primitives (Button, Text, Input, Checkbox, Icon, Stack, Cluster, Grid, Keycap) and components composed from them (Field, Dropdown, Dialog, Card, Toolbar, ThemeSwitch); a new component is built from existing ones before it is written from scratch. The set is copied into the project with `naima stance-ui adopt`, as source the project owns, and stance-ui.json records the stance's version so that later updates can be compared.",
-    why:
-      "composition keeps the look and the behaviour (focus, keyboard, labels) consistent, since each is written once, in the smallest component that needs it.",
-  },
-];
+/** The stance's rules, read from rules/, one Markdown file each (plugin/rules.mjs), as the `rules` point takes them. */
+export const RULES = readRules(join(STANCE, "rules"));
 
 /** Runs the stance's checker on the app and returns its findings, or throws with why it could not. */
 function runChecker(deno, args) {
@@ -189,11 +115,11 @@ function runChecker(deno, args) {
 }
 
 /** Runs a script of the stance with its output passed through, and returns its exit code. */
-function runScript(deno, script, args, out, err) {
+function runScript(deno, script, args, out, err, stdin = "ignore") {
   return new Promise((done) => {
     const child = spawn(deno, ["run", "-A", "--quiet", join(STANCE, "scripts", script), ...args], {
       cwd: STANCE,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [stdin, "pipe", "pipe"],
     });
     child.stdout.on("data", (d) => out(String(d).trimEnd()));
     child.stderr.on("data", (d) => err(String(d).trimEnd()));
@@ -203,6 +129,58 @@ function runScript(deno, script, args, out, err) {
 }
 
 const where = (f) => `${f.file ?? ""}${f.line ? `:${f.line}` : ""}`;
+
+/** Claude Code's project settings, where its hooks are, from the project's root. */
+const CLAUDE_SETTINGS = join(".claude", "settings.json");
+/** The tools whose edits the hook follows. */
+const EDITS = "Edit|Write|MultiEdit";
+const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+const commandsOf = (entry) =>
+  isObject(entry) && Array.isArray(entry.hooks)
+    ? entry.hooks.flatMap((h) => (isObject(h) && typeof h.command === "string" ? [h.command] : []))
+    : [];
+const isOurs = (command) => command.trimEnd().endsWith(" stance-ui hook");
+
+/**
+ * Puts the stance's hook into Claude Code's project settings, the way Naima puts its own hooks there: added to what
+ * the file holds, an older form replaced where it stands, never twice. The hook runs `naima stance-ui hook` after
+ * every edit, which reruns the fast checks when the edit touched a file they read. Only for a project that uses
+ * Claude Code (it has .claude/ or CLAUDE.md); returns the lines to say.
+ */
+export function installHook(root, program) {
+  if (!existsSync(join(root, ".claude")) && !existsSync(join(root, "CLAUDE.md"))) return [];
+  const launcher = relative(root, join(program, "naima.ts")).split(sep).join(posix.sep);
+  const command = `deno run -A "$CLAUDE_PROJECT_DIR/${launcher}" stance-ui hook`;
+  const entry = { matcher: EDITS, hooks: [{ type: "command", command }] };
+  const path = join(root, CLAUDE_SETTINGS);
+  const add = `add to ${CLAUDE_SETTINGS} by hand: "hooks": { "PostToolUse": [ ${JSON.stringify(entry)} ] }`;
+  let settings = {};
+  if (existsSync(path)) {
+    try {
+      settings = JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return [`the UI stance's edit hook is not installed: ${CLAUDE_SETTINGS} is not plain JSON; ${add}`];
+    }
+    if (!isObject(settings)) {
+      return [`the UI stance's edit hook is not installed: ${CLAUDE_SETTINGS} is not an object; ${add}`];
+    }
+  }
+  const hooks = settings.hooks ?? {};
+  const list = isObject(hooks) ? (hooks.PostToolUse ?? []) : null;
+  if (!Array.isArray(list)) {
+    return [`the UI stance's edit hook is not installed: its hooks are not as expected; ${add}`];
+  }
+  const at = list.findIndex((e) => commandsOf(e).some(isOurs));
+  if (at !== -1 && JSON.stringify(list[at]) === JSON.stringify(entry)) return [];
+  const next = at === -1 ? [...list, entry] : list.map((e, i) => (i === at ? entry : e));
+  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify({ ...settings, hooks: { ...hooks, PostToolUse: next } }, null, 2) + "\n");
+  return [
+    `${
+      at === -1 ? "installed" : "updated"
+    } the UI stance's edit hook in ${CLAUDE_SETTINGS}: after an agent edits tokens, widgets or components, the stance's fast checks run again`,
+  ];
+}
 
 export default function stanceUi(options = {}, api = {}) {
   const app = typeof options.app === "string" ? options.app : ".";
@@ -216,6 +194,7 @@ export default function stanceUi(options = {}, api = {}) {
   return {
     name: api.plugin ?? "stance-ui",
     contract: CONTRACT,
+    attribution: ATTRIBUTION,
     says:
       "the UI stance by makebecome: logic without UI, one store written by transitions, design tokens in light and dark, accessible at WCAG 2.2 AA, a compositional widget set",
     about:
@@ -229,8 +208,43 @@ export default function stanceUi(options = {}, api = {}) {
       },
       { name: "deno", says: "the Deno executable that runs the stance's checks and scripts", default: "deno" },
     ],
-    contributes: { rules: RULES },
-    optional: ["rules"],
+    contributes: {
+      rules: RULES,
+      "landing-reports": [{
+        name: "ui-stance-checks",
+        says:
+          "a landing that changes a file the UI stance's checks read (tokens, mood boards, contrast pairs, widgets, components, stance-ui.json) is refused while any of its checks fails on the branch's files",
+        async blocks(ctx, landing) {
+          const root = appRoot(ctx);
+          const changed = landing.changed
+            .map((f) => relative(root, resolve(ctx.root, f)).split(sep).join(posix.sep))
+            .filter((f) => f && !f.startsWith(".."));
+          if (!changed.length) return [];
+          try {
+            const { findings } = await runChecker(deno, [
+              "--project",
+              root,
+              "--changed",
+              JSON.stringify(changed),
+              "--json",
+            ]);
+            return findings.filter((f) => f.level === "problem").map((f) =>
+              `${f.check}: ${where(f)}${where(f) ? ": " : ""}${f.message}`
+            );
+          } catch (e) {
+            // A check that cannot run holds the landing: the change was not checked.
+            return [`the stance's checks could not run: ${e.message}`];
+          }
+        },
+      }],
+    },
+    optional: ["rules", "landing-reports"],
+    setup: [{
+      name: "ui-edit-hook",
+      says:
+        "in a project that uses Claude Code, a PostToolUse hook in .claude/settings.json that reruns the UI stance's fast checks after an agent edits a file they read",
+      install: (ctx) => (ctx.program ? installHook(ctx.root, ctx.program) : []),
+    }],
     checks: CHECKS.map((c) => ({
       name: c.name,
       says: c.says,
@@ -245,9 +259,10 @@ export default function stanceUi(options = {}, api = {}) {
     })),
     commands: [{
       name: "stance-ui",
-      says: "copies the UI stance into the project, says what changed since, or runs its checks",
+      says:
+        "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, or builds and drives the app on every platform the machine reaches",
       usage:
-        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | platforms [--platforms <list>]",
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | hook | platforms [--platforms <list>]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
@@ -256,7 +271,13 @@ export default function stanceUi(options = {}, api = {}) {
         { name: "--force", says: "overwrite files the project changed since they were copied" },
         { name: "--platforms", says: "with platforms: the platforms to try", default: "every one" },
       ],
-      examples: ["stance-ui adopt --mood white --tauri", "stance-ui status", "stance-ui check", "stance-ui platforms"],
+      examples: [
+        "stance-ui adopt --mood white --tauri",
+        "stance-ui status",
+        "stance-ui check",
+        "stance-ui hook < hook-input.json",
+        "stance-ui platforms",
+      ],
       enforces: "nothing: it copies the stance and reports; the checks hold the rules",
       runs: [deno],
       async run(args, ctx) {
@@ -291,8 +312,13 @@ export default function stanceUi(options = {}, api = {}) {
           if (!findings.length) out("stance ui: no problem");
           return code === 0 ? 0 : 1;
         }
+        // An agent tool's hook input on standard input; exits 2 with the problems on standard error, which Claude
+        // Code shows the agent.
+        if (sub === "hook") {
+          return runScript(deno, "hook.ts", [...project, "--root", ctx.root, ...rest], out, err, "inherit");
+        }
         err(
-          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | platforms",
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] | status | check | hook | platforms",
         );
         return 2;
       },

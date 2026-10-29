@@ -2,11 +2,13 @@
      each of them in both themes. It reads the store and calls transitions like any app. -->
 <script lang="ts">
   import {
+    Auth,
     Button,
     Card,
     Checkbox,
     Cluster,
     Dialog,
+    Draggable,
     Dropdown,
     Field,
     Grid,
@@ -21,7 +23,7 @@
   import { useStore } from "../src/lib/store/store.svelte.ts";
   import type { AppStore } from "./app.svelte.ts";
 
-  const { theme, sheet } = useStore<AppStore>();
+  const { theme, sheet, shelf, auth } = useStore<AppStore>();
   let name = $state("");
   let code = $state("12");
   let agreed = $state(false);
@@ -85,6 +87,33 @@
         <Text as="span">An icon with a name, and one that is only decoration</Text>
         <Icon>★</Icon>
       </Cluster>
+    </Card>
+
+    <Card title="Moving by dragging, or not">
+      <Text tone="muted">Drag a row by its handle, press its arrow keys, or use its buttons.</Text>
+      <Stack gap="sm">
+        {#each shelf.view.items as item (item)}
+          <Draggable
+            label={item}
+            moves={["up", "down"]}
+            canMove={(way) => shelf.allowed({ type: "move", item, way })}
+            onmove={(way) => shelf.move(item, way)}
+          >
+            <Text as="span">{item}</Text>
+          </Draggable>
+        {/each}
+      </Stack>
+      <Text tone="muted" live="polite">Order: {shelf.view.items.join(", ")}</Text>
+    </Card>
+
+    <Card title="Signing in">
+      <Auth
+        view={auth.view}
+        onpassword={(u, p) => auth.password(u, p)}
+        onpasskey={() => auth.passkey()}
+        oncode={(c) => auth.code(c)}
+        onback={() => auth.back()}
+      />
     </Card>
 
     <Card title="Keycaps">
