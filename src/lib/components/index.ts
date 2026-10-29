@@ -14,3 +14,5 @@ export { default as Toolbar } from "./Toolbar.svelte";
 export { default as Grid } from "./Grid.svelte";
 export { default as Keycap } from "./Keycap.svelte";
 export { default as ThemeSwitch } from "./ThemeSwitch.svelte";
+export { default as Draggable } from "./Draggable.svelte";
+export { default as Auth } from "./Auth.svelte";
