@@ -5,6 +5,7 @@
 //
 //   deno task tokens [--mood white | --tokens <folder>] [--out dist/tokens.css]
 
+import { fileURLToPath } from "node:url";
 import StyleDictionary from "style-dictionary";
 import type { TransformedToken } from "style-dictionary/types";
 
@@ -228,7 +229,8 @@ if (import.meta.main) {
   };
   // In this repository, --mood names a mood board; in a project, --tokens names its folder of tokens.
   const mood = arg("--mood");
-  const here = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+  // A file path on every system: on Windows a URL's pathname starts with "/C:".
+  const here = fileURLToPath(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
   const dir = arg("--tokens") ?? `${here}/tokens/moods/${mood ?? "white"}`;
   console.log(await buildTokens(dir, arg("--out") ?? "dist/tokens.css", mood ? `mood board ${mood}` : dir));
 }

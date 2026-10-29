@@ -45,6 +45,8 @@ export interface PlatformReport {
   /** The end-to-end script's own words. */
   says?: string;
   screenshot?: string;
+  /** Why there is no screenshot, when the rest worked. */
+  noScreenshot?: string;
   log?: string;
 }
 
@@ -127,8 +129,11 @@ class Launched {
     const log = Deno.openSync(opts.log, { write: true, create: true, append: true });
     log.writeSync(new TextEncoder().encode(`$ ${cmd} ${args.join(" ")}\n`));
     const read = async (s: ReadableStream<Uint8Array<ArrayBuffer>>) => {
-      for await (const line of s.pipeThrough(new TextDecoderStream()).pipeThrough(new TextLineStream())) {
+      for await (let line of s.pipeThrough(new TextDecoderStream()).pipeThrough(new TextLineStream())) {
         log.writeSync(new TextEncoder().encode(line + "\n"));
+        // iOS writes an app's standard output to the system log, as "... [stdout] <line>".
+        const at = line.indexOf("[stdout] ");
+        line = at < 0 ? line : line.slice(at + "[stdout] ".length);
         this.lines.push(line);
         for (const w of [...this.#waiters]) {
           if (w.test(line)) {
@@ -252,7 +257,8 @@ async function web(ctx: Ctx): Promise<PlatformReport[]> {
       out.push(r);
       const type = pw[name];
       if (!(await exists(type.executablePath()))) {
-        r.skipped = `${name} is not installed: deno run -A npm:playwright install ${name}`;
+        r.skipped = `${name} is not installed for Playwright (deno run -A npm:playwright install ${name}), ` +
+          "or Playwright has no build of it for this system";
         continue;
       }
       const browser = await type.launch();
@@ -309,11 +315,20 @@ async function launchWithScript(
   args: string[],
   env: Record<string, string>,
   shoot: (l: Launched) => Promise<string | null>,
+  /** For an app started apart from the process that reads its output: starts it, once that process runs. */
+  start?: () => Promise<boolean>,
 ) {
   const log = `${ctx.out}/${r.platform}-launch.log`;
   r.log = log;
   const app = new Launched(cmd, args, { cwd: ctx.app, env: { ...ctx.env, ...env }, log });
   try {
+    if (start) {
+      await sleep(1500); // the reader is listening
+      if (!(await start())) {
+        r.failed = "the app did not start";
+        return;
+      }
+    }
     const ready = await app.waitFor(READY, 90_000);
     if (ready === null) {
       r.failed = `the app did not get ready within 90 s (no "port:" line); see ${log}`;
@@ -327,7 +342,7 @@ async function launchWithScript(
       if (!rep.ok) r.failed = `end-to-end: ${rep.says}`;
     }
     await sleep(800); // the last frame painted
-    const shot = await shoot(app).catch(() => null);
+    const shot = await shoot(app).catch((e: Error) => ((r.noScreenshot = e.message), null));
     if (shot) r.screenshot = shot;
   } finally {
     await app.stop();
@@ -356,10 +371,17 @@ async function macos(ctx: Ctx): Promise<PlatformReport> {
       (await new Deno.Command("xcrun", { args: ["swift", swift, String(app.pid)], stdout: "piped", stderr: "null" })
         .output()).stdout,
     ).trim();
-    if (!id) return null;
+    if (!id) throw new Error("its window was not found on screen");
     const png = `${ctx.out}/macos.png`;
-    const ok = (await new Deno.Command("screencapture", { args: ["-x", "-o", `-l${id}`, png] }).output()).success;
-    return ok ? png : null;
+    const shot = await new Deno.Command("screencapture", { args: ["-x", "-o", `-l${id}`, png], stderr: "piped" })
+      .output();
+    if (!shot.success || !(await exists(png))) {
+      throw new Error(
+        "screencapture could not capture the window: the program running the check needs the Screen Recording " +
+          "permission (System Settings, Privacy & Security)",
+      );
+    }
+    return png;
   });
   return r;
 }
@@ -376,6 +398,7 @@ async function ios(ctx: Ctx): Promise<PlatformReport> {
   r.log = `${ctx.out}/ios-build.log`;
   if (!(await exists(`${ctx.tauriDir}/gen/apple`))) {
     if ((await tauri(ctx, ["ios", "init", "--ci"], r.log)) !== 0) return { ...r, failed: "tauri ios init failed" };
+    await nativeIcons(ctx, r.log!);
   }
   if ((await tauri(ctx, ["ios", "build", "--target", "aarch64-sim", "--debug", "--ci"], r.log)) !== 0) {
     return { ...r, failed: "tauri ios build failed" };
@@ -388,19 +411,48 @@ async function ios(ctx: Ctx): Promise<PlatformReport> {
   if (!(await simctl("install", device.udid, found))) {
     return { ...r, failed: `simctl install on ${device.name} failed` };
   }
+  // The app's output reaches the system log, which is read while the app is launched with the script.
+  const launch = async () =>
+    (await new Deno.Command("xcrun", {
+      args: ["simctl", "launch", "--terminate-running-process", device.udid, ctx.conf.identifier],
+      env: { ...ctx.env, ...(ctx.script ? { SIMCTL_CHILD_STANCE_UI_E2E: ctx.script } : {}) },
+      stdout: "null",
+      stderr: "null",
+    }).output()).success;
   await launchWithScript(
     ctx,
     r,
     "xcrun",
-    ["simctl", "launch", "--console-pty", "--terminate-running-process", device.udid, ctx.conf.identifier],
-    ctx.script ? { SIMCTL_CHILD_STANCE_UI_E2E: ctx.script } : {},
+    [
+      "simctl",
+      "spawn",
+      device.udid,
+      "log",
+      "stream",
+      "--style",
+      "compact",
+      "--predicate",
+      `subsystem == "${ctx.conf.identifier}"`,
+    ],
+    {},
     async () => {
       const png = `${ctx.out}/ios.png`;
       return (await simctl("io", device.udid, "screenshot", png)) ? png : null;
     },
+    launch,
   );
   await simctl("terminate", device.udid, ctx.conf.identifier);
   return r;
+}
+
+/** init gives the native project Tauri's own icons: they are made again from the app's icon source. */
+async function nativeIcons(ctx: Ctx, log: string) {
+  for (const source of ["icons-source.svg", "icons/icon.png"]) {
+    if (await exists(`${ctx.tauriDir}/${source}`)) {
+      await tauri(ctx, ["icon", `src-tauri/${source}`, "-o", "src-tauri/icons"], log);
+      return;
+    }
+  }
 }
 
 /** The newest simulator .app under `dir`. */
@@ -535,6 +587,7 @@ async function android(ctx: Ctx): Promise<PlatformReport> {
     if ((await tauri(ctx, ["android", "init", "--ci"], r.log)) !== 0) {
       return { ...r, failed: "tauri android init failed" };
     }
+    await nativeIcons(ctx, r.log!);
   }
   if ((await tauri(ctx, ["android", "build", "--apk", "--debug", "--ci"], r.log)) !== 0) {
     return { ...r, failed: "tauri android build failed" };
@@ -670,10 +723,12 @@ export function describeReport(r: PlatformReport, root: string): string {
     ? "failed"
     : "skipped";
   const parts = [`${r.platform.padEnd(14)} ${level}`];
-  if (r.says) parts.push(`(${r.says})`);
-  if (r.failed) parts.push(`problem: ${r.failed}`);
+  const line = (t: string) => t.split("\n")[0];
+  if (r.says) parts.push(`(${line(r.says)})`);
+  if (r.failed) parts.push(`problem: ${line(r.failed)}`);
   if (r.skipped) parts.push(`skipped: ${r.skipped}`);
   if (r.screenshot) parts.push(`screenshot ${rel(r.screenshot)}`);
+  if (r.noScreenshot) parts.push(`no screenshot: ${r.noScreenshot}`);
   return parts.join(" · ");
 }
 

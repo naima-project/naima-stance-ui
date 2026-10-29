@@ -33,7 +33,7 @@
     key.click();
     await until(`${shows} on the display after ${name}`, () => display() === shows, 3000);
   };
-  await press("All clear", "0");
+  await press("AC, all clear", "0");
   await press("1", "1");
   await press("Add", "1");
   await press("2", "2");

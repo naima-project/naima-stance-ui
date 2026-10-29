@@ -1,8 +1,8 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { localPort, webPort } from "../src/lib/platform/port.ts";
 import { portHandler } from "../platform/server.ts";
-import { labelFor } from "../examples/calculator/logic/host.svelte.ts";
-import { webHandlers } from "../examples/calculator/app.svelte.ts";
+import { labelFor } from "../examples/calculator/logic/host.ts";
+import { webHandlers } from "../examples/calculator/port.ts";
 import { adopt } from "../scripts/adopt.ts";
 import { checkPlatforms, platformFindings } from "../checks/platforms.ts";
 
@@ -65,7 +65,7 @@ Deno.test("the calculator's Tauri shell is the stance's template, with only its 
   };
   const template = `${root}/platform/tauri`;
   const example = `${root}/examples/calculator/src-tauri`;
-  const own = new Set(["tauri.conf.json", "Cargo.lock", "icons-source.svg"]);
+  const own = new Set(["tauri.conf.json", "Cargo.lock"]);
   const shared = (await files(template)).filter((f) => !own.has(f));
   assertEquals((await files(example)).filter((f) => !own.has(f)), shared);
   for (const f of shared) {
