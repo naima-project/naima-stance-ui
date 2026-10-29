@@ -1,0 +1,27 @@
+# The Tauri 2 shell: the app's page in a native webview, on Windows, Linux, macOS, Android and iOS. Its only
+# job besides showing the page is the platform port's Rust side: the commands in src/port.rs.
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+# The mobile targets load the app as a library; the desktop ones link it into src/main.rs.
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.5", features = [] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
