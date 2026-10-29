@@ -18,6 +18,16 @@ const CONTRACT = 2;
 export const EXAMPLES = [
   { name: "calculator", path: "examples/calculator", says: "a four-operation calculator on the calm mood board" },
 ];
+
+/** Who made the stance, where it is published, its licence and version: what `naima credits` prints (provisional in Naima). */
+export const ATTRIBUTION = {
+  name: "UI stance",
+  homepage: "https://make-become.github.io/",
+  source: "https://github.com/naima-project/naima-stance-ui",
+  authors: ["make become"],
+  license: "MIT",
+  version: "0.1.0",
+};
 const STANCE = fileURLToPath(new URL("..", import.meta.url));
 
 const CHECKS = [
@@ -216,6 +226,7 @@ export default function stanceUi(options = {}, api = {}) {
   return {
     name: api.plugin ?? "stance-ui",
     contract: CONTRACT,
+    attribution: ATTRIBUTION,
     says:
       "the UI stance by makebecome: logic without UI, one store written by transitions, design tokens in light and dark, accessible at WCAG 2.2 AA, a compositional widget set",
     about:
