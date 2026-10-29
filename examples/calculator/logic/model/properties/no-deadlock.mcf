@@ -1,0 +1,2 @@
+% Every reachable state has a next step: the calculator never gets stuck.
+[true*]<true>true

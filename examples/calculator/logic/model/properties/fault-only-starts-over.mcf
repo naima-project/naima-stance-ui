@@ -1,0 +1,4 @@
+% After an error, until the user clears or starts a new number, no key continues the
+% failed calculation: the registers are asked for no calculation, sign change or deletion.
+[true*.c_fault.(!(c_clear || c_point || exists d: Nat . c_digit(d)))*.
+  (c_drop || c_flip || exists o: Op . c_apply(o))]false

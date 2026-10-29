@@ -6,7 +6,9 @@
     "test": "deno test -A test/",
     "demo": "deno run -A npm:vite@8.3.5 demo",
     "demo:build": "deno run -A scripts/tokens.ts --mood white --out demo/tokens.css && deno run -A npm:vite@8.3.5 build demo",
-    "adopt": "deno run -A scripts/adopt.ts"
+    "adopt": "deno run -A scripts/adopt.ts",
+    "example:calculator": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 examples/calculator",
+    "example:calculator:build": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 build examples/calculator"
   },
   "fmt": {
     "lineWidth": 120,
@@ -14,7 +16,9 @@
     "exclude": [
       "node_modules",
       "dist",
-      "demo/dist"
+      "demo/dist",
+      "examples/calculator/dist",
+      "examples/*/logic/generated"
     ]
   },
   "lint": {
@@ -22,7 +26,9 @@
       "node_modules",
       "dist",
       "demo/dist",
-      "test/fixtures"
+      "test/fixtures",
+      "examples/calculator/dist",
+      "examples/*/logic/generated"
     ]
   },
   "imports": {

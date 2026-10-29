@@ -1,0 +1,4 @@
+% A calculation asked of the registers gets exactly one answer before anything else
+% happens: after c_apply, the next key-or-answer is c_ok or c_fault.
+[true*.(exists o: Op . c_apply(o)).(!(c_ok || c_fault))*.
+  (c_clear || c_point || c_back || c_negate || c_equals || exists d: Nat . c_digit(d) || exists o: Op . c_operator(o))]false

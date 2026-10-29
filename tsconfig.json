@@ -3,7 +3,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
@@ -12,6 +16,18 @@
     "skipLibCheck": true,
     "types": []
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "demo/**/*.ts", "demo/**/*.svelte"],
-  "exclude": ["demo/dist", "demo/vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "demo/**/*.ts",
+    "demo/**/*.svelte",
+    "examples/**/*.ts",
+    "examples/**/*.svelte"
+  ],
+  "exclude": [
+    "demo/dist",
+    "demo/vite.config.ts",
+    "examples/*/dist",
+    "examples/*/vite.config.ts"
+  ]
 }

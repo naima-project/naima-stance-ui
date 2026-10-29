@@ -1,0 +1,2 @@
+% codegen-init.mcrl2 -- the initial state (docs/spec.md §3.1.1); limit = 12 is a placeholder.
+init Core(12, FIRST, NONE, 0, 0, false, FIRST, IDLE);

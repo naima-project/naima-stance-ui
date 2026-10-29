@@ -1,0 +1,3 @@
+% Equals asks for a calculation only when a second operand has been typed: right after
+% an operator (and its calculation, if one ran), equals changes nothing.
+[true*.(exists o: Op . c_operator(o)).(c_ok || exists o: Op . c_apply(o))*.c_equals.(exists o: Op . c_apply(o))]false

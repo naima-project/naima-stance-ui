@@ -1,0 +1,10 @@
+% observers.mcrl2 -- state invariants of the calculator's control, for verification only.
+% @act
+act o_digits, o_pending, o_waiting;
+% @summands
+  % an operand never holds more digits than the limit
+  + (whole + frac > limit) -> o_digits . Core()
+  % at the end of a step the registers have been told everything
+  + (QUIESCENT && todo != IDLE) -> o_pending . Core()
+  % a calculation is awaited only in the CALC phase, and then always for a known phase
+  + (phase == CALC && (then != AFTER_OP && then != DONE)) -> o_waiting . Core()

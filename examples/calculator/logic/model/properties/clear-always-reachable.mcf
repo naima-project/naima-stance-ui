@@ -1,0 +1,2 @@
+% From every state, clearing is reachable: there is no state the user cannot get out of.
+[true*]<(!c_clear)*.c_clear>true

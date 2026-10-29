@@ -1,0 +1,121 @@
+# The calculator's control (naima-codegen docs/spec.md §3.6), generated for TypeScript and Svelte.
+mcrl2_version = "202607.0"
+id_sorts = []
+
+[project]
+backends = ["typescript"]
+typescript_module = "control"
+
+[widths]
+Nat = "u32"
+
+[[parameter]]
+name = "limit"
+role = "config"
+
+[[parameter]]
+name = "phase"
+role = "scalar"
+
+[[parameter]]
+name = "op"
+role = "scalar"
+
+[[parameter]]
+name = "whole"
+role = "scalar"
+
+[[parameter]]
+name = "frac"
+role = "scalar"
+
+[[parameter]]
+name = "dot"
+role = "scalar"
+
+[[parameter]]
+name = "then"
+role = "scalar"
+
+[[parameter]]
+name = "todo"
+role = "scalar"
+
+[[action]]
+label = "c_digit"
+kind = "input"
+args = ["digit"]
+
+[[action]]
+label = "c_point"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_back"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_negate"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_operator"
+kind = "input"
+args = ["op"]
+
+[[action]]
+label = "c_equals"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_clear"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_ok"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_fault"
+kind = "input"
+args = []
+
+[[action]]
+label = "c_enter"
+kind = "output"
+args = ["digit", "fresh"]
+
+[[action]]
+label = "c_dot"
+kind = "output"
+args = ["fresh"]
+
+[[action]]
+label = "c_drop"
+kind = "output"
+args = []
+
+[[action]]
+label = "c_flip"
+kind = "output"
+args = []
+
+[[action]]
+label = "c_apply"
+kind = "output"
+args = ["op"]
+
+[[action]]
+label = "c_reset"
+kind = "output"
+args = []
+
+# The systems the refinement is checked on (§3.17).
+[systems.groups]
+small = ["small"]

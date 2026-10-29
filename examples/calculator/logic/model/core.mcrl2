@@ -1,0 +1,119 @@
+% core.mcrl2 -- the calculator's control, as one linear process (naima-codegen, docs/spec.md §3.5).
+%
+% The model decides what each key does and when: which keys are allowed, when an
+% operand starts and ends, when a calculation runs and what happens after it. The
+% numbers themselves are data and live in the registers machine beside it (the two
+% together are their parallel composition). The control tells the registers what to
+% do through its outputs, and the registers' verdict on a calculation comes back as
+% an input: c_ok, or c_fault for a division by zero or a number too large to show.
+%
+% Phases: FIRST (typing the first operand), AFTER_OP (an operator chosen, the second
+% operand not started), SECOND (typing the second operand), CALC (waiting for the
+% registers), DONE (a result shown), FAULT (an error shown).
+%
+% Every key is accepted in every phase but CALC: a key that cannot act now (a second
+% point, equals with no second operand, an operator after an error) is taken and changes
+% nothing, as on a pocket calculator. So the interface never needs to disable a key, and
+% the model is receptive to everything the user can press (naima-codegen §3.9.7).
+
+sort Op    = struct NONE | ADD | SUB | MUL | DIV;
+sort Phase = struct FIRST | AFTER_OP | SECOND | CALC | DONE | FAULT;
+sort Todo  = struct IDLE
+                  | T_ENTER(td: Nat, tf: Bool)?is_enter
+                  | T_DOT(tdf: Bool)?is_dot
+                  | T_DROP?is_drop
+                  | T_FLIP?is_flip
+                  | T_APPLY(ta: Op)?is_apply
+                  | T_RESET?is_reset;
+
+act  c_digit: Nat;
+     c_point, c_back, c_negate, c_equals, c_clear, c_ok, c_fault;
+     c_operator: Op;
+     c_enter: Nat # Bool;
+     c_dot: Bool;
+     c_drop, c_flip, c_reset;
+     c_apply: Op;
+
+proc Core(limit: Nat, phase: Phase, op: Op, whole: Nat, frac: Nat, dot: Bool, then: Phase, todo: Todo) =
+% ---- inputs: the keys
+%@input
+    sum d: Nat . (d < 10 && todo == IDLE && (phase == FIRST || phase == SECOND) && whole + frac < limit) ->
+      c_digit(d) . Core(whole = if(dot, whole, whole + 1), frac = if(dot, frac + 1, frac), todo = T_ENTER(d, false))
+%@input
+  + sum d: Nat . (d < 10 && todo == IDLE && phase == AFTER_OP) ->
+      c_digit(d) . Core(phase = SECOND, whole = 1, frac = 0, dot = false, todo = T_ENTER(d, true))
+%@input
+  + sum d: Nat . (d < 10 && todo == IDLE && (phase == DONE || phase == FAULT)) ->
+      c_digit(d) . Core(phase = FIRST, op = NONE, whole = 1, frac = 0, dot = false, todo = T_ENTER(d, true))
+%@input
+  + (todo == IDLE && (phase == FIRST || phase == SECOND) && !dot && whole + frac < limit) ->
+      c_point . Core(dot = true, todo = T_DOT(false))
+%@input
+  + (todo == IDLE && phase == AFTER_OP) ->
+      c_point . Core(phase = SECOND, whole = 0, frac = 0, dot = true, todo = T_DOT(true))
+%@input
+  + (todo == IDLE && (phase == DONE || phase == FAULT)) ->
+      c_point . Core(phase = FIRST, op = NONE, whole = 0, frac = 0, dot = true, todo = T_DOT(true))
+%@input
+  + (todo == IDLE && (phase == FIRST || phase == SECOND) && (whole + frac > 0 || dot)) ->
+      c_back . Core(frac = if(frac > 0, Int2Nat(frac - 1), frac),
+                    dot = if(frac > 0, dot, false),
+                    whole = if(frac == 0 && !dot, Int2Nat(whole - 1), whole),
+                    todo = T_DROP)
+%@input
+  + (todo == IDLE && (phase == FIRST || phase == SECOND || phase == DONE)) ->
+      c_negate . Core(todo = T_FLIP)
+%@input
+  + sum o: Op . (o != NONE && todo == IDLE && (phase == FIRST || phase == SECOND)) ->
+      c_operator(o) . Core(phase = CALC, then = AFTER_OP, op = o, todo = T_APPLY(op))
+%@input
+  + sum o: Op . (o != NONE && todo == IDLE && (phase == AFTER_OP || phase == DONE)) ->
+      c_operator(o) . Core(phase = AFTER_OP, op = o)
+%@input
+  + (todo == IDLE && phase == SECOND) ->
+      c_equals . Core(phase = CALC, then = DONE, op = NONE, todo = T_APPLY(op))
+%@input
+  + sum d: Nat . (d < 10 && todo == IDLE && (phase == FIRST || phase == SECOND) && whole + frac >= limit) ->
+      c_digit(d) . Core()
+%@input
+  + (todo == IDLE && (phase == FIRST || phase == SECOND) && (dot || whole + frac >= limit)) ->
+      c_point . Core()
+%@input
+  + (todo == IDLE && (phase == AFTER_OP || phase == DONE || phase == FAULT
+                      || ((phase == FIRST || phase == SECOND) && whole + frac == 0 && !dot))) ->
+      c_back . Core()
+%@input
+  + (todo == IDLE && (phase == AFTER_OP || phase == FAULT)) ->
+      c_negate . Core()
+%@input
+  + sum o: Op . (o != NONE && todo == IDLE && phase == FAULT) ->
+      c_operator(o) . Core()
+%@input
+  + (todo == IDLE && phase != CALC && phase != SECOND) ->
+      c_equals . Core()
+%@input
+  + (todo == IDLE && phase != CALC) ->
+      c_clear . Core(phase = FIRST, op = NONE, whole = 0, frac = 0, dot = false, todo = T_RESET)
+%@input
+  + (todo == IDLE && phase == CALC) ->
+      c_ok . Core(phase = then, whole = 0, frac = 0, dot = false)
+%@input
+  + (todo == IDLE && phase == CALC) ->
+      c_fault . Core(phase = FAULT, op = NONE, whole = 0, frac = 0, dot = false)
+
+% ---- outputs: what the registers are told to do
+%@order 1
+  + is_enter(todo) -> c_enter(td(todo), tf(todo)) . Core(todo = IDLE)
+%@order 1
+  + is_dot(todo) -> c_dot(tdf(todo)) . Core(todo = IDLE)
+%@order 1
+  + is_drop(todo) -> c_drop . Core(todo = IDLE)
+%@order 1
+  + is_flip(todo) -> c_flip . Core(todo = IDLE)
+%@order 1
+  + is_apply(todo) -> c_apply(ta(todo)) . Core(todo = IDLE)
+%@order 1
+  + is_reset(todo) -> c_reset . Core(todo = IDLE)
+
+%@observers
+  + delta;

@@ -1,12 +1,22 @@
 {
-  "stance": { "name": "ui", "author": "makebecome" },
+  "stance": {
+    "name": "ui",
+    "author": "makebecome"
+  },
   "mood": "white",
   "check": {
     "tokens": "tokens/moods/white",
     "moods": "tokens/moods",
-    "widgets": ["src/lib/components"],
-    "components": ["demo"],
-    "store": ["src/lib/store/store.svelte.ts"],
+    "widgets": [
+      "src/lib/components"
+    ],
+    "components": [
+      "demo",
+      "examples/calculator"
+    ],
+    "store": [
+      "src/lib/store/store.svelte.ts"
+    ],
     "allowImports": [],
     "tsconfig": "tsconfig.json"
   }

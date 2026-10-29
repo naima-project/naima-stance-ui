@@ -1,0 +1,3 @@
+# policy.toml -- the calculator's policy (naima-codegen docs/spec.md §3.7.1): at most one
+# output is enabled at a time (the pending todo), so the order only names them.
+order = ["c_enter", "c_dot", "c_drop", "c_flip", "c_apply", "c_reset"]

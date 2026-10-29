@@ -1,0 +1,2 @@
+% An operand never holds more digits than the limit.
+[true*.too_many]false

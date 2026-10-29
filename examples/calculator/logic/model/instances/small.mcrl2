@@ -1,0 +1,2 @@
+% small: operands of at most two digits.
+eqn I_limit(@I) = 2;
