@@ -502,6 +502,14 @@ async function desktop(ctx: Ctx, platform: "linux" | "windows"): Promise<Platfor
   const home = Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "";
   const driver = await which("tauri-driver", [`${home}/.cargo/bin`]);
   const native = platform === "linux" ? await which("WebKitWebDriver") : await which("msedgedriver");
+  // WebView2 needs an interactive desktop: a Windows session started over ssh has none (no SESSIONNAME).
+  if (platform === "windows" && !Deno.env.get("SESSIONNAME")) {
+    return {
+      ...r,
+      skipped: "no interactive desktop (a session over ssh), where WebView2 cannot open a window: " +
+        "run the check from a desktop session to launch the app",
+    };
+  }
   const display = platform === "windows" || Deno.env.get("DISPLAY") || Deno.env.get("WAYLAND_DISPLAY");
   const xvfb = display ? null : await which("xvfb-run");
   if (!display && !xvfb) return { ...r, skipped: "no display, and xvfb-run is not installed to make one" };

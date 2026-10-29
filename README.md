@@ -323,7 +323,8 @@ these lines with `xcrun simctl spawn <device> log stream` while it launches the 
 A screenshot of a macOS window needs the Screen Recording permission (System Settings, Privacy & Security) for the
 program that runs the check, such as the terminal; without it the macOS line says so, and the rest of the check is
 unaffected. On Linux, Playwright has builds only for the distributions it lists, so on another one the three browsers
-are reported skipped.
+are reported skipped. On Windows, WebView2 opens a window only in an interactive desktop session: run over ssh, the
+check builds the app and reports its launch skipped.
 
 Each platform is reported at the furthest level it reached, and each level proves something more:
 
