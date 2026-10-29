@@ -144,6 +144,8 @@ export default function stanceUi(options = {}, api = {}) {
 
   return {
     name: api.plugin ?? "stance-ui",
+    kind: "stance",
+    examples: EXAMPLES.map((e) => e.path),
     contract: CONTRACT,
     attribution: ATTRIBUTION,
     says:

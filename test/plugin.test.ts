@@ -11,6 +11,9 @@ Deno.test("the plugin's manifest has the shape Naima's contract 4 asks for", () 
   const m: Any = stanceUi({}, { plugin: "stance-ui" });
   assertEquals(m.name, "stance-ui");
   assertEquals(m.contract, 4);
+  // What makes it a stance to `naima stance adopt`, and what `naima stance examples` lists.
+  assertEquals(m.kind, "stance");
+  assertEquals(m.examples, ["examples/calculator"]);
   assert(m.says && m.about);
   assertEquals(m.optional, ["rules", "landing-reports"]);
   const checks = new Set(m.checks.map((c: Any) => c.name));
