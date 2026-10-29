@@ -1,0 +1,9 @@
+{
+  "color": {
+    "$type": "color",
+    "text": { "$value": { "colorSpace": "srgb", "components": [0.1, 0.1, 0.1], "hex": "#1a1a1a" } },
+    "accent": { "$value": "{color.text}" }
+  },
+  "space": { "$type": "dimension", "md": { "$value": { "value": 0.75, "unit": "rem" } } },
+  "motion": { "fast": { "$type": "duration", "$value": { "value": 100, "unit": "ms" } } }
+}

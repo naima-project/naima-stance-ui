@@ -42,7 +42,9 @@ export function css(type: string, v: unknown): string {
     case "shadow": {
       const list = Array.isArray(v) ? v as Shadow[] : [v as Shadow];
       return list.map((s) =>
-        [s.inset ? "inset" : "", dim(s.offsetX), dim(s.offsetY), dim(s.blur), dim(s.spread), color(s.color)].filter(Boolean)
+        [s.inset ? "inset" : "", dim(s.offsetX), dim(s.offsetY), dim(s.blur), dim(s.spread), color(s.color)].filter(
+          Boolean,
+        )
           .join(" ")
       ).join(", ");
     }
@@ -78,7 +80,10 @@ export async function buildTokens(root: string, mood: string, out: string): Prom
         files: [{
           destination: out.slice(out.lastIndexOf("/") + 1),
           format: "css/variables",
-          options: { outputReferences: false, fileHeader: () => [`mood board: ${mood}`, "generated from the DTCG tokens: do not edit"] },
+          options: {
+            outputReferences: false,
+            fileHeader: () => [`mood board: ${mood}`, "generated from the DTCG tokens: do not edit"],
+          },
         }],
       },
     },

@@ -13,10 +13,10 @@ export class Filter {
   readonly view: FilterView;
 
   constructor() {
-    const self = this;
+    const show = () => this.#show;
     this.view = {
       get show() {
-        return self.#show;
+        return show();
       },
     };
   }

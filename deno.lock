@@ -1,6 +1,8 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/assert@1.0.13": "1.0.13",
+    "jsr:@std/internal@^1.0.6": "1.0.14",
     "npm:@sveltejs/vite-plugin-svelte@7.3.1": "7.3.1_svelte@5.57.3_vite@8.3.5",
     "npm:postcss-value-parser@4.2.0": "4.2.0",
     "npm:style-dictionary@5.7.1": "5.7.1",
@@ -8,6 +10,17 @@
     "npm:svelte@5.57.3": "5.57.3",
     "npm:typescript@5.9.3": "5.9.3",
     "npm:vite@8.3.5": "8.3.5"
+  },
+  "jsr": {
+    "@std/assert@1.0.13": {
+      "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
   },
   "npm": {
     "@bundled-es-modules/deepmerge@4.3.2": {
@@ -1104,6 +1117,9 @@
     }
   },
   "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@1.0.13"
+    ],
     "packageJson": {
       "dependencies": [
         "npm:@sveltejs/vite-plugin-svelte@7.3.1",

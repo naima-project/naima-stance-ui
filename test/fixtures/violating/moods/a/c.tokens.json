@@ -1,0 +1,7 @@
+{
+  "color": {
+    "$type": "color",
+    "text": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0] } },
+    "only-a": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1] } }
+  }
+}

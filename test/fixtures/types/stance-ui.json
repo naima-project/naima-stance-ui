@@ -1,0 +1,9 @@
+{
+  "check": {
+    "tokens": "../clean/tokens",
+    "widgets": [],
+    "components": ["src"],
+    "store": ["../../../src/lib/store/store.svelte.ts"],
+    "tsconfig": "tsconfig.json"
+  }
+}

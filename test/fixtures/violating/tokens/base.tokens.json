@@ -1,0 +1,12 @@
+{
+  "color": {
+    "text": { "$value": { "colorSpace": "srgb", "components": [0.1, 0.1, 0.1] } },
+    "accent": { "$type": "color", "$value": "#ff0000" },
+    "link": { "$type": "color", "$value": "{color.missing}" },
+    "loop-a": { "$type": "color", "$value": "{color.loop-b}" },
+    "loop-b": { "$type": "color", "$value": "{color.loop-a}" }
+  },
+  "space": { "$type": "dimension", "md": { "$value": "12px" }, "lg": { "$value": { "value": 1, "unit": "em" } } },
+  "motion": { "$type": "speed", "fast": { "$value": 3 } },
+  "bad.name": { "$type": "number", "$value": 1 }
+}
