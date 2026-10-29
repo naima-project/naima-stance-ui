@@ -11,8 +11,7 @@ Every widget and page meets the European Accessibility Act's harmonised standard
 names, roles and states for assistive technology; everything works from the keyboard with a visible focus that is never
 hidden; targets of at least 24 by 24 CSS px; motion stops when reduced motion is asked for; text resizes to 200% and the
 page reflows at 320 CSS px; nothing is told by colour alone; an input's error is said in text and tied to it; the page
-states its language. Dragging always has a single-pointer alternative, help sits in the same place on every page, a
-sign-in never asks to solve or remember a puzzle, and nothing already entered is asked for again in the same process.
+states its language. Dragging, signing in, help and information already entered each have a rule of their own.
 
 ## Why
 
