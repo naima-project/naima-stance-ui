@@ -193,6 +193,7 @@ export default function stanceUi(options = {}, api = {}) {
       "agent-hooks": [{
         name: "ui-edit-hook",
         says: "after an agent edits tokens, widgets or components, the stance's fast checks run again",
+        tool: "claude-code",
         event: "PostToolUse",
         matcher: EDITS,
         command: [api.plugin ?? "stance-ui", "hook"],

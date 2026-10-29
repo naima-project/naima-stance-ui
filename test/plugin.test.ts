@@ -123,6 +123,7 @@ Deno.test("the edit hook is an agent hook Naima installs; the stance writes no s
   assertEquals(m.contributes["agent-hooks"], [{
     name: "ui-edit-hook",
     says: "after an agent edits tokens, widgets or components, the stance's fast checks run again",
+    tool: "claude-code",
     event: "PostToolUse",
     matcher: "Edit|Write|MultiEdit",
     command: ["stance-ui", "hook"],
