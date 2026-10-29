@@ -9,7 +9,8 @@
     "adopt": "deno run -A scripts/adopt.ts",
     "example:calculator": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 examples/calculator",
     "example:calculator:build": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 build examples/calculator",
-    "platforms": "deno run -A checks/cli.ts --only platforms"
+    "platforms": "deno run -A checks/cli.ts --only platforms",
+    "tauri": "deno run -A npm:@tauri-apps/cli@2.12.4"
   },
   "fmt": {
     "lineWidth": 120,

@@ -2,12 +2,14 @@
 // the stance's version and commit, and the sha256 of every file as copied. Later runs compare against that
 // record, so an update never overwrites a file the project changed without saying so.
 //
-//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--force]   copy (or update) the stance
-//   deno task adopt --project <dir> --status                                     what changed, here and there
+//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force]
+//                                                                    copy (or update) the stance
+//   deno task adopt --project <dir> --status                        what changed, here and there
 //
-// What is copied: the widget set to <to>/components/, the store module to <to>/store/, the chosen mood
-// board to tokens/, and the token build to scripts/stance-ui-tokens.ts. stance-ui.json records the copy and
-// configures `deno task check`.
+// What is copied: the widget set to <to>/components/, the store module to <to>/store/, the platform port to
+// <to>/platform/, the chosen mood board to tokens/, and the token build to scripts/stance-ui-tokens.ts. With
+// --tauri, the Tauri 2 shell to src-tauri/; with --server, the Deno port server to server/port-server.ts.
+// stance-ui.json records the copy and configures `deno task check`.
 
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
@@ -19,6 +21,8 @@ interface Record {
   stance: { name: string; author: string; version: string; commit: string };
   mood: string;
   to: string;
+  /** The platform parts the project took: the Tauri shell, the Deno port server. */
+  platforms?: { tauri: boolean; server: boolean };
   /** Every copied file, by its path in the project: where it came from and its sha256 as copied. */
   files: { [path: string]: { from: string; sha256: string } };
   check: unknown;
@@ -35,12 +39,28 @@ async function git(...args: string[]): Promise<string> {
 }
 
 /** The files to copy: path in the stance → path in the project. */
-async function plan(mood: string, to: string): Promise<Map<string, string>> {
+async function plan(
+  mood: string,
+  to: string,
+  platforms: { tauri: boolean; server: boolean },
+): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   for await (const e of Deno.readDir(`${STANCE}/src/lib/components`)) {
     if (e.isFile) files.set(`src/lib/components/${e.name}`, `${to}/components/${e.name}`);
   }
   files.set("src/lib/store/store.svelte.ts", `${to}/store/store.svelte.ts`);
+  files.set("src/lib/platform/port.ts", `${to}/platform/port.ts`);
+  if (platforms.server) files.set("platform/server.ts", "server/port-server.ts");
+  if (platforms.tauri) {
+    const walk = async (rel: string) => {
+      for await (const e of Deno.readDir(`${STANCE}/platform/tauri/${rel}`)) {
+        const path = rel ? `${rel}/${e.name}` : e.name;
+        if (e.isDirectory && !["target", "gen"].includes(e.name)) await walk(path);
+        else if (e.isFile) files.set(`platform/tauri/${path}`, `src-tauri/${path}`);
+      }
+    };
+    await walk("");
+  }
   const moodDir = `tokens/moods/${mood}`;
   try {
     for await (const e of Deno.readDir(`${STANCE}/${moodDir}`)) {
@@ -66,11 +86,18 @@ async function loadRecord(project: string): Promise<Record | null> {
 }
 
 /** Copies the stance into the project. Returns the lines to print, and throws when it refuses. */
-export async function adopt(project: string, opts: { mood?: string; to?: string; force?: boolean }): Promise<string[]> {
+export async function adopt(
+  project: string,
+  opts: { mood?: string; to?: string; force?: boolean; tauri?: boolean; server?: boolean },
+): Promise<string[]> {
   const before = await loadRecord(project);
   const mood = opts.mood ?? before?.mood ?? "white";
   const to = opts.to ?? before?.to ?? "src/lib/ui";
-  const files = await plan(mood, to);
+  const platforms = {
+    tauri: opts.tauri || (before?.platforms?.tauri ?? false),
+    server: opts.server || (before?.platforms?.server ?? false),
+  };
+  const files = await plan(mood, to, platforms);
   const lines: string[] = [];
   const conflicts: string[] = [];
   const record: Record["files"] = {};
@@ -115,6 +142,7 @@ export async function adopt(project: string, opts: { mood?: string; to?: string;
     },
     mood,
     to,
+    platforms,
     files: record,
     check: (before?.check as object | undefined) ?? {
       tokens: "tokens",
@@ -159,9 +187,13 @@ if (import.meta.main) {
   };
   const project = posix.resolve(arg("--project") ?? Deno.cwd());
   try {
-    const lines = args.includes("--status")
-      ? await status(project)
-      : await adopt(project, { mood: arg("--mood"), to: arg("--to"), force: args.includes("--force") });
+    const lines = args.includes("--status") ? await status(project) : await adopt(project, {
+      mood: arg("--mood"),
+      to: arg("--to"),
+      force: args.includes("--force"),
+      tauri: args.includes("--tauri"),
+      server: args.includes("--server"),
+    });
     for (const l of lines) console.log(l);
   } catch (e) {
     console.error(`stance ui: ${(e as Error).message}`);

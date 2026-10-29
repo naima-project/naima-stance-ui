@@ -3,28 +3,40 @@
 // JavaScript expression whose value is a promise of { ok, says }, evaluated inside the page by whatever
 // drives it: Playwright on the web, WebDriver through tauri-driver, or the Tauri shell itself when
 // STANCE_UI_E2E holds it (see the README's "Platforms").
+//
+// It waits on the page's own changes (a MutationObserver), never on timers alone: a webview whose window is
+// not in front may hold its timers back.
 (async () => {
-  const until = async (what, test, ms = 15000) => {
-    const end = Date.now() + ms;
-    for (;;) {
-      const v = test();
-      if (v) return v;
-      if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
-      await new Promise((r) => setTimeout(r, 50));
-    }
-  };
+  const until = (what, test, ms = 15000) =>
+    new Promise((resolve, reject) => {
+      const now = test();
+      if (now) return resolve(now);
+      const observer = new MutationObserver(() => {
+        const v = test();
+        if (v) {
+          observer.disconnect();
+          clearTimeout(timer);
+          resolve(v);
+        }
+      });
+      observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+      const timer = setTimeout(() => {
+        observer.disconnect();
+        reject(new Error(`timed out waiting for ${what}`));
+      }, ms);
+    });
+  const display = () => document.querySelector("output .value")?.textContent?.trim() ?? "";
   const where = await until("the app to say where it runs", () => document.querySelector(".host")?.textContent?.trim());
-  const press = (name) => {
+  const press = async (name, shows) => {
     const key = document.querySelector(`button[aria-label="${name}"]`);
     if (!key) throw new Error(`no key named ${name}`);
     key.click();
+    await until(`${shows} on the display after ${name}`, () => display() === shows, 3000);
   };
-  const tick = () => new Promise((r) => setTimeout(r, 50)); // the page updates after each press, not during it
-  for (const name of ["All clear", "1", "Add", "2", "Equals"]) {
-    press(name);
-    await tick();
-  }
-  const display = () => document.querySelector("output .value")?.textContent?.trim() ?? "";
-  await until("the result", () => display() === "3", 3000).catch(() => {});
+  await press("All clear", "0");
+  await press("1", "1");
+  await press("Add", "1");
+  await press("2", "2");
+  await press("Equals", "3").catch(() => {});
   return { ok: display() === "3", says: `${where}: 1 + 2 = ${display()}` };
 })();
