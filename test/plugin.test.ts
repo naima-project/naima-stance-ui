@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
-import stanceUi, { RULES } from "../plugin/index.mjs";
+import stanceUi, { ATTRIBUTION, RULES } from "../plugin/index.mjs";
 import { parseRule } from "../plugin/rules.mjs";
 
 const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
@@ -134,4 +134,14 @@ Deno.test("the edit hook is an agent hook Naima installs; the stance writes no s
   assert(m.commands.some((c: Any) => c.name === "stance-ui"), "the command the hook runs is the stance's own");
   assert(m.checks.every((c: Any) => c.runs.length === 1 && c.runs[0] === "/opt/deno"));
   assertEquals(m.contributes["landing-reports"][0].runs, ["/opt/deno"]);
+});
+
+Deno.test("naima-stance.json, what naima stances reads, says what the plugin's manifest says", async () => {
+  const declared: Any = JSON.parse(await Deno.readTextFile(new URL("../naima-stance.json", import.meta.url)));
+  const m: Any = stanceUi({}, { plugin: "stance-ui" });
+  assertEquals(declared.name, "ui");
+  assertEquals(declared.kind, m.kind);
+  assertEquals(declared.plugin, "plugin/index.mjs");
+  assertEquals(declared.examples, m.examples);
+  assertEquals(declared.attribution, ATTRIBUTION);
 });

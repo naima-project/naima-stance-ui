@@ -98,6 +98,7 @@ gallery/                            every widget on one page, built once per moo
 src/lib/platform/port.ts            the platform port: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
 platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt adds to a project
+naima-stance.json                   what makes the repository a stance to naima stances
 demo/                               a small app wired to the store
 checks/                             the stance's checks (deno task check, deno task platforms)
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
@@ -565,6 +566,10 @@ check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-co
 adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's
 own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from
 the plugin's checkout, so Deno must be on the PATH.
+
+`naima-stance.json`, at the root, says as data that this repository is a stance: its name, the kind `stance`, where its
+plugin's module is, its examples and who made it. `naima stances` reads that file to list the stance; when the stance is
+adopted, Naima loads the plugin and checks its kind again. A test keeps the file equal to what the plugin declares.
 
 When a project customizes its mood board, its tokens or its widgets, the checks run again at two moments.
 

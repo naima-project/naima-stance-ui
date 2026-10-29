@@ -1,0 +1,14 @@
+{
+  "name": "ui",
+  "kind": "stance",
+  "plugin": "plugin/index.mjs",
+  "examples": ["examples/calculator"],
+  "attribution": {
+    "name": "UI stance",
+    "homepage": "https://make-become.github.io/",
+    "source": "https://github.com/naima-project/naima-stance-ui",
+    "authors": ["make become"],
+    "license": "MIT",
+    "version": "0.1.0"
+  }
+}
