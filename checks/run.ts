@@ -79,7 +79,9 @@ async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
   }
   const cmd = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", bin, ...args],
-    cwd: root,
+    // Deno resolves svelte-check's own packages from the folder it runs in: the one that installed it.
+    cwd: bin.startsWith(stance) ? stance : root,
+    env: { NO_COLOR: "1" },
     stdout: "piped",
     stderr: "piped",
   });
