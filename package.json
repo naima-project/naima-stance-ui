@@ -8,6 +8,9 @@
   "type": "module",
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/cli": "2.12.4",
+    "playwright": "1.64.1",
     "postcss-value-parser": "4.2.0",
     "style-dictionary": "5.7.1",
     "svelte": "5.57.3",

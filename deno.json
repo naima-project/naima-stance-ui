@@ -8,7 +8,8 @@
     "demo:build": "deno run -A scripts/tokens.ts --mood white --out demo/tokens.css && deno run -A npm:vite@8.3.5 build demo",
     "adopt": "deno run -A scripts/adopt.ts",
     "example:calculator": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 examples/calculator",
-    "example:calculator:build": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 build examples/calculator"
+    "example:calculator:build": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 build examples/calculator",
+    "platforms": "deno run -A checks/cli.ts --only platforms"
   },
   "fmt": {
     "lineWidth": 120,
@@ -18,7 +19,11 @@
       "dist",
       "demo/dist",
       "examples/calculator/dist",
-      "examples/*/logic/generated"
+      "examples/*/logic/generated",
+      ".stance-ui",
+      "examples/*/src-tauri/target",
+      "examples/*/src-tauri/gen",
+      "platform/tauri/target"
     ]
   },
   "lint": {
@@ -28,11 +33,16 @@
       "demo/dist",
       "test/fixtures",
       "examples/calculator/dist",
-      "examples/*/logic/generated"
+      "examples/*/logic/generated",
+      ".stance-ui",
+      "examples/*/src-tauri/target",
+      "examples/*/src-tauri/gen"
     ]
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.13",
-    "@std/encoding": "jsr:@std/encoding@1.0.10"
+    "@std/encoding": "jsr:@std/encoding@1.0.10",
+    "@std/http": "jsr:@std/http@1.1.4",
+    "@std/streams": "jsr:@std/streams@1.2.0"
   }
 }
