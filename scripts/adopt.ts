@@ -155,6 +155,13 @@ export async function adopt(project: string, opts: { mood?: string; to?: string;
 export async function status(project: string): Promise<string[]> {
   const record = await loadRecord(project);
   if (!record) throw new Error(`${RECORD} not found: the stance was never copied into this project`);
+  if (!record.stance?.commit || !record.files) {
+    // Configured for the checks by hand, never copied by adopt: there is no copy to compare with.
+    return [
+      `${RECORD} records no copy of the stance: nothing to compare`,
+      ...await checkedLines(project, await loadConfig(project)),
+    ];
+  }
   const lines = [
     `copied from stance ui ${record.stance.version} (${record.stance.commit.slice(0, 12)}), mood ${record.mood}`,
   ];

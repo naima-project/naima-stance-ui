@@ -60,3 +60,9 @@ Deno.test("status names the files customized since the copy and whether the chec
     await Deno.remove(project, { recursive: true });
   }
 });
+
+Deno.test("status on a project configured by hand says there is no copy, and still reports the checks", async () => {
+  const lines = await status(clean);
+  assertEquals(lines[0], "stance-ui.json records no copy of the stance: nothing to compare");
+  assert(lines.length > 1);
+});
