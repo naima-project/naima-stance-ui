@@ -72,10 +72,12 @@ listed in `package.json` at exact versions, and Deno installs them on first use.
 
 ## Tokens and mood boards
 
-There are two mood boards. `white` is white and minimal, like Naima's own interface: black text on white, thin grey
+There are three mood boards. `white` is white and minimal, like Naima's own interface: black text on white, thin grey
 rules, one dark accent and almost no shadow. `dusk` is dark and warm: light text on a deep blue-grey, an amber accent, a
-serif face, softer corners and deeper shadows. Each one has six files, for colour, typography, spacing (with sizes and
-border widths), radius, shadow and motion, and both define exactly the same token names.
+serif face, softer corners and deeper shadows. `calm` is minimal without being bare: warm paper under soft graphite
+text, one clay accent, light numerals, generous round shapes and quiet shadows. Each one has six files, for colour,
+typography, spacing (with sizes and border widths), radius, shadow and motion, and all define exactly the same token
+names.
 
 The tokens use the stable DTCG format, in which a colour is an object with a colour space and components, and a
 dimension or a duration is an object with a value and a unit. The build uses Style Dictionary 5, the usual tool for DTCG
@@ -96,6 +98,10 @@ only tokens, shows a visible focus ring, and sets the ARIA attributes its role n
 arrow keys and a click outside, and the toolbar moves the focus between its controls with the arrow keys. A dropdown
 keeps whether it is open as its own state. A dialog does not: the caller passes `open`, usually read from a machine, and
 hears `onclose`.
+
+`Grid` lays its children on equal columns, and `Keycap` is the large key of a keypad (a calculator, a PIN pad): its tone
+says what kind of key it is, `active` marks a key that stays selected, and `echo` shows it pressed for a moment when the
+keyboard pressed it.
 
 ## The store and the machines
 
@@ -125,6 +131,28 @@ written directly as a class. A generated machine can replace either of them with
 ```sh
 deno task demo         # the demo with Vite's dev server
 deno task demo:build   # builds the white mood board and the demo into demo/dist
+```
+
+## Examples
+
+A stance ships examples that follow it to the letter, for agents and people to start from.
+
+`examples/calculator/` is a four-operation calculator on the `calm` mood board. Its logic is in `logic/` and holds no
+UI. The control (which keys act, when an operand starts and ends, what follows a result or an error) is an mCRL2 model,
+`logic/model/core.mcrl2`, with seven properties in `logic/model/properties/` (no deadlock, clearing always reachable,
+operands within the digit limit, an error only starts over, a calculation answered once, equals asking nothing without a
+second operand). naima-codegen generates the control's Svelte machine from it and checks that the generated code stays
+inside the model. The numbers are the registers' business, `logic/registers.ts`: exact rationals, so one third times
+three is one, rounded only when shown. The two run in parallel in `logic/calculator.svelte.ts`, the control's outputs
+telling the registers what to do and the registers' verdict on a calculation coming back as the control's input. The one
+store holds the calculator; the components (`Display`, `Keypad`, `Calculator`) read it and press keys, built from `Grid`
+and `Keycap`. Every key is always taken, as on a pocket calculator, and the keyboard presses the same keys.
+
+```sh
+deno task example:calculator          # run it
+deno task example:calculator:build    # build it to examples/calculator/dist/, which opens from disk
+sh examples/calculator/logic/model/check/check.sh                                  # the model's properties
+naima-codegen check-refinement --project examples/calculator/logic                 # the generated code against the model
 ```
 
 ## The checks

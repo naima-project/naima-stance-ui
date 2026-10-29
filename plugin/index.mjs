@@ -14,6 +14,10 @@ import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
 
 const CONTRACT = 2;
+/** The examples the stance ships, each a project that follows it (see the README's "Examples"). */
+export const EXAMPLES = [
+  { name: "calculator", path: "examples/calculator", says: "a four-operation calculator on the calm mood board" },
+];
 const STANCE = fileURLToPath(new URL("..", import.meta.url));
 
 const CHECKS = [
