@@ -2,3 +2,4 @@ node_modules/
 dist/
 .svelte-kit/
 *.log
+stance-ui.checked.json
