@@ -37,7 +37,7 @@
     display: inline-flex;
     gap: var(--space-xs);
     padding: var(--space-xs);
-    border: var(--border-width-thin) solid var(--color-border-strong);
+    border: var(--border-width-thin) solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface-sunken);
   }
@@ -53,7 +53,7 @@
     color: var(--color-text-muted);
     font-family: var(--font-family-body);
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-strong);
+    font-weight: var(--font-weight-regular);
     cursor: pointer;
     transition:
       background-color var(--motion-duration-fast) var(--motion-easing-standard),
@@ -62,9 +62,11 @@
   .option:hover {
     color: var(--color-text);
   }
+  /* The chosen option is told by its weight as well as its colours, so not by colour alone. */
   .chosen {
     background: var(--color-surface-raised);
     color: var(--color-text);
+    font-weight: var(--font-weight-strong);
     box-shadow: var(--shadow-key);
   }
   .radio {
