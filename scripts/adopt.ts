@@ -23,14 +23,15 @@
 // of the pinned build (checks/chromium.ts), into the project's gitignored .stance-ui/browsers/; --no-install leaves
 // both to the project, and the browser checks install the browser themselves when it is missing.
 
-import { posix } from "node:path";
+import { posix, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { encodeHex } from "@std/encoding/hex";
 import { ensureChromium } from "../checks/chromium.ts";
 import { loadConfig } from "../checks/config.ts";
 import { checkedLines } from "../checks/record.ts";
 import { buildTokens } from "./tokens.ts";
 
-const STANCE = posix.resolve(new URL("..", import.meta.url).pathname);
+const STANCE = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const RECORD = "stance-ui.json";
 
 interface Record {

@@ -1,6 +1,6 @@
 // How the browser checks read Playwright's report of missing system libraries, and what they ask for instead.
 import { assert, assertEquals } from "@std/assert";
-import { dependencyProblem, missingDependencies } from "../checks/chromium.ts";
+import { dependencyProblem, missingDependencies, stanceRootOf } from "../checks/chromium.ts";
 
 const box = (lines: string[]) => {
   const w = Math.max(...lines.map((l) => l.length));
@@ -45,4 +45,15 @@ Deno.test("missing libraries with no known package are listed, and install-deps 
 
 Deno.test("any other launch failure is not read as missing libraries", () => {
   assertEquals(missingDependencies("Executable doesn't exist at /x/chrome-headless-shell"), null);
+});
+
+Deno.test("the stance's root is found from a Windows file URL without doubling the drive", () => {
+  assertEquals(stanceRootOf("file:///C:/Users/u/stance/checks/chromium.ts", true), "C:\\Users\\u\\stance");
+  assertEquals(stanceRootOf("file:///D:/a%20b/stance/checks/chromium.ts", true), "D:\\a b\\stance");
+  assertEquals(stanceRootOf("file://server/share/stance/checks/chromium.ts", true), "\\\\server\\share\\stance");
+});
+
+Deno.test("the stance's root is found from a POSIX file URL", () => {
+  assertEquals(stanceRootOf("file:///home/u/stance/checks/chromium.ts", false), "/home/u/stance");
+  assertEquals(stanceRootOf("file:///home/a%20b/stance/checks/chromium.ts", false), "/home/a b/stance");
 });

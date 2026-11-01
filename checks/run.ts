@@ -1,6 +1,7 @@
 // Runs every check of the stance on a project and returns what they found.
 
 import { posix } from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkImports } from "./imports.ts";
@@ -133,7 +134,7 @@ async function tokenCheck(
 async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
   // The project's own svelte-check if it has one, else the stance's; run by Deno, so that no particular Node
   // is needed.
-  const stance = new URL("..", import.meta.url).pathname;
+  const stance = fileURLToPath(new URL("..", import.meta.url));
   const args = ["--tsconfig", `${root}/${tsconfig}`, "--output", "machine", "--workspace", root];
   let bin: string | null = null;
   for (const dir of [root, stance]) {

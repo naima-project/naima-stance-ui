@@ -49,6 +49,7 @@
     "@std/encoding": "jsr:@std/encoding@1.0.10",
     "@std/fs": "jsr:@std/fs@1.0.19",
     "@std/http": "jsr:@std/http@1.1.4",
+    "@std/path": "jsr:@std/path@1.1.6",
     "@std/streams": "jsr:@std/streams@1.2.0",
     "@std/yaml": "jsr:@std/yaml@1.0.9"
   }

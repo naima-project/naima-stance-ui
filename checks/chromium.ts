@@ -11,9 +11,18 @@
 // and otherwise the launch fails with the exact list and the command that installs them.
 
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve, win32 } from "node:path";
+import { fromFileUrl as fromPosixFileUrl } from "@std/path/posix/from-file-url";
+import { fromFileUrl as fromWindowsFileUrl } from "@std/path/windows/from-file-url";
 
-const stanceRoot = resolve(dirname(new URL(import.meta.url).pathname), "..");
+/** The folder above the one holding the module at `moduleUrl`, as a path of Windows or of POSIX. */
+export function stanceRootOf(moduleUrl: string | URL, windows: boolean): string {
+  const path = windows ? win32 : posix;
+  const file = windows ? fromWindowsFileUrl(moduleUrl) : fromPosixFileUrl(moduleUrl);
+  return path.dirname(path.dirname(file));
+}
+
+const stanceRoot = stanceRootOf(import.meta.url, Deno.build.os === "windows");
 
 /** The Playwright version the stance pins (package.json). */
 export const PLAYWRIGHT_VERSION: string = JSON.parse(
