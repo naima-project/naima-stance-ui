@@ -90,3 +90,19 @@ Deno.test("the scaffold imports the copy where --to put it", async () => {
     await Deno.remove(project, { recursive: true });
   }
 });
+
+Deno.test("run as a command with --project, adoption writes in that project, whatever form the OS gives its path", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    const script = new URL("../scripts/adopt.ts", import.meta.url);
+    const r = await new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", script.href, "--project", project, "--no-scaffold", "--no-install"],
+      stdout: "piped",
+      stderr: "piped",
+    }).output();
+    assertEquals(r.code, 0, new TextDecoder().decode(r.stderr));
+    await Deno.stat(`${project}/stance-ui.json`);
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});

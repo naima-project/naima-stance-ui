@@ -348,7 +348,8 @@ if (import.meta.main) {
     const i = args.indexOf(flag);
     return i >= 0 ? args[i + 1] : undefined;
   };
-  const project = posix.resolve(arg("--project") ?? Deno.cwd());
+  // The OS's own resolve: a Windows path such as C:\a\b is absolute there, where posix.resolve would prefix it.
+  const project = resolve(arg("--project") ?? Deno.cwd());
   try {
     const lines = args.includes("--status") ? await status(project) : await adopt(project, {
       mood: arg("--mood"),
