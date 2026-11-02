@@ -9,7 +9,9 @@ verifiedBy: ui-tokens
 
 A mood board is a complete set of token values, and every mood board defines the same tokens. The project chooses one
 while it is designed and builds it into its CSS; the app does not switch between mood boards at run time. What does
-switch at run time is the theme within the mood board, light or dark (see the rule on light and dark).
+switch at run time is the theme within the mood board, light or dark (see the rule on light and dark). Comparing
+variants while designing (`scripts/variants.ts`, see `method/design.md`) uses a separate build of the gallery or of the
+app, made only for that comparison; the app the project ships loads no other tokens.
 
 ## Why
 

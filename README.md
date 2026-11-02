@@ -71,8 +71,11 @@ can be loaded into Naima as a plugin.
 14. **The app runs on six platforms from one code base, and only the platform port differs**: a web page, and the Tauri
     2 app on Windows, Linux, macOS, Android and iOS (see [Platforms](#platforms)).
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10 and 11 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13 and 14
-are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and the
+15. **Before building a UI, the agent proposes the design method** (see
+    [Designing with variants](#designing-with-variants)), and says why its steps come in that order.
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10 and 11 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14 and
+15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and the
 agent records the review as a note on the item the change lands with.
 
 Each rule is a Markdown file in `rules/`, one per rule, which the Naima plugin reads and ships to `naima rules`. Its
@@ -95,6 +98,9 @@ src/lib/store/store.svelte.ts       createStore, storeContext, useStore, snapsho
 src/lib/theme/                      the theme machine and its port for the page
 src/lib/auth/                       the sign-in machine and its passkey helper for the browser
 gallery/                            every widget on one page, built once per mood board
+scripts/variants.ts                 several variants of the design side by side, live, in light and dark
+method/design.md                    the design method: five steps, each closed by the owner's choice among variants
+skills/ui-design/SKILL.md           the same method as a skill an agent follows
 src/lib/platform/port.ts            the platform port: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
 platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt adds to a project
@@ -148,6 +154,27 @@ duration token is `0s`, so nothing the widgets animate moves.
 ```sh
 deno task tokens --mood dusk --out dist/tokens.css
 ```
+
+## Designing with variants
+
+The look of an app is designed with its owner in five steps, closed one at a time: mood board, palette, typography,
+widget shapes, then screens. At each step the agent makes about five variants, each a copy of the project's tokens with
+only that step's tokens changed, and shows them side by side as the real widget gallery in light and dark. The owner
+picks one or a combination and says what to change, until one is accepted and recorded as a decision. Before building a
+UI, the agent proposes these steps to the owner and says why they come in this order. Rounds are counted within each
+step, and within each screen in the last step. Before the app exists, screens are compared as static layout prototypes
+on the final tokens. [`method/design.md`](method/design.md) is the method, and `naima-plugin.json` declares its steps
+under `contributes.methods`, so that a Naima gate can follow them.
+
+```sh
+deno task variants --from design/palette/round-1 --serve 4310
+```
+
+checks each variant folder in `design/palette/round-1` (the same tokens as the reference mood board, every contrast pair
+in both themes), builds the gallery once in its variants mode (`gallery/variant.html`, which loads the variant's tokens
+named in its address) and serves a page with one column per variant. `--builds <dir>` frames already built apps or
+static prototypes instead, one folder each, for comparing screens; each frame's address ends in `#theme=light` or
+`#theme=dark`, which the variant reads itself (`themeFromHash`), so the page also works opened from `file://`.
 
 ## The widget set
 
@@ -576,9 +603,10 @@ own modules, so it loads under Deno, Node and Bun alike. The checks themselves r
 the plugin's checkout, so Deno must be on the PATH.
 
 `naima-plugin.json`, at the root, describes the plugin as data, so Naima can read it without running anything: its name,
-its kind (`stance`), its entry module, the plugin contract it is written for, its examples and who made it.
-`naima stances` reads it to list the stance, and when Naima loads the plugin it checks that the manifest says the same.
-A test keeps the two equal.
+its kind (`stance`), its entry module, the plugin contract it is written for, its examples, who made it, and the design
+method's steps under `contributes.methods` (listed under `optional`, so a Naima without methods still loads the stance).
+The plugin's manifest reads the method from this file. `naima stances` reads it to list the stance, and when Naima loads
+the plugin it checks that the manifest says the same. A test keeps the two equal.
 
 The checks and scripts run with the Deno that runs Naima, so Deno need not be on the PATH; the plugin's `deno` option
 names another one.

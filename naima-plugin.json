@@ -3,13 +3,56 @@
   "kind": "stance",
   "entry": "plugin/index.mjs",
   "contract": 4,
-  "examples": ["examples/calculator"],
+  "examples": [
+    "examples/calculator"
+  ],
   "attribution": {
     "name": "UI stance",
     "homepage": "https://make-become.github.io/",
     "source": "https://github.com/naima-project/naima-stance-ui",
-    "authors": ["make become"],
+    "authors": [
+      "make become"
+    ],
     "license": "MIT",
     "version": "0.1.0"
-  }
+  },
+  "contributes": {
+    "methods": [
+      {
+        "name": "design",
+        "title": "Design the interface",
+        "says": "design the look of the app with its owner, from a mood board to the screens, each step closed when the owner chooses among live variants (method/design.md)",
+        "steps": [
+          {
+            "name": "mood-board",
+            "title": "Mood board",
+            "exit": "The owner names one variant, or a combination, as the app's direction; its tokens are in tokens/, the checks pass and the decision is recorded."
+          },
+          {
+            "name": "palette",
+            "title": "Palette",
+            "exit": "The owner accepts one palette in light and dark; every contrast pair passes; the colour tokens are in tokens/ and the decision is recorded."
+          },
+          {
+            "name": "typography",
+            "title": "Typography",
+            "exit": "The owner accepts one type system; nothing clips at 200% zoom or 320 px width; typography.tokens.json is written and the decision is recorded."
+          },
+          {
+            "name": "widget-shapes",
+            "title": "Widget shapes",
+            "exit": "The owner accepts one set of radius, spacing, shadow and motion; targets are at least 24 px and focus rings 3:1; the tokens are final and the decision is recorded."
+          },
+          {
+            "name": "screens",
+            "title": "Screens",
+            "exit": "The owner accepts every listed screen; each is in check.pages and deno task check passes; the decisions are recorded."
+          }
+        ]
+      }
+    ]
+  },
+  "optional": [
+    "methods"
+  ]
 }

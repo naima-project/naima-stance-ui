@@ -3,7 +3,7 @@
 import { Auth, type AuthPort } from "../src/lib/auth/auth.svelte.ts";
 import { createStore } from "../src/lib/store/store.svelte.ts";
 import { documentTheme, savedTheme } from "../src/lib/theme/document.ts";
-import { Theme } from "../src/lib/theme/theme.svelte.ts";
+import { Theme, type ThemeChoice } from "../src/lib/theme/theme.svelte.ts";
 import { Shelf } from "./machines/shelf.svelte.ts";
 import { Sheet } from "./machines/sheet.svelte.ts";
 
@@ -24,9 +24,12 @@ const service: AuthPort = {
     ),
 };
 
-export function makeStore() {
+/** The store; `theme`, given by a frame of a comparison of variants, overrides the remembered choice. */
+export function makeStore(theme?: ThemeChoice) {
   return createStore({
-    theme: new Theme({ initial: savedTheme("stance-ui-theme") }, documentTheme("stance-ui-theme")),
+    theme: theme
+      ? new Theme({ initial: theme }, documentTheme("stance-ui-variant-theme"))
+      : new Theme({ initial: savedTheme("stance-ui-theme") }, documentTheme("stance-ui-theme")),
     sheet: new Sheet(),
     shelf: new Shelf(["Apples", "Pears", "Quinces"]),
     auth: new Auth(service),

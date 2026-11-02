@@ -47,7 +47,7 @@ async function svelteFiles(root: string, dir: string): Promise<string[]> {
 }
 
 /** Every theme of the mood board in `label`, its tokens validated, and the findings about it. */
-async function readMood(
+export async function readMood(
   root: string,
   label: string,
 ): Promise<{ themes: Map<string, Map<string, Token>>; findings: Finding[] }> {

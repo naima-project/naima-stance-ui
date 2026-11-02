@@ -15,7 +15,7 @@ Deno.test("the plugin's manifest has the shape Naima's contract 4 asks for", () 
   assertEquals(m.kind, "stance");
   assertEquals(m.examples, ["examples/calculator"]);
   assert(m.says && m.about);
-  assertEquals(m.optional, ["rules", "landing-reports"]);
+  assertEquals(m.optional, ["rules", "landing-reports", "methods"]);
   const checks = new Set(m.checks.map((c: Any) => c.name));
   for (const r of RULES) {
     // What Naima's rules point requires of a shipped rule.
@@ -145,6 +145,27 @@ Deno.test("naima-plugin.json, what Naima reads without running the plugin, says 
   assertEquals(declared.contract, m.contract);
   assertEquals(declared.examples, m.examples);
   assertEquals(declared.attribution, m.attribution);
+  assertEquals(declared.contributes.methods, m.contributes.methods);
+  assert(declared.optional.includes("methods"), "an older Naima, without methods, still loads the stance");
+});
+
+Deno.test("the design method has the shape Naima's methods point validates, its five steps in order", () => {
+  const m: Any = stanceUi({}, { plugin: "stance-ui" });
+  const [design] = m.contributes.methods;
+  assertEquals(design.name, "design");
+  assert(typeof design.title === "string" && design.says.trim());
+  assertEquals(design.steps.map((s: Any) => s.name), [
+    "mood-board",
+    "palette",
+    "typography",
+    "widget-shapes",
+    "screens",
+  ]);
+  for (const s of design.steps) {
+    assert(/^[a-z0-9][a-z0-9-]*$/.test(s.name), s.name);
+    assert(typeof s.title === "string" && s.title.trim(), `${s.name}: title`);
+    assert(typeof s.exit === "string" && s.exit.trim(), `${s.name}: exit`);
+  }
 });
 
 Deno.test("every option the stance-ui command's usage names is documented, as naima check asks", () => {

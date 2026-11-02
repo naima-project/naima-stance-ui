@@ -10,6 +10,7 @@
 //                                 "options": { "app": "." } } } }
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, posix, relative, resolve, sep } from "node:path";
 import { readRules } from "./rules.mjs";
@@ -31,6 +32,13 @@ export const ATTRIBUTION = {
   version: "0.1.0",
 };
 const STANCE = fileURLToPath(new URL("..", import.meta.url));
+
+/**
+ * The methods the stance contributes, each an ordered list of steps a gate can follow (`naima gate set <gate>
+ * --method stance-ui/design`): kept as data in naima-plugin.json, so they can be read without running the plugin.
+ */
+export const METHODS = JSON.parse(readFileSync(new URL("../naima-plugin.json", import.meta.url), "utf8")).contributes
+  .methods;
 
 const CHECKS = [
   {
@@ -179,6 +187,7 @@ export default function stanceUi(options = {}, api = {}) {
     ],
     contributes: {
       rules: RULES,
+      methods: METHODS,
       "landing-reports": [{
         name: "ui-stance-checks",
         says:
@@ -217,7 +226,8 @@ export default function stanceUi(options = {}, api = {}) {
         command: [api.plugin ?? "stance-ui", "hook"],
       }],
     },
-    optional: ["rules", "landing-reports"],
+    // A Naima that lacks one of these points still loads the stance, without what it contributes there.
+    optional: ["rules", "landing-reports", "methods"],
     checks: CHECKS.map((c) => ({
       name: c.name,
       says: c.says,
