@@ -15,7 +15,7 @@ Deno.test("the plugin's manifest has the shape Naima's contract 4 asks for", () 
   assertEquals(m.kind, "stance");
   assertEquals(m.examples, ["examples/calculator"]);
   assert(m.says && m.about);
-  assertEquals(m.optional, ["rules", "landing-reports", "methods"]);
+  assertEquals(m.optional, ["rules", "landing-reports", "methods", "ui-tabs"]);
   const checks = new Set(m.checks.map((c: Any) => c.name));
   for (const r of RULES) {
     // What Naima's rules point requires of a shipped rule.

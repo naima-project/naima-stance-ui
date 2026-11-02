@@ -1,6 +1,9 @@
 // The UI stance as a Naima plugin: its rules, shipped to every agent of a project that loads it, its checks,
 // run by `naima check`, and `naima stance-ui`, which copies the stance into the project and says what changed.
 //
+// It also adds a tab to Naima's new UI, the design tab (plugin/design.mjs): the project's design record, a subtab
+// per step of the design method.
+//
 // Plain JavaScript with no import outside the runtime's own modules, so it loads as it is on Deno, Node and
 // Bun. The checks themselves are the stance's TypeScript (checks/), run by Deno in a child process from
 // this repository's checkout: add the plugin from git, pinned by commit, so the whole repository is there.
@@ -14,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, posix, relative, resolve, sep } from "node:path";
 import { readRules } from "./rules.mjs";
+import { designTab } from "./design.mjs";
 
 // Contract 4: agent hooks, landing checks that refuse, and the programs a check runs.
 const CONTRACT = 4;
@@ -188,6 +192,8 @@ export default function stanceUi(options = {}, api = {}) {
     contributes: {
       rules: RULES,
       methods: METHODS,
+      // A tab of Naima's new UI: the design record, one subtab per step of the design method.
+      "ui-tabs": [designTab({ steps: METHODS[0].steps, app: appRoot })],
       "landing-reports": [{
         name: "ui-stance-checks",
         says:
@@ -227,7 +233,7 @@ export default function stanceUi(options = {}, api = {}) {
       }],
     },
     // A Naima that lacks one of these points still loads the stance, without what it contributes there.
-    optional: ["rules", "landing-reports", "methods"],
+    optional: ["rules", "landing-reports", "methods", "ui-tabs"],
     checks: CHECKS.map((c) => ({
       name: c.name,
       says: c.says,

@@ -646,6 +646,38 @@ The plugin is added from git, pinned by commit, so that the whole repository is 
 `app` is the folder of the Svelte app, from the project's root, which is where `stance-ui.json` lives. `deno` names the
 Deno executable if it is not the one on the PATH.
 
+### The design tab
+
+In Naima's new window (`naima ui`) the plugin adds a Design tab, `plugin/design.mjs`, contributed to Naima's `ui-tabs`
+point (listed under `optional`, so a Naima without it still loads the stance). It has one subtab per step of the design
+method, read from `naima-plugin.json`: mood board, palette, typography, widget shapes and screens. Each subtab shows the
+step's rounds in order, each with its variants, its notes and its pages in frames side by side: the round's comparison
+page and, in the screens step, each variant's own prototype or build, with each screen's rounds in turn. The variant
+chosen is marked, and the decision recorded in `decisions.md` heads the subtab. The plugin only reads files and returns
+data; Naima draws it with its own components and serves the pages in a sandbox, so none of the stance's code runs in the
+window.
+
+The tab finds the design record through `design` in the app's `stance-ui.json`, a path from the app's folder:
+
+```json
+{ "design": "design" }
+```
+
+is the default, the folder the method writes: `<step>/round-<n>/` with one folder per variant (the screens step
+`screens/<screen>/round-<n>/`), the round's comparison page in `round-<n>/preview/index.html`, and `decisions.md`. The
+step folders are named as the method names them (`mood`, `palette`, `typography`, `shapes`, `screens`); `mood-board`,
+`mood-boards` and `widget-shapes` are read too. When the comparison pages were written elsewhere, with
+`deno task variants --out`, name that folder as well:
+
+```json
+{ "design": { "folder": "design/app", "previews": "design-record/preview" } }
+```
+
+There a round's page is `<step>-r<n>/index.html` (for round 1 also `<step>/index.html`), and a screen's
+`screens-<screen>-r<n>/index.html`. Naima serves the folder that holds both. A decision is a `## <date> <step>: ...`
+section of `decisions.md`, `## <date> screen, <screen>: ...` for a screen, naming the chosen variant as
+`variant <v> of round <n>`, as the method records it.
+
 ### What Naima would need
 
 Naima's contract already supports a plugin like this one, and this would make it better.
