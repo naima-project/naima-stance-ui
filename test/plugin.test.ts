@@ -44,6 +44,16 @@ Deno.test("the plugin's checks report the stance's findings as Naima findings", 
   }
 });
 
+Deno.test("a checkout without the app gets one note per check and no problem", async () => {
+  const m: Any = stanceUi({ app: "no-such-app" }, { plugin: "stance-ui" });
+  for (const c of m.checks) {
+    const found = await c.run({ root: fixture("clean") });
+    assertEquals(found.length, 1, c.name);
+    assertEquals(found[0].level, "note", c.name);
+    assert(found[0].message.includes("no-such-app has no stance-ui.json"), c.name);
+  }
+});
+
 Deno.test("the manifest declares the stance's attribution, its version the package's", async () => {
   const m: Any = stanceUi({}, { plugin: "stance-ui" });
   const a = m.attribution;

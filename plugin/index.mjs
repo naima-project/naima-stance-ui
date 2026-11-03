@@ -13,7 +13,7 @@
 //                                 "options": { "app": "." } } } }
 
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, posix, relative, resolve, sep } from "node:path";
 import { readRules } from "./rules.mjs";
@@ -239,6 +239,15 @@ export default function stanceUi(options = {}, api = {}) {
       says: c.says,
       runs: [deno],
       async run(ctx) {
+        // A checkout without the app, such as a trunk whose app lives on a development line, has nothing to check.
+        if (!existsSync(join(appRoot(ctx), "stance-ui.json"))) {
+          return [{
+            level: "note",
+            message:
+              `${app} has no stance-ui.json in this checkout: the stance is not adopted here, so nothing is checked`,
+            subject: `${app}: not adopted here`,
+          }];
+        }
         const { findings } = await runChecker(deno, ["--project", appRoot(ctx), "--only", c.runs, "--json"]);
         return findings.map((f) => ({
           level: f.level,

@@ -604,10 +604,12 @@ came from the stance, and names each of them so they can be merged by hand. `--f
 `plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
 check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`,
-`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. And it
-adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's
-own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from
-the plugin's checkout, so Deno must be on the PATH.
+`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. In a
+checkout whose app folder holds no `stance-ui.json`, such as a trunk whose app lives on a development line, each check
+reports one note saying the stance is not adopted there, and no problem. And it adds
+`naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's own
+modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from the
+plugin's checkout, so Deno must be on the PATH.
 
 `naima-plugin.json`, at the root, describes the plugin as data, so Naima can read it without running anything: its name,
 its kind (`stance`), its entry module, the plugin contract it is written for, its examples, who made it, and the design
