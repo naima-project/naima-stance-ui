@@ -13,6 +13,7 @@
     "gallery:build": "deno run -A scripts/tokens.ts --mood white --out gallery/tokens.css && deno run -A npm:vite@8.3.5 build gallery --outDir dist/white --logLevel warn && deno run -A scripts/tokens.ts --mood dusk --out gallery/tokens.css && deno run -A npm:vite@8.3.5 build gallery --outDir dist/dusk --logLevel warn && deno run -A scripts/tokens.ts --mood calm --out gallery/tokens.css && deno run -A npm:vite@8.3.5 build gallery --outDir dist/calm --logLevel warn",
     "variants": "deno run -A scripts/variants.ts",
     "platforms": "deno run -A checks/cli.ts --only platforms",
+    "toolchain": "deno run -A scripts/toolchain.ts",
     "tauri": "deno run -A npm:@tauri-apps/cli@2.12.4"
   },
   "fmt": {

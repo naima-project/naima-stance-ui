@@ -208,6 +208,7 @@ Deno.test("adopt adds the bridge, and the Tauri shell and the server when asked"
     lines = await adopt(project, { tauri: true, server: true });
     assert(lines.includes("copied src-tauri/tauri.conf.json"));
     assert(lines.includes("copied src-tauri/src/bridge.rs"));
+    assert(lines.includes("created rust-toolchain.toml"), "the project pins the Rust its shell builds with");
     assert(lines.includes("copied server/bridge-server.ts"));
     assert(lines.includes("copied server/bridge-handler.ts"));
     const record = JSON.parse(await Deno.readTextFile(`${project}/stance-ui.json`));

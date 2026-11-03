@@ -263,9 +263,9 @@ export default function stanceUi(options = {}, api = {}) {
     commands: [{
       name: "stance-ui",
       says:
-        "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, or builds and drives the app on every platform the machine reaches",
+        "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, builds and drives the app on every platform the machine reaches, or installs the project's pinned Rust into the project",
       usage:
-        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms [--platforms <list>]",
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms [--platforms <list>] | toolchain [--check]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
@@ -278,6 +278,7 @@ export default function stanceUi(options = {}, api = {}) {
         },
         { name: "--no-install", says: "do not install the project's npm packages (deno install) after the copy" },
         { name: "--platforms", says: "with platforms: the platforms to try", default: "every one" },
+        { name: "--check", says: "with toolchain: install nothing, only say what is there" },
       ],
       examples: [
         "stance-ui adopt --mood white --tauri",
@@ -285,6 +286,7 @@ export default function stanceUi(options = {}, api = {}) {
         "stance-ui check",
         "stance-ui hook < hook-input.json",
         "stance-ui platforms",
+        "stance-ui toolchain",
       ],
       enforces: "nothing: it copies the stance and reports; the checks hold the rules",
       runs: [deno],
@@ -295,6 +297,7 @@ export default function stanceUi(options = {}, api = {}) {
         const project = ["--project", appRoot(ctx)];
         if (sub === "adopt") return runScript(deno, "adopt.ts", [...project, ...rest], out, err);
         if (sub === "status") return runScript(deno, "adopt.ts", [...project, "--status"], out, err);
+        if (sub === "toolchain") return runScript(deno, "toolchain.ts", [...project, ...rest], out, err);
         if (sub === "platforms") {
           // Builds and launches the app on every platform this machine reaches: long, so never a Naima check.
           const child = spawn(deno, [
@@ -326,7 +329,7 @@ export default function stanceUi(options = {}, api = {}) {
           return runScript(deno, "hook.ts", [...project, "--root", ctx.root, ...rest], out, err, "inherit");
         }
         err(
-          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms",
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms | toolchain",
         );
         return 2;
       },

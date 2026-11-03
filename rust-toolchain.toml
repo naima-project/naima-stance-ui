@@ -1,0 +1,13 @@
+# The Rust the Tauri shell builds with. `deno task toolchain` installs it, with the targets below that this machine
+# can build for, into .stance-ui/rust/; rustup reads this file wherever cargo runs under this folder.
+[toolchain]
+channel = "1.96.0"
+profile = "minimal"
+targets = [
+  "aarch64-linux-android",
+  "armv7-linux-androideabi",
+  "i686-linux-android",
+  "x86_64-linux-android",
+  "aarch64-apple-ios",
+  "aarch64-apple-ios-sim",
+]

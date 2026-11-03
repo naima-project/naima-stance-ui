@@ -177,6 +177,8 @@ async function scaffoldFiles(to: string, tauri: boolean): Promise<Map<string, st
       devDependencies: Object.fromEntries(npm.sort().map((n) => [n, v(n)])),
     }),
   );
+  // The Rust the shell builds with, pinned as the stance pins its own; `naima stance-ui toolchain` installs it.
+  if (tauri) files.set("rust-toolchain.toml", await Deno.readTextFile(`${STANCE}/rust-toolchain.toml`));
   // The type check reads the app's sources only; the tests are in test/, type-checked by deno test.
   const include = ["src/**/*.ts", "src/**/*.svelte"];
   if (!to.startsWith("src/")) include.push(`${to}/**/*.ts`, `${to}/**/*.svelte`);

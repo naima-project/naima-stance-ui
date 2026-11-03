@@ -8,7 +8,9 @@
 //   macos     tauri build; the app launched with the end-to-end script; screencapture of its window
 //   ios       tauri ios build for the simulator; simctl install and launch with the script; simctl screenshot
 //   linux     tauri build; through tauri-driver (WebDriver) when it and WebKitWebDriver are installed, else
-//   windows   launched with the script; tauri-driver needs msedgedriver on Windows
+//   windows   launched with the script; tauri-driver needs msedgedriver on Windows. From a session with no
+//             desktop (over ssh), the Windows app is started by a scheduled task in the desktop session
+//             (checks/windows-session.ts) and its output read from the files it writes
 //   android   tauri android build; adb install and launch on a running emulator or device, or on an emulator the
 //             check boots without a window; the script through the WebView's DevTools socket; adb screencap
 //
@@ -16,6 +18,9 @@
 // shell copied before the bridge was renamed from port prints "port: <command>", also accepted. The end-to-end script
 // (stance-ui.json's platforms.e2e) is one JavaScript expression whose value is a promise of { ok, says }; the shell
 // runs it when STANCE_UI_E2E holds it and prints "e2e: <report>".
+//
+// The builds use the project's own Rust first, when `deno task toolchain` installed it in .stance-ui/rust/
+// (scripts/toolchain.ts); otherwise the Rust found on the PATH.
 
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -24,6 +29,8 @@ import { TextLineStream } from "@std/streams/text-line-stream";
 import { decodeBase64 } from "@std/encoding/base64";
 import { bridgeHandler, type Feeds, type Handlers } from "../platform/server.ts";
 import type { Finding } from "./finding.ts";
+import { androidNdk, androidSdk, projectRust, smartAppControl } from "../scripts/toolchain.ts";
+import { sessionLaunch, signedIn, startInSession, stopInSession } from "./windows-session.ts";
 
 export const PLATFORMS = ["web", "macos", "ios", "linux", "windows", "android"] as const;
 export type Platform = typeof PLATFORMS[number];
@@ -504,6 +511,40 @@ async function webdriver(base: string, method: string, path: string, body?: unkn
   return json.value;
 }
 
+/**
+ * Windows, from a session with no desktop: the app is started in the desktop session by a scheduled task, and its
+ * output is read from the files it writes there.
+ */
+async function inDesktopSession(ctx: Ctx, r: PlatformReport, bin: string): Promise<PlatformReport> {
+  if ((await signedIn()) === false) {
+    return {
+      ...r,
+      skipped: "this session has no desktop (over ssh), and nobody is signed in to the desktop to launch the app in",
+    };
+  }
+  const l = sessionLaunch(ctx.out, ctx.script !== null);
+  try {
+    await launchWithScript(
+      ctx,
+      r,
+      Deno.execPath(),
+      ["run", "-A", "--quiet", path.join(STANCE, "checks", "follow.ts"), l.stdout, l.stderr],
+      {},
+      () => Promise.resolve(null),
+      () => startInSession(l, bin, ctx.app, ctx.script),
+    );
+  } finally {
+    await stopInSession(l);
+  }
+  if (r.failed && (await smartAppControl()) === "on") {
+    r.failed += "; Smart App Control is on, and it may have refused to run the app, which is not signed";
+  }
+  if (!r.failed) {
+    r.skipped = "no screenshot: launched by a scheduled task in the desktop session, since this session has none";
+  }
+  return r;
+}
+
 /** Linux and Windows: through tauri-driver when it and the native driver are there, else by the shell's hook. */
 async function desktop(ctx: Ctx, platform: "linux" | "windows"): Promise<PlatformReport> {
   const r: PlatformReport = { platform, built: false, launched: false, endToEnd: false };
@@ -513,16 +554,11 @@ async function desktop(ctx: Ctx, platform: "linux" | "windows"): Promise<Platfor
   if (!bin) return { ...r, failed: "tauri build made no binary" };
   r.built = true;
   const home = Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "";
-  const driver = await which("tauri-driver", [`${home}/.cargo/bin`]);
+  const local = await projectRust(ctx.root);
+  const driver = await which("tauri-driver", [...(local ? [local.bin] : []), `${home}/.cargo/bin`]);
   const native = platform === "linux" ? await which("WebKitWebDriver") : await which("msedgedriver");
   // WebView2 needs an interactive desktop: a Windows session started over ssh has none (no SESSIONNAME).
-  if (platform === "windows" && !Deno.env.get("SESSIONNAME")) {
-    return {
-      ...r,
-      skipped: "no interactive desktop (a session over ssh), where WebView2 cannot open a window: " +
-        "run the check from a desktop session to launch the app",
-    };
-  }
+  if (platform === "windows" && !Deno.env.get("SESSIONNAME")) return await inDesktopSession(ctx, r, bin);
   const display = platform === "windows" || Deno.env.get("DISPLAY") || Deno.env.get("WAYLAND_DISPLAY");
   const xvfb = display ? null : await which("xvfb-run");
   if (!display && !xvfb) return { ...r, skipped: "no display, and xvfb-run is not installed to make one" };
@@ -587,46 +623,6 @@ async function desktop(ctx: Ctx, platform: "linux" | "windows"): Promise<Platfor
     } ${native ? "is" : "is not"}; launched with the shell's own end-to-end hook instead`;
   }
   return r;
-}
-
-/** Where an Android SDK is, from ANDROID_HOME or ANDROID_SDK_ROOT, else the place Android Studio puts it. */
-async function androidSdk(): Promise<string | null> {
-  const home = Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "";
-  const local = Deno.env.get("LOCALAPPDATA") ?? "";
-  for (
-    const d of [
-      Deno.env.get("ANDROID_HOME"),
-      Deno.env.get("ANDROID_SDK_ROOT"),
-      `${home}/Library/Android/sdk`,
-      `${home}/Android/Sdk`,
-      `${local}/Android/Sdk`,
-    ]
-  ) {
-    if (d && (await exists(`${d}/platform-tools`))) return d;
-  }
-  return null;
-}
-
-/** The NDK: NDK_HOME, else the newest one installed side by side in the SDK. */
-async function androidNdk(sdk: string): Promise<string | null> {
-  const env = Deno.env.get("NDK_HOME");
-  if (env && (await exists(env))) return env;
-  try {
-    const versions = (await Array.fromAsync(Deno.readDir(`${sdk}/ndk`))).filter((e) => e.isDirectory).map((e) =>
-      e.name
-    );
-    const num = (v: string) => v.split(".").map(Number);
-    versions.sort((a, b) => {
-      const [x, y] = [num(a), num(b)];
-      for (let i = 0; i < Math.max(x.length, y.length); i++) {
-        if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
-      }
-      return 0;
-    });
-    return versions.length ? `${sdk}/ndk/${versions.at(-1)}` : null;
-  } catch {
-    return null;
-  }
 }
 
 /** One command of adb, to its end; its standard output as text, and whether it succeeded. */
@@ -902,6 +898,8 @@ export async function checkPlatforms(
   const conf = JSON.parse(await Deno.readTextFile(`${tauriDir}/tauri.conf.json`)) as TauriConf;
   const denoDir = path.dirname(Deno.execPath());
   const sep = Deno.build.os === "windows" ? ";" : ":";
+  // The project's own Rust, when it has one, comes before any other.
+  const rust = await projectRust(root);
   const progressFile = Deno.env.get("NAIMA_RUN_PROGRESS");
   const chosen = PLATFORMS.filter((p) => !opts.only || opts.only.includes(p));
   let done = 0;
@@ -917,7 +915,8 @@ export async function checkPlatforms(
     // (Windows spells it Path, and takes the two spellings as one variable: only one is passed on.)
     env: {
       ...Object.fromEntries(Object.entries(Deno.env.toObject()).filter(([k]) => k.toUpperCase() !== "PATH")),
-      PATH: `${denoDir}${sep}${Deno.env.get("PATH") ?? ""}`,
+      ...(rust ? { RUSTUP_HOME: rust.RUSTUP_HOME, CARGO_HOME: rust.CARGO_HOME } : {}),
+      PATH: [...(rust ? [rust.bin] : []), denoDir, Deno.env.get("PATH") ?? ""].join(sep),
       NO_COLOR: "1",
     },
     progress: (stage) => {

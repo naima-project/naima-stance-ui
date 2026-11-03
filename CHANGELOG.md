@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### The project's own Rust, installed without admin rights
+
+The project pins its Rust in `rust-toolchain.toml`, and `deno task toolchain` (`naima stance-ui toolchain` in a project)
+installs it, with its targets, into `.stance-ui/rust/`. rustup-init's SHA-256 is checked before it runs. What needs
+admin rights is looked for, not installed, and the command that installs it is printed. On Windows, Smart App Control is
+reported. The platforms check builds with this Rust first, and from a Windows session with no desktop it launches the
+app through a scheduled task in the desktop session. `adopt --tauri` writes the stance's `rust-toolchain.toml` into a
+new project.
+
 ### The design method asks which features the designs promise
 
 Before a step of the design method closes, and before each screen is accepted, the agent lists the features the chosen
@@ -12,7 +21,7 @@ feature item. `method/design.md`, the skill and the rule on proposing the method
 ### The landing report records nothing
 
 The landing report runs the checks with `--no-record`, so a landing leaves no `stance-ui.checked.json` in the checkout
-it looked at.
+it looked at. It is marked `heavy`, so a landing on a development line runs it only on the declared landing host.
 
 ### Paths on Windows
 

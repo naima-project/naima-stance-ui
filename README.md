@@ -110,6 +110,8 @@ checks/                             the stance's checks (deno task check, deno t
 scripts/adopt.ts                    copies the stance into a project (deno task adopt)
 scaffold/                           the starting app adopt writes into a new project
 scripts/hook.ts                     reruns the fast checks after an agent's edit
+scripts/toolchain.ts                installs the pinned Rust into the project (deno task toolchain)
+rust-toolchain.toml                 the Rust the Tauri shell builds with
 plugin/index.mjs                    the stance as a Naima plugin
 test/                               tests of the checks, the copy, the plugin and the demo
 stance-ui.json                      this repository's own configuration of the checks
@@ -417,6 +419,25 @@ is needed for every platform but the web.
 | Windows  | Windows     | the Visual Studio C++ build tools, and WebView2 (part of Windows 11)                                                                                                                                                                                                        | `deno task tauri build --no-bundle` (or with the NSIS or MSI installer); the binary is `src-tauri\target\release\app.exe`                                                                                               |
 | Android  | any desktop | the Android SDK with its platform tools, build tools, a platform, the NDK, the emulator and an arm64 (or x86_64) system image; a JDK 17; the Rust targets `aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`; `JAVA_HOME` set | `deno task tauri android init` once, then `deno task tauri android build --apk --debug`; `adb install` the `.apk` from `src-tauri/gen/android/app/build/outputs/apk/`, with `ANDROID_HOME` and `NDK_HOME` set           |
 
+### The project's own Rust
+
+The project pins the Rust it builds with in `rust-toolchain.toml` at its root, and the stance does the same for itself.
+`deno task toolchain` in the stance, or `naima stance-ui toolchain` in a project, installs that version into the
+project's own `.stance-ui/rust/` folder, which git ignores, with the targets the file lists that this machine can build
+for (the iOS ones only on macOS). It needs no admin rights and changes nothing outside the project: rustup's files go in
+`.stance-ui/rust/rustup` and cargo's in `.stance-ui/rust/cargo`, no profile is edited and the PATH is left alone. The
+first time, it downloads rustup-init from static.rust-lang.org, checks its SHA-256 against the one published beside it,
+and runs it with `-y --no-modify-path --profile minimal --default-toolchain <pin>`. Run again, it installs the pin again
+if the file has moved to another version, and otherwise does nothing.
+
+What needs admin rights it does not install. It looks for the Xcode command line tools and Xcode on macOS, Visual Studio
+Build Tools with the C++ workload and the WebView2 runtime on Windows, webkit2gtk 4.1 and a C compiler on Linux, and the
+Android SDK, NDK and a JDK everywhere, and for each one that is missing it prints the exact command that installs it. On
+Windows it also says when Smart App Control is on, since it can stop the app built here, which is not signed, from
+running. `--check` installs nothing and only says what is there.
+
+The platforms check builds with this Rust when it is installed, and with the Rust on the PATH otherwise.
+
 `src-tauri/gen/` holds the Xcode and Android Studio projects that the two `init` commands generate; the calculator
 leaves them out of git and makes them again when they are missing.
 
@@ -477,8 +498,10 @@ avdmanager create avd -n stance_api35_arm64 -k "system-images;android-35;google_
 A screenshot of a macOS window needs the Screen Recording permission (System Settings, Privacy & Security) for the
 program that runs the check, such as the terminal; without it the macOS line says so, and the rest of the check is
 unaffected. On Linux, Playwright has builds only for the distributions it lists, so on another one the three browsers
-are reported skipped. On Windows, WebView2 opens a window only in an interactive desktop session: run over ssh, the
-check builds the app and reports its launch skipped.
+are reported skipped. On Windows, WebView2 opens a window only in an interactive desktop session. Run over ssh, the
+check starts the app through a scheduled task in the desktop session of the user who is signed in, reads its output from
+the files it writes there, and ends the app and deletes the task afterwards. With nobody signed in to the desktop it
+reports the launch skipped.
 
 Each platform is reported at the furthest level it reached, and each level proves something more:
 
@@ -714,6 +737,7 @@ Naima's contract already supports a plugin like this one, and this would make it
 ## Developing
 
 ```sh
+deno task toolchain      # install the pinned Rust into .stance-ui/rust/ and say what else the platforms need
 deno task platforms      # build, launch and drive the calculator on every platform this machine reaches
 deno task test           # the checks against their fixtures, the copy, the plugin, the token build and the demo build
 deno task check          # this repository against its own stance, the browser checks on the gallery,
