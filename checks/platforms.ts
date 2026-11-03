@@ -3,7 +3,7 @@
 // level it reached: built, launched, end-to-end passed, or skipped with the reason. A platform this machine
 // cannot reach is skipped, never passed.
 //
-//   web       the frontend build, served by the stance's port server, in Playwright's Chromium, Firefox and
+//   web       the frontend build, served by the stance's bridge server, in Playwright's Chromium, Firefox and
 //             WebKit (WebKit is the engine of the macOS and iOS webviews)
 //   macos     tauri build; the app launched with the end-to-end script; screencapture of its window
 //   ios       tauri ios build for the simulator; simctl install and launch with the script; simctl screenshot
@@ -12,15 +12,16 @@
 //   android   tauri android build; adb install and launch on a running emulator or device, or on an emulator the
 //             check boots without a window; the script through the WebView's DevTools socket; adb screencap
 //
-// The app is ready when its page first calls the platform port: the Tauri shell prints "port: <command>"
-// then. The end-to-end script (stance-ui.json's platforms.e2e) is one JavaScript expression whose value is a
-// promise of { ok, says }; the shell runs it when STANCE_UI_E2E holds it and prints "e2e: <report>".
+// The app is ready when its page first calls the platform bridge: the Tauri shell prints "bridge: <command>" then; a
+// shell copied before the bridge was renamed from port prints "port: <command>", also accepted. The end-to-end script
+// (stance-ui.json's platforms.e2e) is one JavaScript expression whose value is a promise of { ok, says }; the shell
+// runs it when STANCE_UI_E2E holds it and prints "e2e: <report>".
 
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { TextLineStream } from "@std/streams/text-line-stream";
 import { decodeBase64 } from "@std/encoding/base64";
-import { portHandler } from "../platform/server.ts";
+import { bridgeHandler } from "../platform/server.ts";
 import type { Finding } from "./finding.ts";
 
 export const PLATFORMS = ["web", "macos", "ios", "linux", "windows", "android"] as const;
@@ -178,7 +179,7 @@ class Launched {
   }
 }
 
-const READY = (l: string) => /^port: |^e2e: \{/.test(l);
+const READY = (l: string) => /^(bridge|port): |^e2e: \{/.test(l);
 const REPORT = (l: string) => l.startsWith("e2e: {");
 
 /** The end-to-end report printed by the shell, or a failed one when the line is missing or malformed. */
@@ -241,10 +242,10 @@ async function web(ctx: Ctx): Promise<PlatformReport[]> {
       skipped: `Playwright is not installed (${(e as Error).message.split("\n")[0]})`,
     }));
   }
-  // The page as a web server would give it: the stance's own server, static files and the port.
+  // The page as a web server would give it: the stance's own server, static files and the bridge.
   const server = Deno.serve(
     { port: 0, hostname: "127.0.0.1", onListen: () => {} },
-    portHandler({
+    bridgeHandler({
       handlers: {},
       static: built.dist,
     }),
@@ -332,7 +333,7 @@ async function launchWithScript(
     }
     const ready = await app.waitFor(READY, 90_000);
     if (ready === null) {
-      r.failed = `the app did not get ready within 90 s (no "port:" line); see ${log}`;
+      r.failed = `the app did not get ready within 90 s (no "bridge:" line); see ${log}`;
       return;
     }
     r.launched = true;
@@ -705,7 +706,7 @@ function cdpEvaluate(wsUrl: string, expression: string, ms: number): Promise<unk
   });
 }
 
-/** Ready on Android: the page shows where it runs, which it learns from the port's first answer. */
+/** Ready on Android: the page shows where it runs, which it learns from the bridge's first answer. */
 const ANDROID_READY = `new Promise((resolve) => {
   const host = () => document.querySelector(".host")?.textContent?.trim();
   if (host()) return resolve(host());

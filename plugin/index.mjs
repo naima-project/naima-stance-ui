@@ -257,7 +257,7 @@ export default function stanceUi(options = {}, api = {}) {
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
         { name: "--tauri", says: "also copy the Tauri 2 shell to src-tauri/" },
-        { name: "--server", says: "also copy the Deno port server to server/port-server.ts" },
+        { name: "--server", says: "also copy the Deno bridge server to server/bridge-server.ts" },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
         {
           name: "--no-scaffold",

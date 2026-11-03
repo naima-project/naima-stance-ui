@@ -1,5 +1,5 @@
 // The calculator's end-to-end script, the same on every platform: it waits until the app is ready (the
-// platform port has said where it runs), presses 1 + 2 = on the keypad, and reads the display. It is one
+// platform bridge has said where it runs), presses 1 + 2 = on the keypad, and reads the display. It is one
 // JavaScript expression whose value is a promise of { ok, says }, evaluated inside the page by whatever
 // drives it: Playwright on the web, WebDriver through tauri-driver, or the Tauri shell itself when
 // STANCE_UI_E2E holds it (see the README's "Platforms").

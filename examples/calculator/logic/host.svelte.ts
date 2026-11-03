@@ -1,4 +1,4 @@
-// Where the app runs, as the platform port describes it: the web page, or the Tauri app on one of five
+// Where the app runs, as the platform bridge describes it: the web page, or the Tauri app on one of five
 // operating systems. Written directly as a class, without a model: four states on one path (idle, asking,
 // then known or unknown), no concurrency, nothing worth proving.
 //

@@ -1,5 +1,5 @@
 # The Tauri 2 shell: the app's page in a native webview, on Windows, Linux, macOS, Android and iOS. Its only
-# job besides showing the page is the platform port's Rust side: the commands in src/port.rs.
+# job besides showing the page is the platform bridge's Rust side: the commands in src/bridge.rs.
 [package]
 name = "app"
 version = "0.1.0"

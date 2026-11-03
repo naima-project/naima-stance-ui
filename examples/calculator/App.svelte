@@ -1,5 +1,5 @@
 <!-- The example's root: the page, the calculator in the middle of it, the theme switch under it, and where the
-     app runs, as the platform port said. It only lays things out, and passes the theme machine's choice to the
+     app runs, as the platform bridge said. It only lays things out, and passes the theme machine's choice to the
      switch. -->
 <script lang="ts">
   import ThemeSwitch from "../../src/lib/components/ThemeSwitch.svelte";

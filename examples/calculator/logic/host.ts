@@ -3,7 +3,7 @@
 
 export type HostPhase = "IDLE" | "ASKING" | "KNOWN" | "UNKNOWN";
 
-/** The answer of the port's describe command, the same on every platform. */
+/** The answer of the bridge's describe command, the same on every platform. */
 export type HostInfo = { platform: string; shell: string };
 
 export interface HostPort {

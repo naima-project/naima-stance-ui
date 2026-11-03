@@ -7,10 +7,10 @@
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
 // What is copied: the widget set to <to>/components/, the store module to <to>/store/, the theme machine
-// and its port to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform port to
-// <to>/platform/, the chosen mood board with its themes and the contrast pairs to tokens/, and the token build to
-// scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to src-tauri/; with --server, the Deno port server
-// to server/port-server.ts. stance-ui.json records the copy and configures `deno task check`.
+// and its port to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform bridge to
+// <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
+// pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
+// src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts. stance-ui.json records the copy and configures `deno task check`.
 //
 // Then the scaffold, which a new project needs to build and run and which belongs to the project from the start:
 // deno.json (tasks tokens, dev, build, check, test), package.json (the npm packages at the stance's exact
@@ -38,7 +38,7 @@ interface Record {
   stance: { name: string; author: string; version: string; commit: string };
   mood: string;
   to: string;
-  /** The platform parts the project took: the Tauri shell, the Deno port server. */
+  /** The platform parts the project took: the Tauri shell, the Deno bridge server. */
   platforms?: { tauri: boolean; server: boolean };
   /** Every copied file, by its path in the project: where it came from and its sha256 as copied. */
   files: { [path: string]: { from: string; sha256: string } };
@@ -71,8 +71,10 @@ async function plan(
       if (e.isFile) files.set(`src/lib/${dir}/${e.name}`, `${to}/${dir}/${e.name}`);
     }
   }
+  files.set("src/lib/platform/bridge.ts", `${to}/platform/bridge.ts`);
+  // The bridge's old name, deprecated: it re-exports bridge.ts, for one more release.
   files.set("src/lib/platform/port.ts", `${to}/platform/port.ts`);
-  if (platforms.server) files.set("platform/server.ts", "server/port-server.ts");
+  if (platforms.server) files.set("platform/server.ts", "server/bridge-server.ts");
   if (platforms.tauri) {
     const shell = async (rel: string) => {
       for await (const e of Deno.readDir(`${STANCE}/platform/tauri/${rel}`)) {

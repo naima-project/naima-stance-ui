@@ -1,11 +1,11 @@
-// The shell: one window showing the built page, and the platform port's commands. The mobile targets enter
+// The shell: one window showing the built page, and the platform bridge's commands. The mobile targets enter
 // here directly; the desktop ones through main.rs.
 //
 // When STANCE_UI_E2E holds a script (the stance's `platforms` check sets it), the shell evaluates it in the
 // page once the page has loaded and prints its report as one line, "e2e: {...}". The app stays open, so that
 // the check can take its screenshot with the result on screen, and then ends it. Without the variable
 // nothing of this runs.
-mod port;
+mod bridge;
 
 use tauri::webview::PageLoadEvent;
 
@@ -22,7 +22,7 @@ pub fn run() {
         .map(|s| s.trim().trim_end_matches(';').to_string())
         .filter(|s| !s.is_empty());
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![port::describe, e2e_report])
+        .invoke_handler(tauri::generate_handler![bridge::describe, e2e_report])
         .on_page_load(move |webview, payload| {
             if let (Some(script), PageLoadEvent::Finished) = (&e2e, payload.event()) {
                 println!("e2e: page loaded, running the script");

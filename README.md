@@ -68,8 +68,8 @@ can be loaded into Naima as a plugin.
 
 13. **Help, where there is any, is in the same place on every page** (SC 3.2.6).
 
-14. **The app runs on six platforms from one code base, and only the platform port differs**: a web page, and the Tauri
-    2 app on Windows, Linux, macOS, Android and iOS (see [Platforms](#platforms)).
+14. **The app runs on six platforms from one code base, and only the platform bridge differs**: a web page, and the
+    Tauri 2 app on Windows, Linux, macOS, Android and iOS (see [Platforms](#platforms)).
 
 15. **Before building a UI, the agent proposes the design method** (see
     [Designing with variants](#designing-with-variants)), and says why its steps come in that order.
@@ -101,7 +101,7 @@ gallery/                            every widget on one page, built once per moo
 scripts/variants.ts                 several variants of the design side by side, live, in light and dark
 method/design.md                    the design method: five steps, each closed by the owner's choice among variants
 skills/ui-design/SKILL.md           the same method as a skill an agent follows
-src/lib/platform/port.ts            the platform port: local, web and Tauri
+src/lib/platform/bridge.ts          the platform bridge: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
 platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt adds to a project
 naima-plugin.json                   the plugin described as data, which Naima reads without running it
@@ -303,8 +303,8 @@ to the page.
 - **What is shown, and announced, is read from its view.** A component renders a field of the view; text a screen reader
   should hear when it changes goes in a live region (`<Text live="polite">`, or `aria-live` on an `<output>`).
 - **What is done, a focus moved, something stored or sent, is an output carried out by the port** that `app.svelte.ts`
-  passes the machine when it makes it. The port is where `document`, `localStorage` and `fetch` (or the platform port's
-  `call`) appear; an answer comes back as one of the machine's inputs.
+  passes the machine when it makes it. The port is where `document`, `localStorage` and `fetch` (or the platform
+  bridge's `call`) appear; an answer comes back as one of the machine's inputs.
 
 ```ts
 // app.svelte.ts: the counter's port moves the focus once the page shows the new state
@@ -352,40 +352,44 @@ naima-codegen check-refinement --project examples/calculator/logic              
 
 An app built with the stance runs on six platforms from one code base: as a web page, and as a Tauri 2 app on Windows,
 Linux, macOS, Android and iOS, where the same page runs in the system's webview. The machines, the store and the
-components are the same everywhere. The one part that differs by platform is the port that carries the machines' outputs
-out of the page.
+components are the same everywhere. The one part that differs by platform is the bridge that carries the machines'
+outputs out of the page.
 
-### The port
+### The bridge
 
-`src/lib/platform/port.ts` has one interface, `Port`, with a single method, `call(command, args)`, which returns a
+`src/lib/platform/bridge.ts` has one interface, `Bridge`, with a single method, `call(command, args)`, which returns a
 promise of the answer. Arguments and answers are JSON. There are three implementations:
 
-- `localPort(handlers)` answers each command in the page. It is the whole backend of a pure client app, such as the
+- `localBridge(handlers)` answers each command in the page. It is the whole backend of a pure client app, such as the
   calculator, which then needs no server at all: its build is static files.
-- `webPort(url)` sends each command to a server as `POST <url>/<command>` with the arguments as a JSON body, and reads
+- `webBridge(url)` sends each command to a server as `POST <url>/<command>` with the arguments as a JSON body, and reads
   `{"ok": answer}` or `{"error": "..."}` back.
-- `tauriPort()` calls the Tauri shell's Rust command of the same name with `invoke`.
+- `tauriBridge()` calls the Tauri shell's Rust command of the same name with `invoke`.
 
 `connect({ handlers, server })` picks one: Tauri inside a Tauri webview, else the server when one is named, else the
 local handlers. A machine's port calls `call` for an output and turns the answer into one of the machine's inputs, so
 the machine never knows which platform it is on.
 
+The bridge was called the platform port until this release. The old names (`port.ts`, `Port`, `localPort`, `webPort`,
+`tauriPort`, `PortError`, and on the server `portHandler`, `servePort` and the `/port/` prefix) still work, deprecated,
+for one more release; see [CHANGELOG.md](CHANGELOG.md).
+
 ### The web server
 
 For an app that needs a backend, the stance's choice is a Deno server, `platform/server.ts`. It serves the built page as
-static files and answers the port's contract at `/port/<command>`, with handlers of the same shape as the ones
-`localPort` runs, so a command can move between the page and the server without the machines noticing. Deno is the
+static files and answers the bridge's contract at `/bridge/<command>`, with handlers of the same shape as the ones
+`localBridge` runs, so a command can move between the page and the server without the machines noticing. Deno is the
 runtime Naima and the stance's own tooling already need, so a project gains no second runtime for its server; it runs
 TypeScript as it is, and its permissions limit what the server may touch. A pure client app needs none of this.
 
 ### The Tauri shell
 
 `platform/tauri/` is the `src-tauri` folder of a Tauri 2 app: the Cargo crate, `tauri.conf.json`, the capabilities,
-placeholder icons and `src/port.rs`, where the port's Rust commands live. Every shell answers `describe`, which says
+placeholder icons and `src/bridge.rs`, where the bridge's Rust commands live. Every shell answers `describe`, which says
 which operating system it runs on. A project gets it with `deno task adopt --project <app> --tauri`, then sets its own
 `productName`, `identifier`, `build.beforeBuildCommand` and `build.frontendDist` in `tauri.conf.json`, and makes its own
-icons with `deno task tauri icon <a square png or svg>`. `--server` copies the Deno server too. The port module is
-always copied, to `src/lib/ui/platform/port.ts`, and needs `@tauri-apps/api` among the project's dependencies.
+icons with `deno task tauri icon <a square png or svg>`. `--server` copies the Deno server too. The bridge module is
+always copied, to `src/lib/ui/platform/bridge.ts`, and needs `@tauri-apps/api` among the project's dependencies.
 
 ### Building and running on each platform
 
@@ -394,7 +398,7 @@ is needed for every platform but the web.
 
 | Platform | Build on    | Needs                                                                                                                                                                                                                                                                       | Build and run                                                                                                                                                                                                           |
 | -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Web      | any         | Deno                                                                                                                                                                                                                                                                        | `deno task example:calculator:build`, then open `dist/index.html` from disk or serve `dist/` (with `servePort` from `platform/server.ts` when there is a backend)                                                       |
+| Web      | any         | Deno                                                                                                                                                                                                                                                                        | `deno task example:calculator:build`, then open `dist/index.html` from disk or serve `dist/` (with `serveBridge` from `platform/server.ts` when there is a backend)                                                     |
 | macOS    | macOS       | Xcode's command line tools                                                                                                                                                                                                                                                  | `deno task tauri build --bundles app`; the app is in `src-tauri/target/release/bundle/macos/`                                                                                                                           |
 | iOS      | macOS       | Xcode, the Rust target `aarch64-apple-ios-sim` (and `aarch64-apple-ios` for a device)                                                                                                                                                                                       | `deno task tauri ios init` once, then `deno task tauri ios build --target aarch64-sim --debug`; install the `.app` from `src-tauri/gen/apple/build/` with `xcrun simctl install booted <app>` and `xcrun simctl launch` |
 | Linux    | Linux       | `libwebkit2gtk-4.1-dev`, `build-essential`, `libxdo-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` (Debian and Ubuntu names)                                                                                                                            | `deno task tauri build --no-bundle` (or with bundles: `.deb`, `.rpm`, AppImage); the binary is `src-tauri/target/release/app`                                                                                           |
@@ -433,16 +437,16 @@ what puts it in the page differs:
 The shell itself runs the script when the environment variable `STANCE_UI_E2E` holds it: once the page has loaded it
 evaluates the script and prints `e2e: <report>`. Without the variable the shell does nothing of the kind. tauri-driver
 does not support macOS's WKWebView, and iOS has no WebDriver for an app's webview, which is why those two go through the
-shell; WebKit in Playwright covers the same engine from outside. An app is ready when its page first calls the port: the
-shell prints `port: <command> -> ...` then. On iOS an app's standard output goes to the system log, so the check reads
-these lines with `xcrun simctl spawn <device> log stream` while it launches the app.
+shell; WebKit in Playwright covers the same engine from outside. An app is ready when its page first calls the bridge:
+the shell prints `bridge: <command> -> ...` then. On iOS an app's standard output goes to the system log, so the check
+reads these lines with `xcrun simctl spawn <device> log stream` while it launches the app.
 
 On Android the app cannot be handed an environment variable, so the script goes in from outside, through the WebView's
 own debugging socket: a debug build's WebView opens `webview_devtools_remote_<pid>`, `adb forward` makes it a local
 port, and the check evaluates the script in the app's page with the Chrome DevTools Protocol's `Runtime.evaluate`. This
 is the same route Chrome's remote debugging takes, it needs no chromedriver matched to the WebView's version, and it
 runs the very script the other platforms run, where UIAutomator would have to press the keys by their position on the
-screen. The app is ready when its page shows where it runs, which it learns from the port's first answer. The check
+screen. The app is ready when its page shows where it runs, which it learns from the bridge's first answer. The check
 finds the SDK in `ANDROID_HOME` (or `ANDROID_SDK_ROOT`, or where Android Studio puts it) and the NDK in `NDK_HOME` (or
 the newest in the SDK's `ndk/` folder), and needs `JAVA_HOME` for Gradle. When no emulator or device is running it boots
 the AVD named in `STANCE_UI_AVD`, else the first whose name starts with `stance_`, else the first one the emulator
@@ -463,8 +467,8 @@ check builds the app and reports its launch skipped.
 Each platform is reported at the furthest level it reached, and each level proves something more:
 
 - **built**: the code base compiles for that platform, with the platform's own toolchain and webview library.
-- **launched**: the app starts there, the webview loads the built page, the page runs and its first port call reaches
-  the platform's side of the port and comes back.
+- **launched**: the app starts there, the webview loads the built page, the page runs and its first bridge call reaches
+  the platform's side of the bridge and comes back.
 - **end-to-end passed**: the app works there: real keys pressed in the real page, the machines stepping, the display
   showing the right result.
 - **skipped**, with the reason: the machine cannot reach that platform (another operating system, no booted simulator,
@@ -548,7 +552,7 @@ update can be compared with what the project changed.
    ```
 
    This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
-   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform port to
+   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform bridge to
    `src/lib/ui/platform/`, the mood board with both themes and the contrast pairs to `tokens/`, and the token build to
    `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes `stance-ui.json`, which
    records the stance's version and commit, the mood board, and the sha256 of every file as it was copied, and which
