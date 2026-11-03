@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### The bridge carries feeds: events the backend pushes
+
+`Bridge` has a second method, `listen(feed, on)`, which hears each event the backend pushes on a named feed until the
+function it returns is called, so a machine can follow "the data changed" without polling and without reaching past the
+bridge.
+
+- `localBridge(handlers, feeds)` makes a feed in the page; `connect()` takes `feeds` too.
+- `webBridge(url)` opens a feed as `GET <url>/<feed>`, a stream of server-sent events, one JSON event each.
+- `tauriBridge()` hears a feed as the Tauri event of the same name, which the shell emits.
+- The bridge's contract over HTTP moved into `platform/bridge-handler.ts`, a request handler on the web's own `Request`,
+  `Response` and streams that imports nothing, so that a backend on Node or Bun mounts it too. It takes `feeds` and an
+  `otherwise` handler for every other request; `platform/server.ts` keeps `bridgeHandler` with its `static` folder on
+  top of it. `adopt --server` copies both, to `server/bridge-server.ts` and `server/bridge-handler.ts`.
+
 ### The platform port is now the platform bridge
 
 The interface through which the app's machines reach whatever lies outside the page was called a port, after the

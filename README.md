@@ -360,18 +360,23 @@ outputs out of the page.
 
 ### The bridge
 
-`src/lib/platform/bridge.ts` has one interface, `Bridge`, with a single method, `call(command, args)`, which returns a
-promise of the answer. Arguments and answers are JSON. There are three implementations:
+`src/lib/platform/bridge.ts` has one interface, `Bridge`, with two methods. `call(command, args)` runs a command and
+returns a promise of its answer. `listen(feed, on)` hears each event the backend pushes on a named feed, such as "the
+data changed", until the function it returns is called. Arguments, answers and events are JSON. There are three
+implementations:
 
-- `localBridge(handlers)` answers each command in the page. It is the whole backend of a pure client app, such as the
-  calculator, which then needs no server at all: its build is static files.
+- `localBridge(handlers, feeds)` answers each command and makes each feed in the page. It is the whole backend of a pure
+  client app, such as the calculator, which then needs no server at all: its build is static files.
 - `webBridge(url)` sends each command to a server as `POST <url>/<command>` with the arguments as a JSON body, and reads
-  `{"ok": answer}` or `{"error": "..."}` back.
-- `tauriBridge()` calls the Tauri shell's Rust command of the same name with `invoke`.
+  `{"ok": answer}` or `{"error": "..."}` back. A feed is `GET <url>/<feed>`, a stream of server-sent events, one JSON
+  event each, which the browser's `EventSource` reconnects by itself when the connection drops.
+- `tauriBridge()` calls the Tauri shell's Rust command of the same name with `invoke`, and hears a feed as the Tauri
+  event of the same name, which the shell emits (`app.emit("<feed>", payload)`).
 
-`connect({ handlers, server })` picks one: Tauri inside a Tauri webview, else the server when one is named, else the
-local handlers. A machine's outputs call `call` for an output and turns the answer into one of the machine's inputs, so
-the machine never knows which platform it is on.
+`connect({ handlers, feeds, server })` picks one: Tauri inside a Tauri webview, else the server when one is named, else
+the local handlers and feeds. A machine's outputs call `call` for an output and turn the answer into one of the
+machine's inputs, and an event heard on a feed becomes one of its inputs the same way, so the machine never knows which
+platform it is on.
 
 The bridge was called the platform port until this release. The old names (`port.ts`, `Port`, `localPort`, `webPort`,
 `tauriPort`, `PortError`, and on the server `portHandler`, `servePort` and the `/port/` prefix) still work, deprecated,
@@ -380,10 +385,13 @@ for one more release; see [CHANGELOG.md](CHANGELOG.md).
 ### The web server
 
 For an app that needs a backend, the stance's choice is a Deno server, `platform/server.ts`. It serves the built page as
-static files and answers the bridge's contract at `/bridge/<command>`, with handlers of the same shape as the ones
-`localBridge` runs, so a command can move between the page and the server without the machines noticing. Deno is the
-runtime Naima and the stance's own tooling already need, so a project gains no second runtime for its server; it runs
-TypeScript as it is, and its permissions limit what the server may touch. A pure client app needs none of this.
+static files and answers the bridge's contract at `/bridge/<command>` and `/bridge/<feed>`, with handlers and feeds of
+the same shape as the ones `localBridge` runs, so a command or a feed can move between the page and the server without
+the machines noticing. The contract itself is `platform/bridge-handler.ts`, one request handler built only on the web's
+`Request`, `Response` and streams, which imports nothing: a backend that runs on Node or Bun mounts it the same way.
+Deno is the runtime Naima and the stance's own tooling already need, so a project gains no second runtime for its
+server; it runs TypeScript as it is, and its permissions limit what the server may touch. A pure client app needs none
+of this.
 
 ### The Tauri shell
 
@@ -391,8 +399,9 @@ TypeScript as it is, and its permissions limit what the server may touch. A pure
 placeholder icons and `src/bridge.rs`, where the bridge's Rust commands live. Every shell answers `describe`, which says
 which operating system it runs on. A project gets it with `deno task adopt --project <app> --tauri`, then sets its own
 `productName`, `identifier`, `build.beforeBuildCommand` and `build.frontendDist` in `tauri.conf.json`, and makes its own
-icons with `deno task tauri icon <a square png or svg>`. `--server` copies the Deno server too. The bridge module is
-always copied, to `src/lib/ui/platform/bridge.ts`, and needs `@tauri-apps/api` among the project's dependencies.
+icons with `deno task tauri icon <a square png or svg>`. `--server` copies the Deno server too, with its request
+handler, to `server/`. The bridge module is always copied, to `src/lib/ui/platform/bridge.ts`, and needs
+`@tauri-apps/api` among the project's dependencies.
 
 ### Building and running on each platform
 

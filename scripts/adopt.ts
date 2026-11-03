@@ -10,7 +10,8 @@
 // and its outputs for the page to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform bridge to
 // <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
 // pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
-// src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts. stance-ui.json records the copy and configures `deno task check`.
+// src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts and its request handler to
+// server/bridge-handler.ts. stance-ui.json records the copy and configures `deno task check`.
 //
 // Then the scaffold, which a new project needs to build and run and which belongs to the project from the start:
 // deno.json (tasks tokens, dev, build, check, test), package.json (the npm packages at the stance's exact
@@ -74,7 +75,10 @@ async function plan(
   files.set("src/lib/platform/bridge.ts", `${to}/platform/bridge.ts`);
   // The bridge's old name, deprecated: it re-exports bridge.ts, for one more release.
   files.set("src/lib/platform/port.ts", `${to}/platform/port.ts`);
-  if (platforms.server) files.set("platform/server.ts", "server/bridge-server.ts");
+  if (platforms.server) {
+    files.set("platform/server.ts", "server/bridge-server.ts");
+    files.set("platform/bridge-handler.ts", "server/bridge-handler.ts");
+  }
   if (platforms.tauri) {
     const shell = async (rel: string) => {
       for await (const e of Deno.readDir(`${STANCE}/platform/tauri/${rel}`)) {
