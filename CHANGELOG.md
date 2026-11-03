@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### The design method asks which features the designs promise
+
+Before a step of the design method closes, and before each screen is accepted, the agent lists the features the chosen
+design shows that the app does not have yet, asks the owner which are to be built and confirms each answer. The
+decision's entry lists them as promised or only illustrative, and in a Naima project each promised one is filed as a
+feature item. `method/design.md`, the skill and the rule on proposing the method say so.
+
+### The landing report records nothing
+
+The landing report runs the checks with `--no-record`, so a landing leaves no `stance-ui.checked.json` in the checkout
+it looked at.
+
+### Paths on Windows
+
+The checks, the hook, the scripts and the tests make paths with the operating system's own rules instead of POSIX ones:
+a module's folder comes from its file URL, and a Windows path such as `C:\app` is absolute to them.
+
 ### The platforms check serves an app's backend on the web
 
 `stance-ui.json`'s `check.platforms.web` names a module whose `handlers` and `feeds` the stance's server answers the

@@ -28,5 +28,10 @@ Follow `method/design.md` in the UI stance's repository (naima-stance-ui). In sh
 - When the owner accepts: copy the variant over `tokens/`, build, run the stance's checks, add the entry to
   `design/decisions.md`, and in a Naima project record it as a decided discussion with `naima decide`. Then the step is
   closed.
+- Nothing a design shows is promised until the owner confirms it. Before a step closes, and before each screen is
+  accepted, list every feature the chosen design (or a mockup or screenshot the owner brought) shows that the app does
+  not have yet, ask the owner for each one whether it is to be built, and repeat each answer back to confirm it. Write
+  the promised and the only illustrative features into the decision's entry; in a Naima project file each promised one
+  as a feature item.
 - Keep the rounds, their comparison pages and a record page linking them as the design record. After each screen is
   built, show it side by side with its chosen prototype and let the owner judge whether it matches.

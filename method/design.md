@@ -128,6 +128,30 @@ interface has to match or improve on. After a screen is implemented in the real 
 side by side with the prototype that was chosen for it, in light and dark, and the owner judges whether it matches. A
 difference the owner does not accept is fixed in the app, not in the record.
 
+### What the designs promise
+
+Mockups, screenshots, prototypes and variants show more than the app will have: a button with nothing behind it yet, a
+chart drawn from sample data, a panel added to fill the layout. An owner who sees a feature in a design can easily take
+it as promised. So nothing a design shows counts as promised until the owner has confirmed it.
+
+Before a step closes, and in the screens step before each screen is accepted, the agent goes through what the chosen
+design shows and lists every feature the app does not have yet, one line each, naming where it appears ("home screen,
+round 3, variant b: the export button in the toolbar"). It does the same for a mockup, a screenshot or a design the
+owner brings as a reference. Then it asks the owner, feature by feature, whether it is to be built, and repeats each
+answer back for the owner to confirm. A feature counts as promised only once the owner has confirmed it.
+
+The answers go into the decision's entry in `design/decisions.md`, in two lists:
+
+```md
+Promised: the export button in the toolbar; the weekly summary card. Only illustrative: the chart on the right (sample
+data); the share menu.
+```
+
+In a project tracked by Naima, each promised feature is also filed as a feature item, so that it is planned and tracked
+like any other. A feature the owner did not confirm stays only illustrative: the prototype marks it so where it appears,
+and the built app is not expected to have it. If the owner later wants it, it is asked for and confirmed then, like any
+other feature.
+
 ### Keeping later steps consistent
 
 - A step changes only its own tokens (the table below). Every other token stays as the earlier steps left it. Before
@@ -228,7 +252,8 @@ difference the owner does not accept is fixed in the app, not in the record.
   opened from `file://`, Safari allows no script to reach into a frame, so the hash is what works.
 - **Accessibility:** `deno task check` on the chosen variant (axe, target size, reduced motion, contrast) passes; the
   screen works by keyboard alone; headings and landmarks make sense read aloud.
-- **Exit:** the owner accepts the screen; repeat for the next screen, starting again from round 1, until the list is
-  done.
+- **Exit:** the owner accepts the screen and has confirmed, feature by feature, which of the features it shows are to be
+  built (see what the designs promise, above); repeat for the next screen, starting again from round 1, until the list
+  is done.
 - **Written:** the screen's components in the app; its page in `stance-ui.json` under `check.pages` so the browser
   checks cover it; decision recorded.
