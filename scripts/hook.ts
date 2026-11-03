@@ -14,7 +14,7 @@
 // checks are left to `naima check` and the landing.
 
 import { existsSync } from "node:fs";
-import { posix } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import { loadConfig } from "../checks/config.ts";
 import { describe } from "../checks/finding.ts";
 import { isChecked, recordRun } from "../checks/record.ts";
@@ -42,8 +42,9 @@ export function editedFile(input: string): string | null {
 
 /** What the hook says after an edit of `file`: nothing, or the problems the checks found, for the agent. */
 export async function afterEdit(app: string, file: string, from = app): Promise<string | null> {
-  const root = posix.resolve(app);
-  const rel = posix.relative(root, posix.resolve(from, file));
+  // The OS's own path rules, so that a Windows path is absolute; the checks name files with forward slashes.
+  const root = resolve(app);
+  const rel = relative(root, resolve(from, file)).split(sep).join("/");
   // A checkout without the app, such as a trunk whose app lives on a development line, has nothing to check.
   if (rel.startsWith("..") || !existsSync(`${root}/stance-ui.json`)) return null;
   const cfg = await loadConfig(root);

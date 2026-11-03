@@ -4,7 +4,7 @@
 // the variant chosen and the decision recorded.
 
 import { assert, assertEquals } from "@std/assert";
-import { fromFileUrl } from "@std/path";
+import { fromFileUrl, join } from "@std/path";
 import stanceUi from "../plugin/index.mjs";
 import { decisions, designPlace, servedRoot } from "../plugin/design.mjs";
 
@@ -25,9 +25,9 @@ Deno.test("the design tab lists the five steps of the method as its subtabs, and
   assertEquals(t.name, "design");
   assertEquals(t.subtabs.map((s: Any) => s.name), ["mood-board", "palette", "typography", "widget-shapes", "screens"]);
   assertEquals(t.subtabs.map((s: Any) => s.title), ["Mood board", "Palette", "Typography", "Widget shapes", "Screens"]);
-  assertEquals(t.files(ctx), `${APP}/record`);
+  assertEquals(t.files(ctx), join(APP, "record"));
   const place = designPlace(APP);
-  assertEquals(place, { folder: `${APP}/record/design/app`, previews: `${APP}/record/preview` });
+  assertEquals(place, { folder: join(APP, "record", "design", "app"), previews: join(APP, "record", "preview") });
   assertEquals(servedRoot({ folder: place.folder, previews: null }), place.folder);
   // a project with no design folder: no folder to serve, and every step says nothing is decided yet
   const empty: Any = { root: fromFileUrl(new URL("./fixtures/clean/", import.meta.url)) };
@@ -83,7 +83,7 @@ Deno.test("each step shows its rounds with their frames, the variant chosen and 
 });
 
 Deno.test("decisions.md: each section's step, screen, round and variant", () => {
-  const d = decisions(`${APP}/record/design/app`);
+  const d = decisions(join(APP, "record", "design", "app"));
   assertEquals(d.map((x: Any) => [x.step, x.screen, x.round, x.variant]), [
     ["mood-board", null, 2, "b"],
     ["palette", null, 1, "a"],

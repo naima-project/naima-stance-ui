@@ -4,8 +4,9 @@ import { afterEdit, editedFile } from "../scripts/hook.ts";
 import { status } from "../scripts/adopt.ts";
 import { checkedLines } from "../checks/record.ts";
 import { loadConfig } from "../checks/config.ts";
+import { fromFileUrl } from "@std/path";
 
-const clean = new URL("./fixtures/clean", import.meta.url).pathname;
+const clean = fromFileUrl(new URL("./fixtures/clean", import.meta.url));
 
 Deno.test("the hook input names the edited file", () => {
   assertEquals(

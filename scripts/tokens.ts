@@ -5,6 +5,7 @@
 //
 //   deno task tokens [--mood white | --tokens <folder>] [--out dist/tokens.css]
 
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import StyleDictionary from "style-dictionary";
 import type { TransformedToken } from "style-dictionary/types";
@@ -217,7 +218,7 @@ export async function buildTokens(dir: string, out: string, label = dir): Promis
   if (durations.length) {
     css += "\n" + `@media (prefers-reduced-motion: reduce) {\n` + block(":root", durations, "  ") + "}\n";
   }
-  await Deno.mkdir(out.slice(0, out.lastIndexOf("/") + 1) || ".", { recursive: true });
+  await Deno.mkdir(dirname(out), { recursive: true });
   await Deno.writeTextFile(out, css);
   return out;
 }

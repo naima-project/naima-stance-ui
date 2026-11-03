@@ -23,7 +23,8 @@ export interface CheckRun {
 
 export type Checked = Record<string, CheckRun>;
 
-const norm = (p: string) => posix.normalize(p).replace(/\/+$/, "");
+// A Windows path from the caller counts with forward slashes, the way the checks name files.
+const norm = (p: string) => posix.normalize(p.replaceAll("\\", "/")).replace(/\/+$/, "");
 
 /** Every file under `rel` (or `rel` itself), from the root, skipping dependencies, builds and hidden folders. */
 async function filesUnder(root: string, rel: string): Promise<string[]> {

@@ -2,8 +2,9 @@ import { assert, assertEquals } from "@std/assert";
 import type { Auth as AuthClass, AuthOutputs, AuthReply } from "../src/lib/auth/auth.svelte.ts";
 import { compileModule } from "svelte/compiler";
 import typescript from "typescript";
+import { fromFileUrl, join, toFileUrl } from "@std/path";
 
-const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const root = fromFileUrl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 
 /** The sign-in machine, its types stripped by TypeScript and its runes compiled by Svelte, as a bundler would. */
 async function load(): Promise<typeof AuthClass> {
@@ -14,7 +15,7 @@ async function load(): Promise<typeof AuthClass> {
   const js = compileModule(plain, { generate: "client", filename: "auth.svelte.js" }).js.code;
   const dir = await Deno.makeTempDir({ dir: root });
   await Deno.writeTextFile(`${dir}/auth.js`, js);
-  const { Auth } = (await import(`${dir}/auth.js`)) as { Auth: typeof AuthClass };
+  const { Auth } = (await import(toFileUrl(join(dir, "auth.js")).href)) as { Auth: typeof AuthClass };
   await Deno.remove(dir, { recursive: true });
   return Auth;
 }

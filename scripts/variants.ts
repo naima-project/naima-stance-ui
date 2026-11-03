@@ -19,6 +19,7 @@
 // on each frame once it loads, for an app that does not read the hash.
 // Frames load at once, never lazily: a column scrolled out of view would otherwise stay blank.
 import { serveDir } from "@std/http/file-server";
+import { basename, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkContrast, readPairs } from "../checks/contrast.ts";
 import { describe, type Finding } from "../checks/finding.ts";
@@ -36,7 +37,7 @@ const here = fileURLToPath(new URL("..", import.meta.url)).replace(/[\\/]$/, "")
 
 /** Token and contrast findings for one variant folder, against a reference mood board. */
 export async function checkVariant(dir: string, reference: string, pairsFile: string): Promise<string[]> {
-  const split = (p: string) => [p.slice(0, p.lastIndexOf("/")) || ".", p.slice(p.lastIndexOf("/") + 1)];
+  const split = (p: string) => [dirname(p), basename(p)];
   const [vRoot, vName] = split(dir);
   const [rRoot, rName] = split(reference);
   const variant = await readMood(vRoot, vName);
@@ -194,7 +195,7 @@ if (import.meta.main) {
     ? "tokens/contrast.json"
     : `${here}/tokens/contrast.json`;
   const out = (arg("--out") ?? `${from}/preview`).replace(/[\\/]$/, "");
-  const outName = out.slice(out.lastIndexOf("/") + 1);
+  const outName = basename(out);
   const names = (await Array.fromAsync(Deno.readDir(from)))
     .filter((e) => e.isDirectory && e.name !== outName && plain.test(e.name))
     .map((e) => e.name).sort();
@@ -210,7 +211,7 @@ if (import.meta.main) {
   }
   // The gallery, built once with the reference tokens; each frame then loads its variant's.
   await buildTokens(reference, `${here}/gallery/tokens.css`, "reference");
-  const absOut = await Deno.realPath(".").then((cwd) => out.startsWith("/") ? out : `${cwd}/${out}`);
+  const absOut = await Deno.realPath(".").then((cwd) => isAbsolute(out) ? out : `${cwd}/${out}`);
   await run([
     Deno.execPath(),
     "run",

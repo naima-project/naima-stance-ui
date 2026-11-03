@@ -24,7 +24,7 @@
 // of the pinned build (checks/chromium.ts), into the project's gitignored .stance-ui/browsers/; --no-install leaves
 // both to the project, and the browser checks install the browser themselves when it is missing.
 
-import { posix, resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodeHex } from "@std/encoding/hex";
 import { ensureChromium } from "../checks/chromium.ts";
@@ -209,7 +209,7 @@ async function scaffold(project: string, to: string, tauri: boolean): Promise<st
       lines.push(`skipped ${path}: the project has one`);
       continue;
     }
-    await Deno.mkdir(posix.dirname(target), { recursive: true });
+    await Deno.mkdir(dirname(target), { recursive: true });
     await Deno.writeTextFile(target, text);
     lines.push(`created ${path}`);
   }
@@ -251,7 +251,7 @@ export async function adopt(
   }
   for (const [from, dest] of files) {
     const target = `${project}/${dest}`;
-    await Deno.mkdir(posix.dirname(target), { recursive: true });
+    await Deno.mkdir(dirname(target), { recursive: true });
     const src = await Deno.readFile(`${STANCE}/${from}`);
     const there = await read(target);
     if (there && (await sha(there)) === (await sha(src))) continue;

@@ -6,8 +6,9 @@ import { labelFor } from "../examples/calculator/logic/host.ts";
 import { webHandlers } from "../examples/calculator/bridge.ts";
 import { adopt } from "../scripts/adopt.ts";
 import { checkPlatforms, platformFindings, webBackend } from "../checks/platforms.ts";
+import { fromFileUrl } from "@std/path";
 
-const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const root = fromFileUrl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 
 Deno.test("the local bridge answers from its handlers and refuses an unknown command", async () => {
   const bridge = localBridge({ twice: ({ n }) => (n as number) * 2 });

@@ -1,6 +1,6 @@
 // Runs every check of the stance on a project and returns what they found.
 
-import { posix } from "node:path";
+import { posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
@@ -172,7 +172,7 @@ async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
         level: m[1] === "ERROR" ? "problem" : "note",
         line: Number(m[3]),
         message: JSON.parse(`"${m[4]}"`),
-        file: posix.relative(root, posix.resolve(root, m[2])),
+        file: relative(root, resolve(root, m[2])).split(sep).join("/"),
       });
     }
   }
@@ -190,7 +190,8 @@ async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
 
 /** Every finding of the chosen checks on the project at `root`. */
 export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS): Promise<Finding[]> {
-  const root = posix.resolve(dir);
+  // The OS's own resolve: on Windows posix.resolve would treat C:\\app as relative.
+  const root = resolve(dir);
   const cfg = await loadConfig(root);
   const findings: Finding[] = [];
   const { findings: tokenFindings, contrast, names } = await tokenCheck(root, cfg);

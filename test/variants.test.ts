@@ -1,8 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
 import { buildFrame, checkVariant, comparisonPage } from "../scripts/variants.ts";
 import { themeFromHash, variantFromQuery } from "../src/lib/theme/variant.ts";
+import { fromFileUrl } from "@std/path";
 
-const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const root = fromFileUrl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 const reference = `${root}/tokens/moods/white`;
 const pairs = `${root}/tokens/contrast.json`;
 

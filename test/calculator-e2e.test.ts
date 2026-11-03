@@ -4,8 +4,9 @@
 import { assert, assertEquals } from "@std/assert";
 import { serveDir } from "@std/http/file-server";
 import { launchChromium } from "../checks/chromium.ts";
+import { fromFileUrl } from "@std/path";
 
-const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const root = fromFileUrl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 
 Deno.test("the calculator shows a new operand: 3 + 3 shows “3 +” above and marks the second 3", async () => {
   const out = await new Deno.Command(Deno.execPath(), {

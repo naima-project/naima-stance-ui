@@ -1,7 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
 import { runChecks } from "../checks/run.ts";
+import { fromFileUrl } from "@std/path";
 
-const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
+const fixture = (name: string) => fromFileUrl(new URL(`./fixtures/${name}`, import.meta.url));
 const problems = async (name: string, only?: Parameters<typeof runChecks>[1]) =>
   (await runChecks(fixture(name), only)).filter((f) => f.level === "problem");
 const has = (fs: { check: string; file?: string; message: string }[], check: string, text: string) =>
@@ -66,7 +67,7 @@ Deno.test("a write to the store around its transitions fails the type check", as
 });
 
 Deno.test("this repository holds to its own stance", async () => {
-  const fs = await runChecks(new URL("..", import.meta.url).pathname);
+  const fs = await runChecks(fromFileUrl(new URL("..", import.meta.url)));
   assertEquals(fs.filter((f) => f.level === "problem"), []);
 });
 

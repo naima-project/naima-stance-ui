@@ -9,8 +9,9 @@ import type {
 } from "../examples/calculator/logic/generated/typescript/control/control.svelte.ts";
 import { compileModule } from "svelte/compiler";
 import typescript from "typescript";
+import { fromFileUrl, join, toFileUrl } from "@std/path";
 
-const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const root = fromFileUrl(new URL("..", import.meta.url)).replace(/[\\/]$/, "");
 
 Deno.test("every mood board builds to the same custom properties, with a dark theme and reduced motion", async () => {
   const dir = await Deno.makeTempDir();
@@ -65,7 +66,7 @@ Deno.test("the theme is chosen only through its transition, and its outputs show
   }).js.code;
   const dir = await Deno.makeTempDir({ dir: root });
   await Deno.writeTextFile(`${dir}/theme.js`, js);
-  const { Theme } = (await import(`${dir}/theme.js`)) as { Theme: typeof ThemeClass };
+  const { Theme } = (await import(toFileUrl(join(dir, "theme.js")).href)) as { Theme: typeof ThemeClass };
   await Deno.remove(dir, { recursive: true });
   const shown: string[] = [];
   const theme = new Theme({ initial: "dark" }, { apply: (c) => shown.push(c) });
