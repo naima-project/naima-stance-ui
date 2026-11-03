@@ -111,6 +111,7 @@ Deno.test("a landing that changes what the checks read is refused while one fail
   const m: Any = stanceUi({ app: "violating" }, { plugin: "stance-ui" });
   const report = m.contributes["landing-reports"][0];
   assertEquals(report.name, "ui-stance-checks");
+  assertEquals(report.heavy, true, "a line landing runs the browser checks only on the landing host");
   assert(m.optional.includes("landing-reports"));
   const ctx = { root: fixture("") };
   const at = (changed: string[]) => report.refuses(ctx, { branch: "b", from: "a", to: "b", changed });

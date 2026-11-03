@@ -199,6 +199,8 @@ export default function stanceUi(options = {}, api = {}) {
         says:
           "a landing that changes a file the UI stance's checks read (tokens, mood boards, contrast pairs, widgets, components, stance-ui.json) is refused while any of its checks fails on the branch's files",
         runs: [deno],
+        // The browser checks take minutes: a line landing runs this report only on the declared landing host.
+        heavy: true,
         async refuses(ctx, landing) {
           const root = appRoot(ctx);
           const changed = landing.changed
