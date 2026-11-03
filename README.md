@@ -640,7 +640,8 @@ When a project customizes its mood board, its tokens or its widgets, the checks 
   a file the checks read (a token file, a mood board, the contrast pairs, a widget, a component or `stance-ui.json`),
   every check runs, browser checks included, and each problem refuses the landing. The report is a `refuses` one, so
   Naima says the branch fails a check, and `--stale-proofs` does not let it through. A checker that cannot run refuses
-  it too, since the change was not checked. A landing that changes none of those files runs nothing.
+  it too, since the change was not checked. A landing that changes none of those files runs nothing. The report runs the
+  checks with `--no-record`, so a landing leaves no `stance-ui.checked.json` behind in the checkout it looked at.
 - **Right after an agent's edit.** The plugin contributes an agent hook, `ui-edit-hook`: a `PostToolUse` hook on
   `Edit|Write|MultiEdit` that runs `naima stance-ui hook`. Naima installs it in the agent tool's settings
   (`.claude/settings.json` for Claude Code) at `naima stance adopt`, `naima init` and `naima update`, beside the

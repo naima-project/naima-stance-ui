@@ -212,6 +212,8 @@ export default function stanceUi(options = {}, api = {}) {
               "--changed",
               JSON.stringify(changed),
               "--json",
+              // The landing only asks: it writes no record into the checkout it looks at.
+              "--no-record",
             ]);
             return findings.filter((f) => f.level === "problem").map((f) =>
               `${f.check}: ${where(f)}${where(f) ? ": " : ""}${f.message}`

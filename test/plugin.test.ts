@@ -2,8 +2,9 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
 import stanceUi, { RULES } from "../plugin/index.mjs";
 import { parseRule } from "../plugin/rules.mjs";
+import { fromFileUrl, join } from "@std/path";
 
-const fixture = (name: string) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
+const fixture = (name: string) => fromFileUrl(new URL(`./fixtures/${name}`, import.meta.url));
 // deno-lint-ignore no-explicit-any
 type Any = any;
 
@@ -68,7 +69,7 @@ Deno.test("the manifest declares the stance's attribution, its version the packa
 });
 
 Deno.test("the rules are data: each file's front matter reads the same as YAML, and a bad one is refused", async () => {
-  const dir = new URL("../rules/", import.meta.url).pathname;
+  const dir = fromFileUrl(new URL("../rules/", import.meta.url));
   const names = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".md")).map((e) => e.name);
   assertEquals(names.length, RULES.length);
   for (const r of RULES) {
@@ -114,9 +115,13 @@ Deno.test("a landing that changes what the checks read is refused while one fail
   const ctx = { root: fixture("") };
   const at = (changed: string[]) => report.refuses(ctx, { branch: "b", from: "a", to: "b", changed });
   assertEquals(await at(["README.md", "clean/src/App.svelte"]), []);
+  const record = join(fixture("violating"), "stance-ui.checked.json");
+  await Deno.remove(record).catch(() => {});
   const lines: string[] = await at(["violating/src/Dragging.svelte"]);
   assert(lines.some((l) => l.startsWith("no-raw-drag: src/Dragging.svelte:")), lines.join("\n"));
   assert(lines.some((l) => l.startsWith("auth-only: ")));
+  // The landing only asks: the checkout gets no record of the run.
+  assertEquals(await Deno.stat(record).then(() => true, () => false), false);
   // A checker that cannot run holds the landing rather than letting it through unchecked.
   const broken: Any = stanceUi({ app: "violating", deno: "no-such-deno" }, { plugin: "stance-ui" });
   assertEquals(report.blocks, undefined, "a failing check refuses the landing: it is not a proof out of date");
