@@ -17,7 +17,7 @@ export class Calculator {
   #registers: R.Registers = $state.raw(R.empty);
 
   constructor(config: { digits?: number } = {}) {
-    // The port: the control's outputs, carried out on the registers. A calculation's verdict is an input.
+    // The control's outputs, carried out on the registers. A calculation's verdict is an input.
     this.#control = new Control({ limit: config.digits ?? R.DIGITS }, {
       enter: (digit, fresh) => (this.#registers = R.enter(this.#registers, digit, fresh)),
       dot: (fresh) => (this.#registers = R.dot(this.#registers, fresh)),

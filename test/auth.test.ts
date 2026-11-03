@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
-import type { Auth as AuthClass, AuthPort, AuthReply } from "../src/lib/auth/auth.svelte.ts";
+import type { Auth as AuthClass, AuthOutputs, AuthReply } from "../src/lib/auth/auth.svelte.ts";
 import { compileModule } from "svelte/compiler";
 import typescript from "typescript";
 
@@ -24,7 +24,7 @@ const reply = (r: AuthReply) => Promise.resolve(r);
 Deno.test("signing in with a password, then a one-time code, keeps the username and never the password", async () => {
   const Auth = await load();
   const asked: string[] = [];
-  const port: AuthPort = {
+  const outputs: AuthOutputs = {
     password: (u, p) => (asked.push(`password ${u} ${p}`), reply({ result: "code" })),
     code: (c) => (asked.push(`code ${c}`),
       reply(
@@ -35,7 +35,7 @@ Deno.test("signing in with a password, then a one-time code, keeps the username 
         },
       )),
   };
-  const auth = new Auth(port);
+  const auth = new Auth(outputs);
   assertEquals(auth.view.passkey, false);
   assert(!auth.allowed({ type: "passkey" }) && !auth.allowed({ type: "code" }));
   assert(await auth.password("  ada ", "correct horse"));
@@ -71,7 +71,7 @@ Deno.test("an empty field is refused in words tied to it, and a failing service 
   assert(auth.view.error?.includes("did not answer"));
 });
 
-Deno.test("a passkey is offered only when the port has one, and back leaves the code step", async () => {
+Deno.test("a passkey is offered only when its outputs have one, and back leaves the code step", async () => {
   const Auth = await load();
   const auth = new Auth({
     password: () => reply({ result: "code" }),

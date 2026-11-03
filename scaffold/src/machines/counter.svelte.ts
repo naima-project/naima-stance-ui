@@ -10,7 +10,7 @@ export interface CounterView {
   readonly said: string;
 }
 
-export interface CounterPort {
+export interface CounterOutputs {
   /** The count got to the limit. */
   reached(limit: number): void;
 }
@@ -18,11 +18,11 @@ export interface CounterPort {
 export class Counter {
   #state: logic.State = $state({ count: 0, limit: 0 });
   readonly view: CounterView;
-  readonly #port: CounterPort;
+  readonly #outputs: CounterOutputs;
 
-  constructor(config: logic.Config, port: CounterPort = { reached() {} }) {
+  constructor(config: logic.Config, outputs: CounterOutputs = { reached() {} }) {
     this.#state = logic.initial(config).state;
-    this.#port = port;
+    this.#outputs = outputs;
     const state = () => this.#state;
     this.view = {
       get count() {
@@ -54,7 +54,7 @@ export class Counter {
     const r = logic.step(this.#state, event);
     if (!r) return false;
     this.#state = r.state;
-    for (const a of r.actions) if (a.type === "reached") this.#port.reached(a.limit);
+    for (const a of r.actions) if (a.type === "reached") this.#outputs.reached(a.limit);
     return true;
   }
 }

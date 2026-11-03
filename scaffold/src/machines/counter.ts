@@ -1,5 +1,5 @@
 // The counter's logic, plain TypeScript with no UI, in the shape naima-codegen emits: `initial`, `step` and
-// `allowed`. `step` returns the next state and the outputs the port carries out, or null when the event is
+// `allowed`. `step` returns the next state and the output actions the machine's outputs carry out, or null when the event is
 // not allowed now. Tested in test/counter.test.ts without a browser.
 
 export interface Config {

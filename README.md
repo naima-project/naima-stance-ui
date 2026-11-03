@@ -20,7 +20,7 @@ can be loaded into Naima as a plugin.
    one deep-reactive Svelte 5 store, a `$state` object made once with `createStore`, which holds every state machine of
    the app. A machine has the shape naima-codegen emits: a read-only `view` of its state, `allowed(event)`, and one
    method per input, which are its transitions. Nothing changes the state except those methods. Side effects are the
-   machine's outputs, carried out by a port that is passed to the machine when it is made.
+   machine's output actions, carried out by its outputs, an object passed to the machine when it is made.
 
 3. **Machines are composed of simpler ones, and modelled first.** A machine is built from simpler ones as far as the
    formalism allows. Two machines side by side in the store are their product, and machines that synchronise on shared
@@ -51,7 +51,7 @@ can be loaded into Naima as a plugin.
 
 8. **Every mood board has a light and a dark theme, and the user's choice is app state.** Both themes define the same
    tokens. The app follows the system's `prefers-color-scheme` unless the user chose a theme. That choice is held by the
-   theme machine in the store and changes only through its transition, whose port sets `data-theme` on the page. Both
+   theme machine in the store and changes only through its transition, whose outputs set `data-theme` on the page. Both
    themes reach 4.5:1 for text and 3:1 for controls and focus rings.
 
 9. **The interface meets EN 301 549 and WCAG 2.2 at level AA.** See [accessibility](#accessibility) for what that asks
@@ -95,7 +95,7 @@ rules/                              the stance's rules, one Markdown file each
 scripts/tokens.ts                   builds one mood board, both themes, into CSS custom properties
 src/lib/components/                 the widget set
 src/lib/store/store.svelte.ts       createStore, storeContext, useStore, snapshot
-src/lib/theme/                      the theme machine and its port for the page
+src/lib/theme/                      the theme machine and its outputs for the page
 src/lib/auth/                       the sign-in machine and its passkey helper for the browser
 gallery/                            every widget on one page, built once per mood board
 scripts/variants.ts                 several variants of the design side by side, live, in light and dark
@@ -199,7 +199,7 @@ const store = createStore({ theme: new Theme({ initial: savedTheme() }, document
 <ThemeSwitch value={theme.view.choice} onchange={(c) => theme.choose(c)} />
 ```
 
-`documentTheme()` is the theme machine's port in a browser: it sets or removes `data-theme` on the root element and
+`documentTheme()` is the theme machine's outputs in a browser: it sets or removes `data-theme` on the root element and
 remembers the choice in `localStorage`, which `savedTheme()` reads back at the next visit.
 
 `Draggable` is the only widget that handles dragging. It wraps the thing that moves, and its `moves` prop is required
@@ -218,9 +218,10 @@ so dragging a row of a list by one row moves it by one place. What a move does i
 offered), a password field (`autocomplete="current-password"`) whose text can be shown, a button for a passkey, and a
 step for a one-time code (`autocomplete="one-time-code"`). It never blocks pasting, asks no puzzle, and says every error
 in text tied to its field. Its logic is the sign-in machine, `Auth` in `src/lib/auth/auth.svelte.ts`, kept in the store
-like any other: it holds the step and the username, never the password, and its port checks what was entered. The port's
-`passkey` is optional; `webauthnPasskey(options, verify)` in `src/lib/auth/webauthn.ts` makes one from the service's two
-calls and the browser's Web Authentication API. A project that needs a sign-up form adds it to its own copy of `Auth`.
+like any other: it holds the step and the username, never the password, and its outputs check what was entered. The
+outputs' `passkey` is optional; `webauthnPasskey(options, verify)` in `src/lib/auth/webauthn.ts` makes one from the
+service's two calls and the browser's Web Authentication API. A project that needs a sign-up form adds it to its own
+copy of `Auth`.
 
 ```svelte
 <Auth view={auth.view} onpassword={(u, p) => auth.password(u, p)} onpasskey={() => auth.passkey()}
@@ -269,7 +270,7 @@ The checks below cover what a machine can decide; they do not replace a test wit
 
 ```ts
 // the app's store, made once outside any component
-const store = createStore({ tasks: new Tasks({ limit: 12 }, port), filter: new Filter() });
+const store = createStore({ tasks: new Tasks({ limit: 12 }, outputs), filter: new Filter() });
 mount(App, { target, context: storeContext(store) });
 ```
 
@@ -287,7 +288,7 @@ persistence.
 
 The demo (`demo/`) is a task list with two machines. `tasks` is written by hand in the two-file shape naima-codegen
 emits: `tasks.ts` holds the plain logic (`initial`, `step`, `allowed`) and `tasks.svelte.ts` the Svelte class with its
-view, its transitions and its port. The comment at its top says why it has no model. `filter` is a one-input machine
+view, its transitions and its outputs. The comment at its top says why it has no model. `filter` is a one-input machine
 written directly as a class. A generated machine can replace either of them without any component changing.
 
 ```sh
@@ -295,19 +296,21 @@ deno task demo         # the demo with Vite's dev server
 deno task demo:build   # builds the white mood board and the demo into demo/dist
 ```
 
-### From a machine's port to the page
+### From a machine's outputs to the page
 
 A machine never touches the page. What it decides reaches the DOM in one of two ways, and nothing else in the app writes
 to the page.
 
 - **What is shown, and announced, is read from its view.** A component renders a field of the view; text a screen reader
   should hear when it changes goes in a live region (`<Text live="polite">`, or `aria-live` on an `<output>`).
-- **What is done, a focus moved, something stored or sent, is an output carried out by the port** that `app.svelte.ts`
-  passes the machine when it makes it. The port is where `document`, `localStorage` and `fetch` (or the platform
-  bridge's `call`) appear; an answer comes back as one of the machine's inputs.
+- **What is done, a focus moved, something stored or sent, is an output action carried out by the machine's outputs**,
+  the object of one method per output that `app.svelte.ts` passes the machine when it makes it. The outputs are where
+  `document`, `localStorage` and `fetch` (or the platform bridge's `call`) appear; an answer comes back as one of the
+  machine's inputs. They were called the machine's port until this release; the old type names (`ThemePort`, `AuthPort`,
+  and a generated machine's `<Name>Port`) still work, deprecated, for one more release.
 
 ```ts
-// app.svelte.ts: the counter's port moves the focus once the page shows the new state
+// app.svelte.ts: the counter's outputs move the focus once the page shows the new state
 counter: new Counter({ limit: 3 }, {
   reached: () => tick().then(() => document.getElementById("reset")?.focus()),
 }),
@@ -319,7 +322,7 @@ counter: new Counter({ limit: 3 }, {
 <Button id="reset" disabled={!counter.allowed({ type: "reset" })} onclick={() => counter.reset()}>Start over</Button>
 ```
 
-The theme machine works the same way: `documentTheme()` is its port, setting `data-theme` on the root element.
+The theme machine works the same way: `documentTheme()` is its outputs, setting `data-theme` on the root element.
 
 ## Examples
 
@@ -367,7 +370,7 @@ promise of the answer. Arguments and answers are JSON. There are three implement
 - `tauriBridge()` calls the Tauri shell's Rust command of the same name with `invoke`.
 
 `connect({ handlers, server })` picks one: Tauri inside a Tauri webview, else the server when one is named, else the
-local handlers. A machine's port calls `call` for an output and turns the answer into one of the machine's inputs, so
+local handlers. A machine's outputs call `call` for an output and turns the answer into one of the machine's inputs, so
 the machine never knows which platform it is on.
 
 The bridge was called the platform port until this release. The old names (`port.ts`, `Port`, `localPort`, `webPort`,
@@ -552,9 +555,9 @@ update can be compared with what the project changed.
    ```
 
    This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
-   and its port to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform bridge to
-   `src/lib/ui/platform/`, the mood board with both themes and the contrast pairs to `tokens/`, and the token build to
-   `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes `stance-ui.json`, which
+   and its outputs for the page to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform bridge
+   to `src/lib/ui/platform/`, the mood board with both themes and the contrast pairs to `tokens/`, and the token build
+   to `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes `stance-ui.json`, which
    records the stance's version and commit, the mood board, and the sha256 of every file as it was copied, and which
    configures the checks.
 

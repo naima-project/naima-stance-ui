@@ -1,5 +1,5 @@
-// The demo's store: every machine of the app, made once, outside any component. The port carries out the
-// outputs (here, saving the list in the browser) and is the only place with side effects.
+// The demo's store: every machine of the app, made once, outside any component. The tasks machine's
+// outputs (here, saving the list in the browser) are the only place with side effects.
 import { createStore } from "../src/lib/store/store.svelte.ts";
 import { documentTheme, savedTheme } from "../src/lib/theme/document.ts";
 import { Theme } from "../src/lib/theme/theme.svelte.ts";

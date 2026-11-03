@@ -9,7 +9,7 @@ verifiedBy: ui-contrast
 
 Each mood board has a light and a dark theme, declared by a DTCG resolver file, with the same token names. The app
 follows prefers-color-scheme unless the user chose a theme; that choice is held by the theme machine in the store and
-changes only through its transition, whose port sets data-theme on the page. Both themes reach 4.5:1 for text and 3:1
+changes only through its transition, whose outputs set data-theme on the page. Both themes reach 4.5:1 for text and 3:1
 for controls and focus rings, for every pair in the contrast file.
 
 ## Why

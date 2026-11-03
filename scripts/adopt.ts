@@ -7,7 +7,7 @@
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
 // What is copied: the widget set to <to>/components/, the store module to <to>/store/, the theme machine
-// and its port to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform bridge to
+// and its outputs for the page to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform bridge to
 // <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
 // pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
 // src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts. stance-ui.json records the copy and configures `deno task check`.

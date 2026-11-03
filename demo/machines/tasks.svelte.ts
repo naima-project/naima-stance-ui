@@ -1,13 +1,13 @@
 // The tasks machine as a Svelte 5 class, in the shape of the `<module>.svelte.ts` naima-codegen writes
 // (its docs/spec.md §3.18.4): the state in $state fields behind a read-only `view`, one method per input,
-// the outputs as calls to a port. The logic is all in tasks.ts; nothing here decides anything.
+// the outputs as calls to the outputs passed in. The logic is all in tasks.ts; nothing here decides anything.
 import * as M from "./tasks.ts";
 import type { Action, Config, Event, Phase, State, Task } from "./tasks.ts";
 
 export type { Action, Config, Event, Phase, State, Task };
 
 /** What the machine asks the outside world to do: one method per output action. */
-export interface TasksPort {
+export interface TasksOutputs {
   save(tasks: readonly Task[]): void;
   /** An input the machine does not allow now was called; nothing changed. */
   refused?(event: Event): void;
@@ -62,13 +62,13 @@ export class Tasks {
   /** The state, for components: read only; it changes only through the input methods. */
   readonly view: TasksView;
   readonly #fields: _Fields;
-  readonly #port: TasksPort;
+  readonly #outputs: TasksOutputs;
   #state: State;
   #queue: Action[] = [];
   #busy = false;
 
-  constructor(config: Config, port: TasksPort) {
-    this.#port = port;
+  constructor(config: Config, outputs: TasksOutputs) {
+    this.#outputs = outputs;
     const r = M.initial(config);
     this.#state = $state.raw(r.state);
     this.#fields = new _Fields(r.state);
@@ -104,7 +104,7 @@ export class Tasks {
   #input(event: Event): boolean {
     const r = M.step(this.#state, event);
     if (r === null) {
-      this.#port.refused?.(event);
+      this.#outputs.refused?.(event);
       return false;
     }
     this.#state = r.state;
@@ -121,7 +121,7 @@ export class Tasks {
       for (let a = this.#queue.shift(); a !== undefined; a = this.#queue.shift()) {
         switch (a.type) {
           case "save":
-            this.#port.save(a.tasks);
+            this.#outputs.save(a.tasks);
             break;
         }
       }

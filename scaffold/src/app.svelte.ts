@@ -1,5 +1,5 @@
-// The app's store: every machine of the app, made once, outside any component, each with the port that
-// carries out its outputs. The ports are the only place with side effects: here, moving the focus and
+// The app's store: every machine of the app, made once, outside any component, each with the outputs
+// that carry out its output actions. They are the only place with side effects: here, moving the focus and
 // showing the chosen theme.
 import { tick } from "svelte";
 import { createStore } from "./lib/ui/store/store.svelte.ts";

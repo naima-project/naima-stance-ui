@@ -6,7 +6,7 @@ export type HostPhase = "IDLE" | "ASKING" | "KNOWN" | "UNKNOWN";
 /** The answer of the bridge's describe command, the same on every platform. */
 export type HostInfo = { platform: string; shell: string };
 
-export interface HostPort {
+export interface HostOutputs {
   describe(): void;
 }
 

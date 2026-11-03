@@ -2,22 +2,22 @@
 // operating systems. Written directly as a class, without a model: four states on one path (idle, asking,
 // then known or unknown), no concurrency, nothing worth proving.
 //
-// Its one output, describe, is carried out by the port passed in; the answer comes back as the input
+// Its one output, describe, is carried out by the outputs passed in; the answer comes back as the input
 // described, or failed.
 
-import { type HostEvent, type HostInfo, type HostPhase, type HostPort, type HostView, labelFor } from "./host.ts";
+import { type HostEvent, type HostInfo, type HostOutputs, type HostPhase, type HostView, labelFor } from "./host.ts";
 
-export type { HostEvent, HostInfo, HostPhase, HostPort, HostView };
+export type { HostEvent, HostInfo, HostOutputs, HostPhase, HostView };
 export { labelFor };
 
 export class Host {
   readonly view: HostView;
-  readonly #port: HostPort;
+  readonly #outputs: HostOutputs;
   #phase: HostPhase = $state("IDLE");
   #label: string = $state("");
 
-  constructor(port: HostPort) {
-    this.#port = port;
+  constructor(outputs: HostOutputs) {
+    this.#outputs = outputs;
     const phase = () => this.#phase;
     const label = () => this.#label;
     this.view = {
@@ -37,7 +37,7 @@ export class Host {
   ask(): void {
     if (!this.allowed({ type: "ask" })) return;
     this.#phase = "ASKING";
-    this.#port.describe();
+    this.#outputs.describe();
   }
 
   described(info: HostInfo): void {

@@ -1,6 +1,6 @@
 // Signing in: with a username and a password, with a passkey, and with a one-time code when the service asks for
 // one. It is app state, so it is a machine in the store and moves only through its transitions; checking what
-// was entered is the port's business, since only the service knows the answer.
+// was entered is the business of its outputs, since only the service knows the answer.
 //
 // Written directly as a .svelte.ts class, without an mCRL2 model: five states in one line (credentials,
 // checking, code, checking the code, signed in), and its one concurrency, a reply arriving while another attempt
@@ -8,7 +8,7 @@
 //
 // What it never does, by design (WCAG 2.2 SC 3.3.8, accessible authentication): it asks no puzzle, no CAPTCHA and
 // nothing to remember or transcribe beyond the password, which a password manager can fill, and the one-time
-// code, which the browser can fill from a message. It never keeps the password: it is passed to the port and
+// code, which the browser can fill from a message. It never keeps the password: it is passed to its outputs and
 // dropped. It keeps the username, so a later step never asks for it again.
 
 export type AuthStep = "credentials" | "checking" | "code" | "checking-code" | "signed-in";
@@ -30,11 +30,11 @@ export interface AuthView {
   readonly field: AuthField | null;
   /** The username given, kept for the next steps. */
   readonly username: string;
-  /** Whether signing in with a passkey is offered: the port can do it. */
+  /** Whether signing in with a passkey is offered: the outputs can do it. */
   readonly passkey: boolean;
 }
 
-export interface AuthPort {
+export interface AuthOutputs {
   /** Checks a username and a password. */
   password(username: string, password: string): Promise<AuthReply>;
   /** Signs in with a passkey (WebAuthn); absent when the service or the browser has none. */
@@ -42,6 +42,9 @@ export interface AuthPort {
   /** Checks a one-time code. */
   code(code: string): Promise<AuthReply>;
 }
+
+/** @deprecated The old name of AuthOutputs, kept for one release, then removed. */
+export type AuthPort = AuthOutputs;
 
 export type AuthEvent =
   | { type: "password" }
@@ -55,12 +58,12 @@ export class Auth {
   #field: AuthField | null = $state(null);
   #username = $state("");
   readonly view: AuthView;
-  readonly #port: AuthPort;
+  readonly #outputs: AuthOutputs;
 
-  constructor(port: AuthPort) {
-    this.#port = port;
+  constructor(outputs: AuthOutputs) {
+    this.#outputs = outputs;
     const self = () => ({ step: this.#step, error: this.#error, field: this.#field, username: this.#username });
-    const passkey = typeof port.passkey === "function";
+    const passkey = typeof outputs.passkey === "function";
     this.view = {
       get step() {
         return self().step;
@@ -98,15 +101,15 @@ export class Auth {
     if (!password) return this.#refuse({ result: "refused", error: "Enter your password.", field: "password" });
     this.#username = name;
     this.#step = "checking";
-    this.#settle(await this.#ask(() => this.#port.password(name, password)), "credentials");
+    this.#settle(await this.#ask(() => this.#outputs.password(name, password)), "credentials");
     return true;
   }
 
-  /** Signs in with a passkey, through the port. */
+  /** Signs in with a passkey, through the outputs. */
   async passkey(): Promise<boolean> {
-    if (!this.allowed({ type: "passkey" }) || !this.#port.passkey) return false;
+    if (!this.allowed({ type: "passkey" }) || !this.#outputs.passkey) return false;
     this.#step = "checking";
-    this.#settle(await this.#ask(() => this.#port.passkey!()), "credentials");
+    this.#settle(await this.#ask(() => this.#outputs.passkey!()), "credentials");
     return true;
   }
 
@@ -116,7 +119,7 @@ export class Auth {
     const given = code.replace(/\s+/g, "");
     if (!given) return this.#refuse({ result: "refused", error: "Enter the code you received.", field: "code" });
     this.#step = "checking-code";
-    this.#settle(await this.#ask(() => this.#port.code(given)), "code");
+    this.#settle(await this.#ask(() => this.#outputs.code(given)), "code");
     return true;
   }
 

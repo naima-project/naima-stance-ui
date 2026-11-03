@@ -1,7 +1,12 @@
 import { assert, assertEquals } from "@std/assert";
 import * as tasks from "../demo/machines/tasks.ts";
 import { buildTokens, readThemes } from "../scripts/tokens.ts";
-import type { Theme as ThemeClass, ThemeChoice } from "../src/lib/theme/theme.svelte.ts";
+import type { Theme as ThemeClass, ThemeChoice, ThemeOutputs, ThemePort } from "../src/lib/theme/theme.svelte.ts";
+import type { AuthOutputs, AuthPort } from "../src/lib/auth/auth.svelte.ts";
+import type {
+  ControlOutputs,
+  ControlPort,
+} from "../examples/calculator/logic/generated/typescript/control/control.svelte.ts";
 import { compileModule } from "svelte/compiler";
 import typescript from "typescript";
 
@@ -47,7 +52,7 @@ Deno.test("a resolver without a dark theme, or with a file that is not there, is
   await Deno.remove(dir, { recursive: true });
 });
 
-Deno.test("the theme is chosen only through its transition, and the port shows each choice", async () => {
+Deno.test("the theme is chosen only through its transition, and its outputs show each choice", async () => {
   // The machine is a .svelte.ts module: its types stripped by TypeScript and its runes compiled by Svelte,
   // as a bundler would, then run.
   const ts = await Deno.readTextFile(`${root}/src/lib/theme/theme.svelte.ts`);
@@ -69,6 +74,18 @@ Deno.test("the theme is chosen only through its transition, and the port shows e
   assertEquals(theme.choose("system"), true);
   assertEquals(theme.allowed({ type: "choose", choice: "sepia" as ThemeChoice }), false);
   assertEquals(shown, ["dark", "system"]);
+});
+
+Deno.test("the old port names of a machine's outputs still type-check, deprecated, for one more release", () => {
+  // Type checking is the test: each old name must be the same type as the new one, both ways.
+  const theme: ThemeOutputs = { apply() {} };
+  const oldTheme: ThemePort = theme;
+  const auth: AuthOutputs = { password: () => Promise.resolve({ result: "signed-in" }), code: () => Promise.reject() };
+  const oldAuth: AuthPort = auth;
+  const control = {} as ControlOutputs;
+  const oldControl: ControlPort = control;
+  const back: [ThemeOutputs, AuthOutputs, ControlOutputs] = [oldTheme, oldAuth, oldControl];
+  assertEquals(back, [theme, auth, control]);
 });
 
 Deno.test("the tasks machine removes a task only after a confirmation", () => {

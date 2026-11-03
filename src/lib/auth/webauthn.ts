@@ -1,4 +1,4 @@
-// A passkey in a browser, for the sign-in machine's port: the service gives the request's options (its challenge),
+// A passkey in a browser, for the sign-in machine's outputs: the service gives the request's options (its challenge),
 // the browser asks the person's authenticator, and the service checks what it signed. The service's two calls are
 // the app's; this only joins them to the Web Authentication API.
 import type { AuthReply } from "./auth.svelte.ts";
@@ -9,7 +9,7 @@ export function passkeySupported(): boolean {
 }
 
 /**
- * The port's `passkey`: `options` fetches the service's request options, `verify` sends the signed answer back and
+ * The outputs' `passkey`: `options` fetches the service's request options, `verify` sends the signed answer back and
  * returns the service's reply. A cancelled or failed request is a refusal said in words.
  */
 export function webauthnPasskey(

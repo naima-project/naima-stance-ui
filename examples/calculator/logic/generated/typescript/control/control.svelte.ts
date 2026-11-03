@@ -6,8 +6,8 @@
 // To change it: change the model, verify its properties, run
 // naima-codegen generate, and commit the model and the generated directory together.
 // The model's stepper as a Svelte 5 state machine (docs/spec.md §3.18.4). Components read `view` and call
-// one method per input label; the machine calls the port for every output action, and the results of what
-// the port does come back as input methods. The logic is all in control.ts; nothing here decides anything.
+// one method per input label; the machine calls its outputs for every output action, and the results of what
+// the outputs do come back as input methods. The logic is all in control.ts; nothing here decides anything.
 import * as M from "./control.ts";
 import type { Action, Config, Event, Fn, State } from "./control.ts";
 import type { Op, Phase, Todo } from "./control.ts";
@@ -17,7 +17,7 @@ export type { Op, Phase, Todo };
 
 /** What the machine asks the outside world to do: one method per output action. Called after the
  * state has changed, in the order the model takes the actions. */
-export interface ControlPort {
+export interface ControlOutputs {
   apply(op: Op): void;
   dot(fresh: boolean): void;
   drop(): void;
@@ -27,6 +27,9 @@ export interface ControlPort {
   /** An input the model does not allow now was called; nothing changed. */
   refused?(event: Event): void;
 }
+
+/** @deprecated The old name of ControlOutputs, kept for one release, then removed. */
+export type ControlPort = ControlOutputs;
 
 /** The state, read only: one property per parameter of the model. */
 export interface ControlView {
@@ -110,14 +113,14 @@ export class Control {
   /** The state, for components: read only; it changes only through the input methods. */
   readonly view: ControlView;
   readonly #fields: _Fields;
-  readonly #port: ControlPort;
+  readonly #outputs: ControlOutputs;
   #state: State;
   #error: M.StepError | null;
   #queue: Action[] = [];
   #busy = false;
 
-  constructor(config: Config, port: ControlPort) {
-    this.#port = port;
+  constructor(config: Config, outputs: ControlOutputs) {
+    this.#outputs = outputs;
     const r = M.initial(config);
     // Reactive too, so that what reads allowed() or stopped is updated with the fields.
     this.#state = $state.raw(r.state);
@@ -194,7 +197,7 @@ export class Control {
       }
     }
     if (r === null) {
-      this.#port.refused?.(event);
+      this.#outputs.refused?.(event);
       return false;
     }
     this.#state = r.state;
@@ -204,7 +207,7 @@ export class Control {
   }
 
   #emit(actions: readonly Action[]): void {
-    // A port may call an input method while it is called: its actions wait for the ones before them.
+    // An output may call an input method while it is called: its actions wait for the ones before them.
     this.#queue.push(...actions);
     if (this.#busy) return;
     this.#busy = true;
@@ -212,22 +215,22 @@ export class Control {
       for (let a = this.#queue.shift(); a !== undefined; a = this.#queue.shift()) {
         switch (a.type) {
           case "apply":
-            this.#port.apply(a.op);
+            this.#outputs.apply(a.op);
             break;
           case "dot":
-            this.#port.dot(a.fresh);
+            this.#outputs.dot(a.fresh);
             break;
           case "drop":
-            this.#port.drop();
+            this.#outputs.drop();
             break;
           case "enter":
-            this.#port.enter(a.digit, a.fresh);
+            this.#outputs.enter(a.digit, a.fresh);
             break;
           case "flip":
-            this.#port.flip();
+            this.#outputs.flip();
             break;
           case "reset":
-            this.#port.reset();
+            this.#outputs.reset();
             break;
         }
       }

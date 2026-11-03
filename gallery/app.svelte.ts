@@ -1,6 +1,6 @@
 // The gallery's store: the theme the user chose, whether the sample dialog is open, the sample list's order, and
-// the sample sign-in, whose port is a stand-in for a service.
-import { Auth, type AuthPort } from "../src/lib/auth/auth.svelte.ts";
+// the sample sign-in, whose outputs are a stand-in for a service.
+import { Auth, type AuthOutputs } from "../src/lib/auth/auth.svelte.ts";
 import { createStore } from "../src/lib/store/store.svelte.ts";
 import { documentTheme, savedTheme } from "../src/lib/theme/document.ts";
 import { Theme, type ThemeChoice } from "../src/lib/theme/theme.svelte.ts";
@@ -8,7 +8,7 @@ import { Shelf } from "./machines/shelf.svelte.ts";
 import { Sheet } from "./machines/sheet.svelte.ts";
 
 /** A pretend service: "ada" with "correct horse" is asked a code, 123456; the passkey always works. */
-const service: AuthPort = {
+const service: AuthOutputs = {
   password: (username, password) =>
     Promise.resolve(
       username === "ada" && password === "correct horse"

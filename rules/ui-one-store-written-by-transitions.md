@@ -9,8 +9,8 @@ verifiedBy: ui-svelte-check
 
 The app's state is one deep-reactive Svelte 5 store ($state, made once with createStore), which holds every state
 machine of the app. A machine has the shape naima-codegen emits: a read-only view of its state, allowed(event), and one
-method per input, its transitions. Nothing changes the state except those methods; side effects are the machine's
-outputs, carried out by a port passed to it.
+method per input, its transitions. Nothing changes the state except those methods; side effects are the machine's output
+actions, carried out by the outputs passed to it.
 
 ## Why
 
