@@ -434,6 +434,10 @@ since it builds for minutes.
 { "check": { "platforms": { "app": "examples/calculator", "e2e": "examples/calculator/e2e.js" } } }
 ```
 
+An app with a backend adds `"web": "<module>"`: a module, from the project's root, whose `handlers` and `feeds` the
+stance's server answers the bridge with while the web platform's page runs, the app's own backend or a stand-in for it,
+such as one answering from recorded data. A pure client app needs none.
+
 The end-to-end script is one JavaScript expression whose value is a promise of `{ ok, says }`, evaluated inside the
 page. The calculator's presses 1, +, 2 and = and reads 3 on the display. The same script runs on every platform; only
 what puts it in the page differs:

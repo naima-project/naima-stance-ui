@@ -15,8 +15,9 @@ export interface StanceConfig {
   allowImports: string[];
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
-  /** For the platforms check: the app's folder (where src-tauri is) and its end-to-end script, or null. */
-  platforms?: { app: string; e2e: string | null };
+  /** For the platforms check: the app's folder (where src-tauri is), its end-to-end script, or null, and for the
+   * web the module whose bridge handlers and feeds the stance's server answers with. */
+  platforms?: { app: string; e2e: string | null; web?: string };
   /** The colour pairs every theme must make legible: a contrast file (see tokens/contrast.json). */
   contrast: string;
   /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion) open headless. */

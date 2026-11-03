@@ -5,7 +5,7 @@ import { bridgeHandler, portHandler, serveBridge, servePort } from "../platform/
 import { labelFor } from "../examples/calculator/logic/host.ts";
 import { webHandlers } from "../examples/calculator/bridge.ts";
 import { adopt } from "../scripts/adopt.ts";
-import { checkPlatforms, platformFindings } from "../checks/platforms.ts";
+import { checkPlatforms, platformFindings, webBackend } from "../checks/platforms.ts";
 
 const root = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -213,6 +213,29 @@ Deno.test("adopt adds the bridge, and the Tauri shell and the server when asked"
     assertEquals(record.platforms, { tauri: true, server: true });
   } finally {
     await Deno.remove(project, { recursive: true });
+  }
+});
+
+Deno.test("the web platform's server answers with the bridge handlers and feeds of the module the app names", async () => {
+  const dir = await Deno.makeTempDir();
+  try {
+    await Deno.writeTextFile(
+      `${dir}/backend.ts`,
+      "export const handlers = { twice: ({ n }) => n * 2 };\nexport const feeds = { ticks: () => () => {} };\n",
+    );
+    const none = await webBackend(dir, { app: ".", e2e: null });
+    assertEquals([Object.keys(none.handlers), Object.keys(none.feeds)], [[], []]);
+    const b = await webBackend(dir, { app: ".", e2e: null, web: "backend.ts" });
+    assertEquals(
+      await bridgeHandler({ ...b })(new Request("http://app.test/bridge/twice", { method: "POST", body: '{"n":21}' }))
+        .then((r) => r.json()),
+      {
+        ok: 42,
+      },
+    );
+    assertEquals(Object.keys(b.feeds), ["ticks"]);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
   }
 });
 

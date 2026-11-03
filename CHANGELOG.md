@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### The platforms check serves an app's backend on the web
+
+`stance-ui.json`'s `check.platforms.web` names a module whose `handlers` and `feeds` the stance's server answers the
+bridge with while the web platform's page runs, so that an app with a backend, or a stand-in for it, passes its
+end-to-end script in the browsers too.
+
 ### The bridge carries feeds: events the backend pushes
 
 `Bridge` has a second method, `listen(feed, on)`, which hears each event the backend pushes on a named feed until the

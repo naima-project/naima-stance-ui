@@ -18,10 +18,11 @@
 // runs it when STANCE_UI_E2E holds it and prints "e2e: <report>".
 
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 import { fileURLToPath } from "node:url";
 import { TextLineStream } from "@std/streams/text-line-stream";
 import { decodeBase64 } from "@std/encoding/base64";
-import { bridgeHandler } from "../platform/server.ts";
+import { bridgeHandler, type Feeds, type Handlers } from "../platform/server.ts";
 import type { Finding } from "./finding.ts";
 
 export const PLATFORMS = ["web", "macos", "ios", "linux", "windows", "android"] as const;
@@ -32,6 +33,18 @@ export interface PlatformConfig {
   app: string;
   /** The end-to-end script, from the project's root, or null to stop at launched. */
   e2e: string | null;
+  /**
+   * For the web: a module, from the project's root, whose `handlers` and `feeds` the stance's server answers the
+   * bridge with while the page runs, the app's backend or a stand-in for it; none for a pure client app.
+   */
+  web?: string;
+}
+
+/** The bridge the web platform's server answers with: the module `web` names, or nothing. */
+export async function webBackend(root: string, cfg: PlatformConfig): Promise<{ handlers: Handlers; feeds: Feeds }> {
+  if (!cfg.web) return { handlers: {}, feeds: {} };
+  const mod = await import(pathToFileURL(path.resolve(root, cfg.web)).href) as { handlers?: Handlers; feeds?: Feeds };
+  return { handlers: mod.handlers ?? {}, feeds: mod.feeds ?? {} };
 }
 
 /** What one platform (one browser, for the web) reached. */
@@ -58,6 +71,7 @@ interface Ctx {
   tauriDir: string;
   out: string;
   script: string | null;
+  backend: { handlers: Handlers; feeds: Feeds };
   conf: TauriConf;
   env: Record<string, string>;
   progress: (stage: string) => void;
@@ -245,10 +259,7 @@ async function web(ctx: Ctx): Promise<PlatformReport[]> {
   // The page as a web server would give it: the stance's own server, static files and the bridge.
   const server = Deno.serve(
     { port: 0, hostname: "127.0.0.1", onListen: () => {} },
-    bridgeHandler({
-      handlers: {},
-      static: built.dist,
-    }),
+    bridgeHandler({ ...ctx.backend, static: built.dist }),
   );
   const url = `http://127.0.0.1:${server.addr.port}/`;
   const out: PlatformReport[] = [];
@@ -900,6 +911,7 @@ export async function checkPlatforms(
     tauriDir,
     out,
     script: cfg.e2e ? withoutHeader(await Deno.readTextFile(path.resolve(root, cfg.e2e))) : null,
+    backend: await webBackend(root, cfg),
     conf,
     // The Deno running the check is the one the app's build commands find first.
     // (Windows spells it Path, and takes the two spellings as one variable: only one is passed on.)
