@@ -45,6 +45,15 @@ Deno.test("an edit the checks read reruns them and says what fails; any other ed
   }
 });
 
+Deno.test("an edit in a checkout without the app is left alone: the stance is not adopted there", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    assertEquals(await afterEdit(`${project}/ui`, "ui/src/App.svelte", project), null);
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});
+
 Deno.test("status names the files customized since the copy and whether the checks passed since", async () => {
   const { adopt } = await import("../scripts/adopt.ts");
   const project = await Deno.makeTempDir();

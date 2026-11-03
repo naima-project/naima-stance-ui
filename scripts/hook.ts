@@ -13,6 +13,7 @@
 // The fast checks are the static ones, which read files and take a second or two. svelte-check and the browser
 // checks are left to `naima check` and the landing.
 
+import { existsSync } from "node:fs";
 import { posix } from "node:path";
 import { loadConfig } from "../checks/config.ts";
 import { describe } from "../checks/finding.ts";
@@ -43,7 +44,8 @@ export function editedFile(input: string): string | null {
 export async function afterEdit(app: string, file: string, from = app): Promise<string | null> {
   const root = posix.resolve(app);
   const rel = posix.relative(root, posix.resolve(from, file));
-  if (rel.startsWith("..")) return null;
+  // A checkout without the app, such as a trunk whose app lives on a development line, has nothing to check.
+  if (rel.startsWith("..") || !existsSync(`${root}/stance-ui.json`)) return null;
   const cfg = await loadConfig(root);
   if (!isChecked(cfg, rel)) return null;
   const findings = await runChecks(root, FAST);
