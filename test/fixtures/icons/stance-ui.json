@@ -1,0 +1,10 @@
+{
+  "check": {
+    "tokens": "tokens",
+    "widgets": ["src/lib/ui/components"],
+    "components": ["src"],
+    "store": ["src/lib/ui/store/store.svelte.ts"],
+    "icons": { "set": "lucide", "drawings": ["src/charts/Chart.svelte"] },
+    "tsconfig": null
+  }
+}

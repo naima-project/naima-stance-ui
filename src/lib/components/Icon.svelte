@@ -1,4 +1,5 @@
-<!-- A slot for an icon (an inline SVG, or a glyph), sized by the icon token and coloured by the text around it.
+<!-- A slot for an icon of the project's chosen icon set (check.icons; the icons check refuses any other), sized by the
+     icon token and coloured by the text around it.
      Without a label it is decoration and hidden from screen readers; with one it is an image with that name. -->
 <script lang="ts">
   import type { Snippet } from "svelte";

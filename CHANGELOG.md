@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### The project chooses its icon set
+
+The design method has a new step, icons, between typography and widget shapes. The owner chooses one of five predefined,
+published open icon sets (Lucide, Phosphor, Tabler Icons, Heroicons, Material Symbols, listed with their licences and
+Svelte packages in `checks/icons.ts` and the method), compared as prototypes of the app's own icons. The choice is
+recorded in the design record and as `check.icons` in `stance-ui.json`. The new `icons` check (`ui-icons` in Naima, also
+run by the hook) refuses an icon from outside that set in a component: another icon library or icon font, an imported
+SVG file, or inline SVG, except in the components listed under `check.icons.drawings`. The rule
+`ui-icons-from-chosen-set` states it.
+
 ### The project's own Rust, installed without admin rights
 
 The project pins its Rust in `rust-toolchain.toml`, and `deno task toolchain` (`naima stance-ui toolchain` in a project)

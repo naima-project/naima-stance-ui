@@ -165,7 +165,7 @@ Deno.test("naima-plugin.json, what Naima reads without running the plugin, says 
   assert(declared.optional.includes("methods"), "an older Naima, without methods, still loads the stance");
 });
 
-Deno.test("the design method has the shape Naima's methods point validates, its five steps in order", () => {
+Deno.test("the design method has the shape Naima's methods point validates, its six steps in order", () => {
   const m: Any = stanceUi({}, { plugin: "stance-ui" });
   const [design] = m.contributes.methods;
   assertEquals(design.name, "design");
@@ -174,6 +174,7 @@ Deno.test("the design method has the shape Naima's methods point validates, its 
     "mood-board",
     "palette",
     "typography",
+    "icons",
     "widget-shapes",
     "screens",
   ]);

@@ -1,6 +1,6 @@
 // The design tab: a tab of Naima's new UI (its `ui-tabs` point) that shows a project's design record, as the design
-// method (method/design.md) leaves it: one subtab per step (mood board, palette, typography, widget shapes, screens),
-// and in each its rounds as framed pages, the variant chosen and the decision recorded.
+// method (method/design.md) leaves it: one subtab per step (mood board, palette, typography, icons, widget shapes,
+// screens), and in each its rounds as framed pages, the variant chosen and the decision recorded.
 //
 // Plain JavaScript with no import outside the runtime's own modules, like the rest of the plugin. It runs in Naima's
 // process and only reads files: the pages it frames are the project's own, served by Naima in a sandbox, and no code
@@ -28,6 +28,7 @@ const FOLDERS = {
   "mood-board": ["mood", "mood-board", "mood-boards"],
   "palette": ["palette"],
   "typography": ["typography"],
+  "icons": ["icons", "icon-set"],
   "widget-shapes": ["shapes", "widget-shapes"],
   "screens": ["screens"],
 };
@@ -222,7 +223,7 @@ export function designTab({ steps, app }) {
     name: "design",
     title: "Design",
     says:
-      "the app's design record, as the UI stance's design method leaves it: for each step (mood board, palette, typography, widget shapes, screens) its rounds as framed pages, the variant chosen and the decision recorded",
+      "the app's design record, as the UI stance's design method leaves it: for each step (mood board, palette, typography, icons, widget shapes, screens) its rounds as framed pages, the variant chosen and the decision recorded",
     order: 30,
     subtabs: steps.map((s) => ({ name: s.name, title: s.title, says: s.exit })),
     files: (ctx) => {

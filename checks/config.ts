@@ -13,6 +13,10 @@ export interface StanceConfig {
   store: string[];
   /** Packages a component may import besides svelte (an icon set, say). */
   allowImports: string[];
+  /** The icon set chosen in the design method's icons step, one of checks/icons.ts's ICON_SETS by its id, or with the
+   * components that draw (a chart, a diagram) and may hold inline SVG: "lucide", or { "set": "lucide", "drawings":
+   * ["src/Chart.svelte"] }. Absent or null until the step is closed. */
+  icons?: string | { set: string | null; drawings?: string[] } | null;
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
   /** For the platforms check: the app's folder (where src-tauri is), its end-to-end script, or null, and for the

@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { runChecks } from "../checks/run.ts";
+import { ICON_SETS, iconSource } from "../checks/icons.ts";
 import { fromFileUrl } from "@std/path";
 
 const fixture = (name: string) => fromFileUrl(new URL(`./fixtures/${name}`, import.meta.url));
@@ -146,4 +147,65 @@ Deno.test("a password or a one-time code asked for outside the sign-in component
 
 Deno.test("the widget set's Draggable and Auth are the ones allowed to drag and to ask for secrets", async () => {
   assertEquals(await problems("clean", ["no-raw-drag", "auth-only"]), []);
+});
+
+Deno.test("an icon from outside the chosen set is refused: another library, an icon font, an SVG file or inline SVG", async () => {
+  const fs = await problems("icons", ["icons"]);
+  for (
+    const text of [
+      'Bad.svelte: imports "phosphor-svelte", an icon of Phosphor, which is not the chosen set',
+      'imports "@tabler/icons-svelte", an icon of Tabler Icons',
+      'imports "@iconify/svelte", an icon library that is not a predefined set',
+      'imports "@fortawesome/svelte-fontawesome", an icon library',
+      'imports "./logo.svg?raw", an SVG file as an icon',
+      "an <svg> written in a string",
+      "an inline <svg> drawn by hand",
+      "uses the icon font of Material Symbols",
+      "uses Font Awesome",
+      "uses Bootstrap Icons",
+    ]
+  ) has(fs, "icons", text);
+  assertEquals(fs.length, 10, JSON.stringify(fs, null, 1)); // Good.svelte and the chart listed as a drawing pass
+  assert(
+    fs.every((f) =>
+      f.file === "src/Bad.svelte" && f.message.endsWith("use an icon of Lucide, the set chosen in check.icons")
+    ),
+  );
+  // The chosen set's package is no app logic to the import check, and the other libraries are the icons check's.
+  const imports = await problems("icons", ["component-imports"]);
+  assertEquals(imports.map((f) => f.message), [
+    'imports "./logo.svg?raw": is app logic: a component reads the store\'s view and calls its transitions (useStore), and imports anything else only as a type',
+  ]);
+});
+
+Deno.test("before a set is chosen any icon is refused, and a set that is not predefined is refused", async () => {
+  const fs = await problems("icons-unchosen", ["icons"]);
+  has(
+    fs,
+    "icons",
+    'stance-ui.json: check.icons names "feather", which is not one of the predefined icon sets: lucide, phosphor',
+  );
+  has(
+    fs,
+    "icons",
+    'Early.svelte: imports "@lucide/svelte", an icon of Lucide, which is not the chosen set: no icon set is chosen',
+  );
+  assertEquals(fs.length, 2);
+  assertEquals(await problems("clean", ["icons"]), [], "a project with no icons needs no set");
+});
+
+Deno.test("the predefined icon sets: each one's packages are its own, and the method offers exactly these", async () => {
+  for (const set of ICON_SETS) {
+    for (const p of set.packages) assertEquals(iconSource(p.replace(/\*$/, "svg-400")), set, p);
+    assert(set.licence && set.style && set.icons && set.homepage.startsWith("https://"), set.id);
+  }
+  assertEquals(iconSource("@lucide/svelte/icons/search"), ICON_SETS[0]);
+  assertEquals(iconSource("lucide-static"), "other", "a set's SVG files are for the design rounds, not components");
+  assertEquals(iconSource("svelte"), null);
+  assertEquals(iconSource("date-fns"), null);
+  const method = await Deno.readTextFile(new URL("../method/design.md", import.meta.url));
+  for (const set of ICON_SETS) {
+    assert(method.includes(`${set.name} (\`${set.id}\`)`), `method/design.md offers ${set.id}`);
+    for (const p of set.packages.filter((p) => !p.endsWith("*"))) assert(method.includes(`\`${p}\``), p);
+  }
 });

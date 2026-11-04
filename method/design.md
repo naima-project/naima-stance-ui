@@ -1,11 +1,11 @@
 # Designing the interface: the stance's method
 
-This is how an agent designs the look of an app that adopts the UI stance, together with the owner. It goes in five
-steps, closed one at a time and in this order: mood board, palette, typography, widget shapes, screens. Each step works
-the same way. The agent builds about five variants of the real app, live, in light and dark. The owner looks at them
-side by side, picks one or a combination, and says what to change. The agent builds the next round from that answer, and
-keeps going until the owner accepts one. The choice is then written into the project's tokens and recorded as a
-decision, and the step is closed. A later step never reopens an earlier one without the owner asking.
+This is how an agent designs the look of an app that adopts the UI stance, together with the owner. It goes in six
+steps, closed one at a time and in this order: mood board, palette, typography, icons, widget shapes, screens. Each step
+works the same way. The agent builds about five variants of the real app, live, in light and dark. The owner looks at
+them side by side, picks one or a combination, and says what to change. The agent builds the next round from that
+answer, and keeps going until the owner accepts one. The choice is then written into the project's tokens and recorded
+as a decision, and the step is closed. A later step never reopens an earlier one without the owner asking.
 
 A step can take several rounds. Rounds are counted within a step, starting at 1, and in the screens step each screen
 counts its own: the home screen's round 2 and the settings screen's round 2 are different rounds. Always name a round
@@ -18,13 +18,16 @@ becomes a sub-goal of the gate that closes when its decision is recorded.
 ## Proposing the method
 
 When the owner asks for a UI, or for a new look for one, the agent proposes this method before it builds anything. In a
-few plain sentences it says that the work goes in five steps, each closed by the owner's choice among live variants, and
+few plain sentences it says that the work goes in six steps, each closed by the owner's choice among live variants, and
 offers to explain the method and each step in more detail. It says why the steps come in this order:
 
 - The mood board settles the character of the app (light or dark, warm or cool, quiet or lively) before any detail is
   discussed, so that later choices are made against one direction rather than argued one by one.
 - The palette, the typography and the widget shapes become design tokens. Every screen reuses them, so a choice made
   once holds everywhere, and changing it later means changing one value rather than every screen.
+- The icon set is chosen once, among a few published open sets, so that every icon of the app shares one grid, stroke
+  and style, and none is drawn by hand later. It comes after the typography because icons sit next to text and must
+  match its weight.
 - The screens come last, so that each one is built from parts that are already settled, and a round of screens is about
   layout alone.
 
@@ -163,13 +166,14 @@ other feature.
 
 ## The steps
 
-| Step             | Changes only                                                      | Fixed from earlier steps   |
-| ---------------- | ----------------------------------------------------------------- | -------------------------- |
-| 1. Mood board    | all tokens (whole mood board)                                     | nothing                    |
-| 2. Palette       | `themes/light` and `themes/dark` colours                          | the mood board's character |
-| 3. Typography    | `typography.tokens.json`                                          | palette                    |
-| 4. Widget shapes | `radius`, `spacing` (sizes, borders), `motion`, `themes/*/shadow` | palette, typography        |
-| 5. Screens       | the app's screen components, no tokens                            | every token                |
+| Step             | Changes only                                                       | Fixed from earlier steps   |
+| ---------------- | ------------------------------------------------------------------ | -------------------------- |
+| 1. Mood board    | all tokens (whole mood board)                                      | nothing                    |
+| 2. Palette       | `themes/light` and `themes/dark` colours                           | the mood board's character |
+| 3. Typography    | `typography.tokens.json`                                           | palette                    |
+| 4. Icons         | `check.icons` in `stance-ui.json`, and the set's package; no token | palette, typography        |
+| 5. Widget shapes | `radius`, `spacing` (sizes, borders), `motion`, `themes/*/shadow`  | palette, typography, icons |
+| 6. Screens       | the app's screen components, no tokens                             | every token, the icon set  |
 
 ### 1. Mood board
 
@@ -209,7 +213,42 @@ other feature.
 - **Exit:** the owner accepts one type system.
 - **Written:** `tokens/typography.tokens.json`; decision recorded.
 
-### 4. Widget shapes
+### 4. Icons
+
+- **Inputs:** the palette and the typography; the list of icons the app needs (its actions, its objects, its states:
+  "add, delete, search, settings, sync, error"), at least ten, most used first. The predefined sets, the only ones the
+  owner is offered (`checks/icons.ts` holds the same list as data, and the icons check accepts nothing else):
+
+  | Set (`check.icons`)                   | Licence    | Style                                                           | Icons                       | Svelte package                                                         | SVG files for the round     |
+  | ------------------------------------- | ---------- | --------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------- | --------------------------- |
+  | Lucide (`lucide`)                     | ISC        | outline, 2 px round stroke on a 24 px grid, one style           | about 1,700                 | `@lucide/svelte` (`lucide-svelte` for Svelte 4)                        | `lucide-static`             |
+  | Phosphor (`phosphor`)                 | MIT        | six weights from thin to bold, plus fill and duotone            | about 1,500 in six weights  | `phosphor-svelte`                                                      | `@phosphor-icons/core`      |
+  | Tabler Icons (`tabler`)               | MIT        | outline, 2 px stroke on a 24 px grid, some also filled          | about 6,000                 | `@tabler/icons-svelte`                                                 | `@tabler/icons`             |
+  | Heroicons (`heroicons`)               | MIT        | outline and solid at 24, 20 and 16 px, from Tailwind's makers   | about 320 in four styles    | `@steeze-ui/heroicons` with `@steeze-ui/svelte-icon`                   | `heroicons`                 |
+  | Material Symbols (`material-symbols`) | Apache-2.0 | Google's, outlined, rounded and sharp, variable weight and fill | about 3,800 in three styles | `@material-symbols/svg-400` (SVG files) or `material-symbols` (a font) | `@material-symbols/svg-400` |
+
+  Heroicons has no Svelte package of its own: the one above is a community wrapper, updated less often than the set. Say
+  so when offering it.
+- **Variants:** a round of the icons step is compared like the screens, as static prototypes. Each variant is a folder
+  with an `index.html` on the final token CSS, showing the app's list of icons from one set, each with its name, at the
+  icon token's size and twice that, inside a button, next to a line of body text and in the muted text colour, in light
+  and dark. Take the icons from the set's package of SVG files: install it once in a scratch folder outside the app
+  (`deno install npm:lucide-static`) and copy the files the list needs into the variant's folder. The prototypes are in
+  `design/`, which the checks do not read, so they may hold the SVG files.
+- **Variants differ on:** the set. Round one shows each predefined set that has every icon on the list (up to five, one
+  per variant). Later rounds keep the chosen set and vary what it offers: the weight (Phosphor), the style (Material
+  Symbols, Heroicons), filled or outline for the selected state.
+- **Shown:** `deno run -A <stance>/scripts/variants.ts --builds design/icons/round-<n> --serve 4310`.
+- **Accessibility:** an icon that is the only content of a control has a label (the widget set's `Icon` with `label`);
+  an icon next to text is decoration and hidden. Icons are told apart by their shape, never by colour alone.
+- **Exit:** the owner chooses one set, and its weight or style if it has several.
+- **Written:** `check.icons` in `stance-ui.json` names the set (`"icons": "lucide"`, or
+  `"icons": { "set": "lucide", "drawings": ["src/Chart.svelte"] }` when a component draws a chart or a diagram), the
+  set's Svelte package is added to the app (`deno add npm:@lucide/svelte`), the icons check passes, and the decision is
+  recorded (`## 2026-11-04 icons: Lucide (variant a of round 1)`). From then on every icon comes from that set: the
+  icons check refuses inline SVG, an imported SVG file and any other icon library or icon font in a component.
+
+### 5. Widget shapes
 
 - **Inputs:** palette and typography; the devices from the brief (touch or pointer).
 - **Variants differ on:** corner radius, border widths, spacing and density, control and key sizes, shadow depth, the
@@ -221,7 +260,7 @@ other feature.
 - **Written:** `tokens/radius.tokens.json`, `spacing.tokens.json`, `motion.tokens.json`,
   `tokens/themes/*/shadow.tokens.json`; decision recorded. After this step the tokens are final.
 
-### 5. Screens
+### 6. Screens
 
 - **Inputs:** every earlier decision; the app's machines and their views (what each screen must show and allow); the
   list of screens, most used first. Screens are designed one at a time, and each screen has its own rounds, numbered

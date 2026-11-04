@@ -67,6 +67,12 @@ const CHECKS = [
     says: "components import no app logic beyond the store; the widgets of the set not even the store",
   },
   {
+    name: "ui-icons",
+    runs: "icons",
+    says:
+      "every icon comes from the one predefined icon set the design method chose (check.icons): no inline SVG drawn by hand, no other icon library",
+  },
+  {
     name: "ui-svelte-check",
     runs: "svelte-check",
     says: "svelte-check passes: types hold, and nothing writes the store around its transitions",

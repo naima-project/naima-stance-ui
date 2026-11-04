@@ -4,6 +4,7 @@ import { posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
+import { checkIcons, readIconChoice } from "./icons.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVE } from "./primitives.ts";
@@ -17,6 +18,7 @@ export const CHECKS = [
   "contrast",
   "no-raw-literals",
   "component-imports",
+  "icons",
   "svelte-check",
   "no-raw-drag",
   "auth-only",
@@ -200,6 +202,8 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   const widgetDirs = cfg.widgets.map(norm);
   const stores = new Set(cfg.store.map((s) => norm(s).replace(/\.(ts|js)$/, "")));
   const inWidgets = (f: string) => widgetDirs.some((d) => f.startsWith(d + "/"));
+  const icons = readIconChoice(cfg.icons);
+  if (only.includes("icons")) findings.push(...icons.findings);
   const files = new Set<string>();
   for (const dir of [...cfg.widgets, ...cfg.components]) for (const f of await svelteFiles(root, dir)) files.add(f);
   for (const file of [...files].sort()) {
@@ -213,6 +217,9 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
       });
       if (only.includes("no-raw-drag")) findings.push(...found.drag);
       if (only.includes("auth-only")) findings.push(...found.auth);
+    }
+    if (only.includes("icons")) {
+      findings.push(...checkIcons(file, source, { set: icons.set, drawing: icons.drawings.includes(file) }));
     }
     if (only.includes("component-imports")) {
       findings.push(...checkImports(file, source, {

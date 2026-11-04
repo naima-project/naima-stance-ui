@@ -25,6 +25,7 @@ export const FAST: readonly CheckName[] = [
   "contrast",
   "no-raw-literals",
   "component-imports",
+  "icons",
   "no-raw-drag",
   "auth-only",
 ];

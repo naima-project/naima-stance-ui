@@ -6,6 +6,7 @@
 import { posix } from "node:path";
 import { parse } from "svelte/compiler";
 import { type Finding, lineOf } from "./finding.ts";
+import { isIconPackage } from "./icons.ts";
 
 const CHECK = "component-imports";
 
@@ -36,6 +37,8 @@ function refusal(file: string, spec: string, rules: ImportRules): string | null 
   if (spec.endsWith(".svelte")) return null;
   const pkg = spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
   if (!spec.startsWith(".") && rules.packages.includes(pkg)) return null;
+  // Icons are the icons check's: it allows the chosen set and refuses every other icon library.
+  if (!spec.startsWith(".") && isIconPackage(spec)) return null;
   const resolved = resolveFrom(file, spec);
   if (rules.isWidgetIndex(resolved)) return null;
   if (rules.isStore(resolved)) {

@@ -74,9 +74,13 @@ can be loaded into Naima as a plugin.
 15. **Before building a UI, the agent proposes the design method** (see
     [Designing with variants](#designing-with-variants)), and says why its steps come in that order.
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10 and 11 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14 and
-15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and the
-agent records the review as a note on the item the change lands with.
+16. **Every icon comes from the one icon set chosen at design time**, among a few predefined, published open sets
+    (Lucide, Phosphor, Tabler Icons, Heroicons, Material Symbols). The choice is `check.icons` in `stance-ui.json`; no
+    icon is drawn by hand as inline SVG or taken from another library.
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14
+and 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and
+the agent records the review as a note on the item the change lands with.
 
 Each rule is a Markdown file in `rules/`, one per rule, which the Naima plugin reads and ships to `naima rules`. Its
 front matter holds `name`, `title`, `audience` (agents, people or everyone), `strength` (must or should), optionally
@@ -99,7 +103,7 @@ src/lib/theme/                      the theme machine and its outputs for the pa
 src/lib/auth/                       the sign-in machine and its passkey helper for the browser
 gallery/                            every widget on one page, built once per mood board
 scripts/variants.ts                 several variants of the design side by side, live, in light and dark
-method/design.md                    the design method: five steps, each closed by the owner's choice among variants
+method/design.md                    the design method: six steps, each closed by the owner's choice among variants
 skills/ui-design/SKILL.md           the same method as a skill an agent follows
 src/lib/platform/bridge.ts          the platform bridge: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
@@ -159,14 +163,14 @@ deno task tokens --mood dusk --out dist/tokens.css
 
 ## Designing with variants
 
-The look of an app is designed with its owner in five steps, closed one at a time: mood board, palette, typography,
-widget shapes, then screens. At each step the agent makes about five variants, each a copy of the project's tokens with
-only that step's tokens changed, and shows them side by side as the real widget gallery in light and dark. The owner
-picks one or a combination and says what to change, until one is accepted and recorded as a decision. Before building a
-UI, the agent proposes these steps to the owner and says why they come in this order. Rounds are counted within each
-step, and within each screen in the last step. Before the app exists, screens are compared as static layout prototypes
-on the final tokens. [`method/design.md`](method/design.md) is the method, and `naima-plugin.json` declares its steps
-under `contributes.methods`, so that a Naima gate can follow them.
+The look of an app is designed with its owner in six steps, closed one at a time: mood board, palette, typography,
+icons, widget shapes, then screens. At each step the agent makes about five variants, each a copy of the project's
+tokens with only that step's tokens changed, and shows them side by side as the real widget gallery in light and dark.
+The owner picks one or a combination and says what to change, until one is accepted and recorded as a decision. Before
+building a UI, the agent proposes these steps to the owner and says why they come in this order. Rounds are counted
+within each step, and within each screen in the last step. Before the app exists, screens are compared as static layout
+prototypes on the final tokens. [`method/design.md`](method/design.md) is the method, and `naima-plugin.json` declares
+its steps under `contributes.methods`, so that a Naima gate can follow them.
 
 ```sh
 deno task variants --from design/palette/round-1 --serve 4310
@@ -522,18 +526,19 @@ deno task check --project <app folder>   # any project with a stance-ui.json
 deno task check --only tokens,no-raw-literals --json
 ```
 
-| Check               | What it holds                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                 |
-| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                        |
-| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                |
-| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                      |
-| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                           |
-| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.       |
-| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script. |
-| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                     |
-| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                       |
-| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                               |
+| Check               | What it holds                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                                                                                                                                                        |
+| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                                                                                                                                                               |
+| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                                                                                                                                                       |
+| `icons`             | Every icon comes from the set `check.icons` names, one of the predefined sets in `checks/icons.ts`: a component imports no other icon library (nor any set's package before one is chosen), no SVG file, holds no inline `<svg>` or one written through `{@html}`, and uses no other icon font's classes. Components listed under `check.icons.drawings` may hold SVG. |
+| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                                                                                                                                                             |
+| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                                                                                                                                                                  |
+| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                              |
+| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script.                                                                                                                                        |
+| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                                                                                                                                                            |
+| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                                                                                                                                                              |
+| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                                                                                                                                                                      |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
@@ -561,6 +566,7 @@ the record.
     "components": ["src"],
     "store": ["src/lib/ui/store/store.svelte.ts"],
     "allowImports": [],
+    "icons": { "set": "lucide", "drawings": [] },
     "tsconfig": "tsconfig.json",
     "contrast": "tokens/contrast.json",
     "pages": [
@@ -575,8 +581,11 @@ the record.
 }
 ```
 
-`moods` is optional, and `tsconfig` set to `null` skips the type check. A page's `path` is its built HTML file; `build`
-is run from the root before the pages are opened, once for each distinct command; `click` takes Playwright selectors.
+`moods` is optional, and `tsconfig` set to `null` skips the type check. `icons` is the icon set the design method's
+icons step chose (`"lucide"` alone is the same as `{ "set": "lucide" }`), and is absent until that step is closed;
+`drawings` lists the components that draw a chart or a diagram and may hold SVG. A page's `path` is its built HTML file;
+`build` is run from the root before the pages are opened, once for each distinct command; `click` takes Playwright
+selectors.
 
 ## Adopting the stance in a project
 
@@ -639,10 +648,10 @@ came from the stance, and names each of them so they can be merged by hand. `--f
 
 `plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
-check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`,
-`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. In a
-checkout whose app folder holds no `stance-ui.json`, such as a trunk whose app lives on a development line, each check
-reports one note saying the stance is not adopted there, and no problem. And it adds
+check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-icons`,
+`ui-svelte-check`, `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check`
+runs them. In a checkout whose app folder holds no `stance-ui.json`, such as a trunk whose app lives on a development
+line, each check reports one note saying the stance is not adopted there, and no problem. And it adds
 `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's own
 modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from the
 plugin's checkout, so Deno must be on the PATH.
@@ -698,12 +707,12 @@ Deno executable if it is not the one on the PATH.
 
 In Naima's new window (`naima ui`) the plugin adds a Design tab, `plugin/design.mjs`, contributed to Naima's `ui-tabs`
 point (listed under `optional`, so a Naima without it still loads the stance). It has one subtab per step of the design
-method, read from `naima-plugin.json`: mood board, palette, typography, widget shapes and screens. Each subtab shows the
-step's rounds in order, each with its variants, its notes and its pages in frames side by side: the round's comparison
-page and, in the screens step, each variant's own prototype or build, with each screen's rounds in turn. The variant
-chosen is marked, and the decision recorded in `decisions.md` heads the subtab. The plugin only reads files and returns
-data; Naima draws it with its own components and serves the pages in a sandbox, so none of the stance's code runs in the
-window.
+method, read from `naima-plugin.json`: mood board, palette, typography, icons, widget shapes and screens. Each subtab
+shows the step's rounds in order, each with its variants, its notes and its pages in frames side by side: the round's
+comparison page and, in the screens step, each variant's own prototype or build, with each screen's rounds in turn. The
+variant chosen is marked, and the decision recorded in `decisions.md` heads the subtab. The plugin only reads files and
+returns data; Naima draws it with its own components and serves the pages in a sandbox, so none of the stance's code
+runs in the window.
 
 The tab finds the design record through `design` in the app's `stance-ui.json`, a path from the app's folder:
 

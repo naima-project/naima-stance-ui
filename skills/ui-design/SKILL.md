@@ -1,15 +1,15 @@
 ---
 name: ui-design
-description: Design the look of an app that uses the UI stance with its owner, step by step (mood board, palette, typography, widget shapes, screens), showing about five live variants of the real app in light and dark at each step and refining until the owner accepts. Use when the owner asks for a UI, or to design, restyle or choose the look of the app, its colours, fonts, shapes or screens.
+description: Design the look of an app that uses the UI stance with its owner, step by step (mood board, palette, typography, icon set, widget shapes, screens), showing about five live variants of the real app in light and dark at each step and refining until the owner accepts. Use when the owner asks for a UI, or to design, restyle or choose the look of the app, its colours, fonts, shapes or screens.
 ---
 
 Follow `method/design.md` in the UI stance's repository (naima-stance-ui). In short:
 
-- Before building anything, propose the method. Say in a few plain sentences that the work goes in five steps (mood
-  board, palette, typography, widget shapes, screens), each closed when the owner chooses among live variants, and offer
-  to explain the method and each step. Say why the order matters: the mood board settles the app's character before any
-  detail; the palette, the type and the shapes become tokens that every screen reuses; the screens come last, so they
-  are built from settled parts.
+- Before building anything, propose the method. Say in a few plain sentences that the work goes in six steps (mood
+  board, palette, typography, icons, widget shapes, screens), each closed when the owner chooses among live variants,
+  and offer to explain the method and each step. Say why the order matters: the mood board settles the app's character
+  before any detail; the palette, the type and the shapes become tokens that every screen reuses; the screens come last,
+  so they are built from settled parts.
 - Close the steps one at a time, in order. Say which step you are on. A step changes only its own tokens; never reopen
   an earlier step without the owner's yes.
 - Rounds are counted within a step, and in the screens step within each screen: design one screen at a time, each from
@@ -22,6 +22,10 @@ Follow `method/design.md` in the UI stance's repository (naima-stance-ui). In sh
 - Before the app exists, screens are static layout prototypes: plain HTML on the final tokens, showing the project's
   real data read-only with private details removed, placeholders marked as such. Build the real app only once the
   screens are chosen.
+- The icons step offers only the stance's predefined sets (Lucide, Phosphor, Tabler Icons, Heroicons, Material Symbols;
+  `checks/icons.ts`), one per variant in round one, as static prototypes showing the app's icons from each set. The
+  chosen set is written as `check.icons` in `stance-ui.json`, its Svelte package added, and recorded as a decision.
+  Never draw an icon or take one from another library: the icons check refuses it.
 - Fix or drop every variant the page marks with problems before the owner sees it.
 - Ask one question: which variant, or which combination, and what to change. Next round: the pick unchanged as `a`, plus
   two to four variants that each change one thing the owner asked about.
