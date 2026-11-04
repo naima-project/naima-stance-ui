@@ -132,12 +132,27 @@ async function tokenCheck(
   return { findings, contrast, names };
 }
 
+async function exists(path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** svelte-check on the project: its type errors are problems, its warnings notes. */
 async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
   // The project's own svelte-check if it has one, else the stance's; run by Deno, so that no particular Node
   // is needed.
   const stance = fileURLToPath(new URL("..", import.meta.url));
   const args = ["--tsconfig", `${root}/${tsconfig}`, "--output", "machine", "--workspace", root];
+  // A fresh checkout (a landing check's) has the project's package.json but not its packages, and its vite config
+  // cannot load without them: install them first.
+  if (await exists(`${root}/package.json`) && !(await exists(`${root}/node_modules`))) {
+    await new Deno.Command(Deno.execPath(), { args: ["install", "--quiet"], cwd: root, stdout: "null", stderr: "null" })
+      .output();
+  }
   let bin: string | null = null;
   for (const dir of [root, stance]) {
     try {
