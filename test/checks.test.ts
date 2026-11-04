@@ -191,7 +191,7 @@ Deno.test("before a set is chosen any icon is refused, and a set that is not pre
     'Early.svelte: imports "@lucide/svelte", an icon of Lucide, which is not the chosen set: no icon set is chosen',
   );
   assertEquals(fs.length, 2);
-  assertEquals(await problems("clean", ["icons"]), [], "a project with no icons needs no set");
+  assertEquals(await problems("clean", ["icons"]), [], "no set chosen yet, and its one SVG is listed as a drawing");
 });
 
 Deno.test("the predefined icon sets: each one's packages are its own, and the method offers exactly these", async () => {

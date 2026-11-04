@@ -10,6 +10,12 @@
     "store": [
       "src/lib/ui/store/store.svelte.ts"
     ],
+    "icons": {
+      "set": null,
+      "drawings": [
+        "src/lib/ui/components/Box.svelte"
+      ]
+    },
     "tsconfig": null,
     "pages": [
       {

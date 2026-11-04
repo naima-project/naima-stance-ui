@@ -23,8 +23,22 @@ function tab(): Any {
 Deno.test("the design tab lists the six steps of the method as its subtabs, and serves the folder that holds the record and its previews", () => {
   const t = tab();
   assertEquals(t.name, "design");
-  assertEquals(t.subtabs.map((s: Any) => s.name), ["mood-board", "palette", "typography", "icons", "widget-shapes", "screens"]);
-  assertEquals(t.subtabs.map((s: Any) => s.title), ["Mood board", "Palette", "Typography", "Icons", "Widget shapes", "Screens"]);
+  assertEquals(t.subtabs.map((s: Any) => s.name), [
+    "mood-board",
+    "palette",
+    "typography",
+    "icons",
+    "widget-shapes",
+    "screens",
+  ]);
+  assertEquals(t.subtabs.map((s: Any) => s.title), [
+    "Mood board",
+    "Palette",
+    "Typography",
+    "Icons",
+    "Widget shapes",
+    "Screens",
+  ]);
   assertEquals(t.files(ctx), join(APP, "record"));
   const place = designPlace(APP);
   assertEquals(place, { folder: join(APP, "record", "design", "app"), previews: join(APP, "record", "preview") });
