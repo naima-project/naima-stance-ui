@@ -145,7 +145,7 @@ Deno.test("a password or a one-time code asked for outside the sign-in component
   assert(fs.every((f) => f.message.includes("SC 3.3.8")));
 });
 
-Deno.test("the widget set's Draggable and Auth are the ones allowed to drag and to ask for secrets", async () => {
+Deno.test("the widget set's Draggable, Pannable and Auth are the ones allowed to drag and to ask for secrets", async () => {
   assertEquals(await problems("clean", ["no-raw-drag", "auth-only"]), []);
 });
 

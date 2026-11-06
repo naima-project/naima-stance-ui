@@ -58,7 +58,7 @@ can be loaded into Naima as a plugin.
    of every widget and page.
 
 10. **Dragging is done only through the `Draggable` widget**, which always offers every move as a button and an arrow
-    key too (SC 2.5.7).
+    key too, **or the `Pannable` box**, which the wheel, the scrollbar and the keys always scroll as far (SC 2.5.7).
 
 11. **A password or a one-time code is asked for only by the `Auth` widget**, the sign-in form that meets accessible
     authentication (SC 3.3.8).
@@ -217,6 +217,15 @@ so dragging a row of a list by one row moves it by one place. What a move does i
 ```svelte
 <Draggable label={item} moves={["up", "down"]} canMove={(way) => list.allowed({ type: "move", item, way })}
   onmove={(way) => list.move(item, way)}>{item}</Draggable>
+```
+
+`Pannable` is the other: a box that scrolls sideways and that the mouse also pans by dragging its body, as a map or a
+timeline is panned. Its alternative is built in, since it is always a scrolling box. A press that travels less than 4
+CSS px is a click on what is under it; a longer one pans, and the click after it is swallowed, so a drag never picks
+anything; a press on what `ignore` matches never pans. A touch or a pen scrolls it natively.
+
+```svelte
+<Pannable label="Timeline" bind:box bind:width ignore=".handle">{@render drawing()}</Pannable>
 ```
 
 `Auth` is the sign-in form, and the only place a password or a one-time code is asked for. It is built from `Field`,
@@ -534,7 +543,7 @@ deno task check --only tokens,no-raw-literals --json
 | `icons`             | Every icon comes from the set `check.icons` names, one of the predefined sets in `checks/icons.ts`: a component imports no other icon library (nor any set's package before one is chosen), no SVG file, holds no inline `<svg>` or one written through `{@html}`, and uses no other icon font's classes. Components listed under `check.icons.drawings` may hold SVG. |
 | `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                                                                                                                                                             |
 | `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                                                                                                                                                                  |
-| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                              |
+| `no-raw-drag`       | Only the widget set's `Draggable` and `Pannable` handle dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                              |
 | `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script.                                                                                                                                        |
 | `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                                                                                                                                                            |
 | `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                                                                                                                                                              |

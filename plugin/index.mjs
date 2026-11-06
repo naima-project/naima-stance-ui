@@ -81,7 +81,7 @@ const CHECKS = [
     name: "ui-no-raw-drag",
     runs: "no-raw-drag",
     says:
-      "only the widget set's Draggable handles dragging, so every drag has the same moves as buttons and keys (WCAG 2.2 SC 2.5.7)",
+      "only the widget set's Draggable and Pannable handle dragging, so every drag has the same moves as buttons, keys or scrolling (WCAG 2.2 SC 2.5.7)",
   },
   {
     name: "ui-auth-only",

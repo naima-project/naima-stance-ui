@@ -1,7 +1,8 @@
 // Two things only one widget of the set may do, so that the accessibility rules about them can be checked.
 //
 // no-raw-drag   Pointer dragging is handled only by Draggable, which always offers the same moves as buttons and
-//               arrow keys (WCAG 2.2 SC 2.5.7). Anywhere else, a handler of a pointer, mouse or touch move, of an
+//               arrow keys, and by Pannable, a scrolling box the mouse also pans, which the wheel, the scrollbar and
+//               the keys always scroll as far (WCAG 2.2 SC 2.5.7). Anywhere else, a handler of a pointer, mouse or touch move, of an
 //               HTML5 drag event, or a `draggable` attribute is refused: in the markup (`onpointermove`,
 //               `on:dragstart`, `draggable="true"`) and in the scripts (`addEventListener("touchmove", …)`,
 //               `el.ondragstart = …`, `el.draggable = true`, `setPointerCapture`).
@@ -21,6 +22,8 @@ import { type Finding, lineOf } from "./finding.ts";
 type Node = any;
 
 export const DRAG_PRIMITIVE = "Draggable.svelte";
+/** The widgets that may handle pointer dragging, each with its single-pointer alternative built in. */
+export const DRAG_PRIMITIVES: ReadonlySet<string> = new Set([DRAG_PRIMITIVE, "Pannable.svelte"]);
 export const AUTH_COMPONENT = "Auth.svelte";
 
 const MOVES = ["pointermove", "mousemove", "touchmove"];
@@ -102,7 +105,7 @@ function seen(n: Node): { drag?: string; auth?: string } | null {
 
 /**
  * The findings of no-raw-drag and auth-only in one component. `primitive` says which of the two the file is allowed
- * to be: the widget set's Draggable may drag, its Auth may ask for secrets.
+ * to be: the widget set's Draggable and Pannable may drag, its Auth may ask for secrets.
  */
 export function checkPrimitives(
   file: string,
