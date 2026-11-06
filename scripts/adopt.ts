@@ -11,7 +11,9 @@
 // <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
 // pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
 // src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts and its request handler to
-// server/bridge-handler.ts. stance-ui.json records the copy and configures `deno task check`.
+// server/bridge-handler.ts. With --mcp, the bridge as an MCP server for agents to server/bridge-mcp.ts
+// (platform/bridge-mcp.ts), a choice the project makes at design time: until it answers --mcp or --no-mcp, adopt
+// asks it in what it prints, and stance-ui.json records the answer. stance-ui.json records the copy and configures `deno task check`.
 //
 // Then the scaffold, which a new project needs to build and run and which belongs to the project from the start:
 // deno.json (tasks tokens, dev, build, check, test), package.json (the npm packages at the stance's exact
@@ -40,7 +42,8 @@ interface Record {
   mood: string;
   to: string;
   /** The platform parts the project took: the Tauri shell, the Deno bridge server. */
-  platforms?: { tauri: boolean; server: boolean };
+  /** mcp: absent until the project answers whether agents reach the bridge through MCP. */
+  platforms?: { tauri: boolean; server: boolean; mcp?: boolean };
   /** Every copied file, by its path in the project: where it came from and its sha256 as copied. */
   files: { [path: string]: { from: string; sha256: string } };
   check: unknown;
@@ -60,7 +63,7 @@ async function git(...args: string[]): Promise<string> {
 async function plan(
   mood: string,
   to: string,
-  platforms: { tauri: boolean; server: boolean },
+  platforms: { tauri: boolean; server: boolean; mcp?: boolean },
 ): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   for await (const e of Deno.readDir(`${STANCE}/src/lib/components`)) {
@@ -77,6 +80,10 @@ async function plan(
   files.set("src/lib/platform/port.ts", `${to}/platform/port.ts`);
   if (platforms.server) {
     files.set("platform/server.ts", "server/bridge-server.ts");
+    files.set("platform/bridge-handler.ts", "server/bridge-handler.ts");
+  }
+  if (platforms.mcp) {
+    files.set("platform/bridge-mcp.ts", "server/bridge-mcp.ts");
     files.set("platform/bridge-handler.ts", "server/bridge-handler.ts");
   }
   if (platforms.tauri) {
@@ -221,7 +228,15 @@ async function scaffold(project: string, to: string, tauri: boolean): Promise<st
 /** Copies the stance into the project. Returns the lines to print, and throws when it refuses. */
 export async function adopt(
   project: string,
-  opts: { mood?: string; to?: string; force?: boolean; tauri?: boolean; server?: boolean; scaffold?: boolean },
+  opts: {
+    mood?: string;
+    to?: string;
+    force?: boolean;
+    tauri?: boolean;
+    server?: boolean;
+    mcp?: boolean;
+    scaffold?: boolean;
+  },
 ): Promise<string[]> {
   const before = await loadRecord(project);
   const mood = opts.mood ?? before?.mood ?? "white";
@@ -229,6 +244,7 @@ export async function adopt(
   const platforms = {
     tauri: opts.tauri || (before?.platforms?.tauri ?? false),
     server: opts.server || (before?.platforms?.server ?? false),
+    ...((opts.mcp ?? before?.platforms?.mcp) === undefined ? {} : { mcp: opts.mcp ?? before?.platforms?.mcp }),
   };
   const files = await plan(mood, to, platforms);
   const lines: string[] = [];
@@ -295,6 +311,11 @@ export async function adopt(
   lines.push(
     `recorded stance ui ${out.stance.version} (${out.stance.commit.slice(0, 12)}), mood ${mood}, in ${RECORD}`,
   );
+  if (platforms.mcp === undefined) {
+    lines.push(
+      "asked: should agents read and act through the app's bridge as an MCP server (server/bridge-mcp.ts)? Answer with --mcp or --no-mcp; until then it is not set up",
+    );
+  }
   if (opts.scaffold !== false) lines.push(...await scaffold(project, to, platforms.tauri));
   await buildTokens(`${project}/tokens`, `${project}/${to}/tokens.css`, "tokens");
   lines.push(`built ${to}/tokens.css: mood ${mood}, light and dark`);
@@ -365,6 +386,7 @@ if (import.meta.main) {
       force: args.includes("--force"),
       tauri: args.includes("--tauri"),
       server: args.includes("--server"),
+      mcp: args.includes("--mcp") ? true : args.includes("--no-mcp") ? false : undefined,
       scaffold: !args.includes("--no-scaffold"),
     });
     for (const l of lines) console.log(l);

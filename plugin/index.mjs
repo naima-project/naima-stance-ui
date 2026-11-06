@@ -271,12 +271,17 @@ export default function stanceUi(options = {}, api = {}) {
       says:
         "copies the UI stance into the project, says what the project customized and whether the checks passed since, runs its checks, reruns the fast ones after an agent's edit, builds and drives the app on every platform the machine reaches, or installs the project's pinned Rust into the project",
       usage:
-        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms [--platforms <list>] | toolchain [--check]",
+        "naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--mcp | --no-mcp] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms [--platforms <list>] | toolchain [--check]",
       options: [
         { name: "--mood", says: "the mood board to copy", default: "white, or the one recorded" },
         { name: "--to", says: "where the widget set and the store go, from the app's folder", default: "src/lib/ui" },
         { name: "--tauri", says: "also copy the Tauri 2 shell to src-tauri/" },
         { name: "--server", says: "also copy the Deno bridge server to server/bridge-server.ts" },
+        {
+          name: "--mcp",
+          says:
+            "the project's answer to the design-time question whether agents reach the app's bridge as an MCP server: copy it to server/bridge-mcp.ts, and record the answer (--no-mcp records no)",
+        },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
         {
           name: "--no-scaffold",
@@ -335,7 +340,7 @@ export default function stanceUi(options = {}, api = {}) {
           return runScript(deno, "hook.ts", [...project, "--root", ctx.root, ...rest], out, err, "inherit");
         }
         err(
-          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms | toolchain",
+          "usage: naima stance-ui adopt [--mood <name>] [--to <dir>] [--tauri] [--server] [--mcp | --no-mcp] [--force] [--no-scaffold] [--no-install] | status | check | hook | platforms | toolchain",
         );
         return 2;
       },

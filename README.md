@@ -408,6 +408,17 @@ Deno is the runtime Naima and the stance's own tooling already need, so a projec
 server; it runs TypeScript as it is, and its permissions limit what the server may touch. A pure client app needs none
 of this.
 
+### The bridge for agents, over MCP
+
+An app's bridge can also be served to agents as an MCP server (the Model Context Protocol), so an agent reads and acts
+through exactly the commands the page uses, and nothing else. `platform/bridge-mcp.ts` turns the commands the app
+chooses into tools, each with a description and its arguments' JSON Schema, and speaks the MCP stdio transport, one
+JSON-RPC message a line; like the request handler it imports nothing and runs on Deno, Node and Bun. It is a design
+choice the project makes, since an agent that can call a tool can do whatever its command does: `deno task adopt` asks
+it until the project answers `--mcp` (copied to `server/bridge-mcp.ts`) or `--no-mcp`, and `stance-ui.json` records the
+answer as `platforms.mcp`. The app serves it from a command of its own, such as `my-app --mcp`, which an agent's client
+starts.
+
 ### The Tauri shell
 
 `platform/tauri/` is the `src-tauri` folder of a Tauri 2 app: the Cargo crate, `tauri.conf.json`, the capabilities,
@@ -543,7 +554,7 @@ deno task check --only tokens,no-raw-literals --json
 | `icons`             | Every icon comes from the set `check.icons` names, one of the predefined sets in `checks/icons.ts`: a component imports no other icon library (nor any set's package before one is chosen), no SVG file, holds no inline `<svg>` or one written through `{@html}`, and uses no other icon font's classes. Components listed under `check.icons.drawings` may hold SVG. |
 | `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                                                                                                                                                             |
 | `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                                                                                                                                                                  |
-| `no-raw-drag`       | Only the widget set's `Draggable` and `Pannable` handle dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                              |
+| `no-raw-drag`       | Only the widget set's `Draggable` and `Pannable` handle dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                |
 | `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script.                                                                                                                                        |
 | `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                                                                                                                                                            |
 | `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                                                                                                                                                              |
