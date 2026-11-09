@@ -282,6 +282,11 @@ export default function stanceUi(options = {}, api = {}) {
           says:
             "the project's answer to the design-time question whether agents reach the app's bridge as an MCP server: copy it to server/bridge-mcp.ts, and record the answer (--no-mcp records no)",
         },
+        {
+          name: "--no-mcp",
+          says:
+            "with adopt: the project's answer no to the same question: record that agents do not reach the bridge as an MCP server, and copy nothing",
+        },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
         {
           name: "--no-scaffold",
