@@ -90,6 +90,18 @@ const CHECKS = [
       "only the widget set's Auth asks for a password or a one-time code, so every sign-in is accessible (WCAG 2.2 SC 3.3.8)",
   },
   {
+    name: "ui-transitions",
+    runs: "transitions",
+    says:
+      "agent parity: the registry of transitions is what the machines generate, each says what it does, and every transition a component calls is in it",
+  },
+  {
+    name: "ui-agent-endpoint",
+    runs: "agent-endpoint",
+    says:
+      "the MCP server's files import no app logic, only the registry and the agent channel, so an agent acts through the page and the store",
+  },
+  {
     name: "ui-a11y",
     runs: "a11y",
     says:
@@ -338,8 +350,9 @@ export default function stanceUi(options = {}, api = {}) {
         {
           name: "--mcp",
           says:
-            "the project's answer to the design-time question whether agents reach the app's bridge as an MCP server: copy it to server/bridge-mcp.ts, and record the answer (--no-mcp records no)",
+            "the project's answer to the design-time question whether agents read and act on the app as an MCP server (agent parity): copy the MCP server, the agent endpoint and the generator of the registry of transitions, scaffold the three tools store, transitions and transition, and record the answer",
         },
+        { name: "--no-mcp", says: "record the answer no to that question: none of it is set up" },
         { name: "--force", says: "overwrite files the project changed since they were copied" },
         {
           name: "--no-scaffold",

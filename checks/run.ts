@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkIcons, readIconChoice } from "./icons.ts";
+import { checkAgentEndpoint, checkTransitions } from "./parity.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVES } from "./primitives.ts";
@@ -22,6 +23,8 @@ export const CHECKS = [
   "svelte-check",
   "no-raw-drag",
   "auth-only",
+  "transitions",
+  "agent-endpoint",
   ...BROWSER_CHECKS,
 ] as const;
 export type CheckName = typeof CHECKS[number];
@@ -246,6 +249,11 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
       }));
     }
   }
+  if (only.includes("transitions")) {
+    const components = [...files].filter((f) => !inWidgets(f));
+    findings.push(...await checkTransitions(root, cfg, components, (f) => Deno.readTextFile(`${root}/${f}`)));
+  }
+  if (only.includes("agent-endpoint")) findings.push(...await checkAgentEndpoint(root, cfg));
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));
   const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
   findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget));

@@ -1,0 +1,15 @@
+{
+  "check": {
+    "tokens": "tokens",
+    "widgets": ["src/lib/ui/components"],
+    "components": ["src"],
+    "store": ["src/lib/ui/store/store.svelte.ts"],
+    "tsconfig": null,
+    "pages": [],
+    "transitions": {
+      "machines": "src/app.svelte.ts",
+      "registry": "src/transitions.generated.ts",
+      "server": ["server/mcp.ts"]
+    }
+  }
+}

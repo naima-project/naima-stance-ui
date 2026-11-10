@@ -70,7 +70,7 @@ Deno.test("adopt asks whether the bridge is served to agents over MCP, and recor
   const project = await Deno.makeTempDir();
   try {
     let lines = await adopt(project, { mood: "white", scaffold: false });
-    assert(lines.some((l) => l.startsWith("asked: should agents read and act through the app's bridge")));
+    assert(lines.some((l) => l.startsWith("asked: should agents read and act on the app as an MCP server")));
     let record = JSON.parse(await Deno.readTextFile(`${project}/stance-ui.json`));
     assertEquals(record.platforms.mcp, undefined);
     lines = await adopt(project, { mcp: true, scaffold: false });

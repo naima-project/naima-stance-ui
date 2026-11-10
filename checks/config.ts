@@ -19,6 +19,10 @@ export interface StanceConfig {
    * components that draw (a chart, a diagram) and may hold inline SVG: "lucide", or { "set": "lucide", "drawings":
    * ["src/Chart.svelte"] }. Absent or null until the step is closed. */
   icons?: string | { set: string | null; drawings?: string[] } | null;
+  /** Agent parity, once the project serves its bridge to agents over MCP: where the machines are made (the store file
+   * with createStore), the generated registry of their transitions, and the MCP server's files, which import only the
+   * registry and the agent channel. Absent until then. */
+  transitions?: { machines: string; registry: string; server: string[] };
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
   /** For the platforms check: the app's folder (where src-tauri is), its end-to-end script, or null, and for the

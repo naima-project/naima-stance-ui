@@ -7,6 +7,7 @@
     "demo": "deno run -A npm:vite@8.3.5 demo",
     "demo:build": "deno run -A scripts/tokens.ts --mood white --out demo/tokens.css && deno run -A npm:vite@8.3.5 build demo --logLevel warn",
     "adopt": "deno run -A scripts/adopt.ts",
+    "transitions": "deno run -A scripts/transitions.ts",
     "example:calculator": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 examples/calculator",
     "example:calculator:build": "deno run -A scripts/tokens.ts --mood calm --out examples/calculator/tokens.css && deno run -A npm:vite@8.3.5 build examples/calculator --logLevel warn",
     "gallery": "deno run -A scripts/tokens.ts --mood white --out gallery/tokens.css && deno run -A npm:vite@8.3.5 gallery",

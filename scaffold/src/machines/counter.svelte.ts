@@ -42,10 +42,12 @@ export class Counter {
     return logic.allowed(this.#state, event);
   }
 
+  /** Adds one to the count, up to the limit. */
   add(): boolean {
     return this.#send({ type: "add" });
   }
 
+  /** Starts over from zero. */
   reset(): boolean {
     return this.#send({ type: "reset" });
   }

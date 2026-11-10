@@ -3,10 +3,9 @@
   import { Button, Card, Checkbox, Cluster, Dialog, Dropdown, Field, Stack, Text, Toolbar } from "../src/lib/components/index.ts";
   import { useStore } from "../src/lib/store/store.svelte.ts";
   import type { AppStore } from "./app.svelte.ts";
-  import type { Show } from "./machines/filter.svelte.ts";
 
   const store = useStore<AppStore>();
-  const { tasks, filter } = store;
+  const { tasks, filter, focus } = store;
 
   let draft = $state("");
 
@@ -43,7 +42,7 @@
           align="end"
           label={shows.find((s) => s.value === filter.view.show)?.label ?? ""}
           choices={shows.map((s) => ({ ...s, disabled: s.value === filter.view.show }))}
-          onselect={(v) => filter.choose(v as Show)}
+          onselect={(v) => (v === "OPEN" ? focus.showOpen() : v === "DONE" ? focus.showDone() : focus.showAll())}
         />
       </Toolbar>
     </Stack>

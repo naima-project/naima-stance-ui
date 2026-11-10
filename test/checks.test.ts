@@ -292,7 +292,7 @@ Deno.test("a theme made for more contrast is held to 7:1 for text, and the token
   const { buildTokens } = await import("../scripts/tokens.ts");
   const out = await Deno.makeTempDir();
   const css = await Deno.readTextFile(
-    await buildTokens(new URL("../tokens/moods/white", import.meta.url).pathname, `${out}/white.css`),
+    await buildTokens(fromFileUrl(new URL("../tokens/moods/white", import.meta.url)), `${out}/white.css`),
   );
   for (
     const query of [

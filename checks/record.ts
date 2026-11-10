@@ -55,6 +55,7 @@ export function checkedPaths(cfg: StanceConfig): string[] {
     cfg.contrast,
     ...cfg.widgets,
     ...cfg.components,
+    ...(cfg.transitions ? [cfg.transitions.registry, ...cfg.transitions.server] : []),
   ].map(norm);
 }
 
@@ -66,7 +67,9 @@ export function isChecked(cfg: StanceConfig, file: string): boolean {
     return true;
   }
   if (cfg.widgets.some(under)) return true;
-  return cfg.components.some(under) && f.endsWith(".svelte");
+  if (cfg.transitions && (under(cfg.transitions.registry) || cfg.transitions.server.some(under))) return true;
+  // With agent parity a machine's file is read too: the registry is generated from it.
+  return cfg.components.some(under) && (f.endsWith(".svelte") || (!!cfg.transitions && f.endsWith(".svelte.ts")));
 }
 
 /** One hash over every file the checks read, by path and content. */

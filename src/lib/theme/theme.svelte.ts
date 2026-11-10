@@ -40,6 +40,7 @@ export class Theme {
     return THEME_CHOICES.includes(event.choice) && event.choice !== this.#choice;
   }
 
+  /** Chooses the theme: light, dark or the system's. */
   choose(choice: ThemeChoice): boolean {
     if (!this.allowed({ type: "choose", choice })) return false;
     this.#choice = choice;

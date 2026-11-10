@@ -81,22 +81,27 @@ export class Tasks {
     return M.allowed(this.#state, event);
   }
 
+  /** Adds a task with this title, at the end of the list, when the list has room. */
   add(title: string): boolean {
     return this.#input({ type: "add", title });
   }
 
+  /** Marks the task done, or not done again. */
   toggle(id: number): boolean {
     return this.#input({ type: "toggle", id });
   }
 
+  /** Asks whether to remove the task: nothing is removed until it is confirmed. */
   askRemove(id: number): boolean {
     return this.#input({ type: "askRemove", id });
   }
 
+  /** Removes the task that was asked about. */
   confirm(): boolean {
     return this.#input({ type: "confirm" });
   }
 
+  /** Keeps the task that was asked about. */
   cancel(): boolean {
     return this.#input({ type: "cancel" });
   }

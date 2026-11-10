@@ -112,13 +112,20 @@ can be loaded into Naima as a plugin.
     1280, 1920), a mouse and a finger, light and dark, text at 100% and 200%. See
     [Responsive design](#responsive-design).
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 to 25 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
-
 26. **Every icon comes from the one icon set chosen at design time**, among a few predefined, published open sets
     (Lucide, Phosphor, Tabler Icons, Heroicons, Material Symbols). The choice is `check.icons` in `stance-ui.json`; no
     icon is drawn by hand as inline SVG or taken from another library.
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10, 11, 16 to 26 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
+27. **Agents and the user do the same things (agent parity).** Every change of the UI's state is a transition, a method
+    of a machine in its own `.svelte.ts` file, one machine to a file, and the one central store holds the machines. A
+    generated registry lists every transition: its machine, name, arguments, what it does and whether the machine allows
+    it now. When the project serves its bridge to agents (`platforms.mcp` in `stance-ui.json`), an agent has three MCP
+    tools, `store`, `transitions` and `transition`, that run on the page over the bridge it already has, so the MCP
+    server holds no UI logic: it reads the store and calls the same transitions as the buttons do. A convenience such as
+    "show the open tasks" is a named sequence of transitions in a machine, which components and agents call alike. Only
+    a sign-in with a secret is for the person alone.
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 to 27 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
 13, 14 and 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and
 when, and the agent records the review as a note on the item the change lands with.
 
@@ -147,6 +154,11 @@ method/design.md                    the design method: six steps, each closed by
 skills/ui-design/SKILL.md           the same method as a skill an agent follows
 src/lib/platform/bridge.ts          the platform bridge: local, web and Tauri
 platform/server.ts                  the Deno server for an app with a backend
+platform/bridge-mcp.ts              the bridge's commands as an MCP server
+platform/agent-endpoint.ts          the channel between an agent's three tools and the page
+src/lib/agent/agent.ts              the page's agent tools on the store: store, transitions, transition
+scripts/transitions.ts              generates the registry of the machines' transitions
+scaffold-mcp/                       the files adopt --mcp adds to the scaffold: the page's wiring, server/mcp.ts
 platform/tauri/                     the Tauri 2 shell (src-tauri) that adopt adds to a project
 naima-plugin.json                   the plugin described as data, which Naima reads without running it
 demo/                               a small app wired to the store
@@ -502,14 +514,56 @@ of this.
 
 ### The bridge for agents, over MCP
 
-An app's bridge can also be served to agents as an MCP server (the Model Context Protocol), so an agent reads and acts
-through exactly the commands the page uses, and nothing else. `platform/bridge-mcp.ts` turns the commands the app
-chooses into tools, each with a description and its arguments' JSON Schema, and speaks the MCP stdio transport, one
-JSON-RPC message a line; like the request handler it imports nothing and runs on Deno, Node and Bun. It is a design
-choice the project makes, since an agent that can call a tool can do whatever its command does: `deno task adopt` asks
-it until the project answers `--mcp` (copied to `server/bridge-mcp.ts`) or `--no-mcp`, and `stance-ui.json` records the
-answer as `platforms.mcp`. The app serves it from a command of its own, such as `my-app --mcp`, which an agent's client
-starts.
+An app's bridge can also be served to agents as an MCP server (the Model Context Protocol). `platform/bridge-mcp.ts`
+turns the bridge's commands the app chooses into tools, each with a description and its arguments' JSON Schema, and
+speaks the MCP stdio transport, one JSON-RPC message a line; like the request handler it imports nothing and runs on
+Deno, Node and Bun. It is a design choice the project makes, since an agent that can call a tool can do whatever its
+command does: `deno task adopt` asks it until the project answers `--mcp` or `--no-mcp`, and `stance-ui.json` records
+the answer as `platforms.mcp`. Yes means [agent parity](#agent-parity).
+
+## Agent parity
+
+Agents and the user can do the same things (rule 27). The way to it is the store, which the stance already has: every
+state of the UI is a machine in the one central store, and every change is one of its transitions, a method in the
+machine's own `.svelte.ts` file, one machine to a file. What an agent does is call those methods, and what it reads is
+the store's snapshot. The MCP server is an intelligence on top of the store and holds no UI logic of its own.
+
+When the project says yes to MCP at adoption, `deno task adopt --mcp` sets up:
+
+- the registry, `src/transitions.generated.ts`, generated by `deno task transitions` (`scripts/transitions.ts`) from the
+  machines that `createStore` names in `src/app.svelte.ts`. Each public method of a machine is a transition: its
+  machine, name, arguments (with their types) and its comment, which says what it does, an agent reads it. `allowed`,
+  names that begin with an underscore and anything a comment tags `@internal` are not transitions. A comment tagged
+  `@person` marks one only a person may take, a sign-in with a secret, and an agent's call is refused. The file is plain
+  data and imports nothing.
+- the page's side, `src/lib/ui/agent/agent.ts` (`src/lib/agent/agent.ts` in the stance): `serveAgent` listens to the
+  bridge's `agent` feed, runs each request on the store and answers with the bridge's `agent-answer` command. The page
+  asks `allowed` of the machine itself, with the event `{ type: <transition>, <argument>: <value> }` that
+  naima-codegen's machines take.
+- the server's side, `server/agent-endpoint.ts` (`platform/agent-endpoint.ts`): `agentEndpoint` turns an agent's call
+  into a request on that feed and returns the page's answer, and says so when no page is open or the page does not
+  answer. `agentTools` describes the three tools from the registry. So the agent reaches the store over the channel the
+  UI already has to its server, never over an API of its own.
+- the three tools. `store` reads the snapshot, narrowed by `machine` and `path` and cut by `depth` and `limit` (three
+  levels and twenty entries by default), so that an answer is compact. `transitions` lists the registry, each entry with
+  whether its machine allows it now (for one with arguments, give `machine`, `name` and `args` to ask). `transition`
+  calls one by machine and name, with its arguments by name, and answers whether the machine took it and what the
+  machine shows after; one not allowed now changes nothing, and says so.
+- `server/mcp.ts`, the entry the project owns: the web server and the MCP server in one process (an agent's client
+  starts it with `deno run -A server/mcp.ts`, and the user opens the page it serves), with the three tools and the
+  bridge's own read tool, `describe`, to which the app adds its commands. It imports the registry and the channel only.
+  The page's `src/main.ts` calls `serveAgent` on its store.
+
+A show-like convenience, such as "show the open tasks", is a named sequence of transitions in a machine, tagged
+`@sequence` in its comment: the demo's `focus` machine (`demo/machines/focus.svelte.ts`) holds no state and calls the
+tasks and filter machines' transitions in order. It is in the registry like any other transition, so the dropdown of the
+demo's list and an agent call the same `showOpen`.
+
+Two checks hold it (see [the checks](#the-checks)). `transitions` regenerates the registry and refuses one that differs
+from the machines, a transition without a comment, a file with two machines, and a component that calls on a machine
+anything but a registered transition (it may read the machine's `view` and ask `allowed`). `agent-endpoint` refuses an
+MCP server file that imports anything of the app: only the registry, the agent channel (`agent-endpoint.ts`,
+`bridge-mcp.ts`, `bridge-handler.ts`, `bridge-server.ts`), `node:` and the standard library, and types.
 
 ### The Tauri shell
 
@@ -638,29 +692,31 @@ deno task check --project <app folder>   # any project with a stance-ui.json
 deno task check --only tokens,no-raw-literals --json
 ```
 
-| Check               | What it holds                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                 |
-| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                        |
-| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                |
+| Check               | What it holds                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                                                                                                                                                        |
+| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                                                                                                                                                               |
+| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                                                                                                                                                       |
 | `icons`             | Every icon comes from the set `check.icons` names, one of the predefined sets in `checks/icons.ts`: a component imports no other icon library (nor any set's package before one is chosen), no SVG file, holds no inline `<svg>` or one written through `{@html}`, and uses no other icon font's classes. Components listed under `check.icons.drawings` may hold SVG. |
-| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                      |
-| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                           |
-| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.       |
-| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script. |
-| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                     |
-| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                       |
-| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                               |
-| `column`            | In a 1920 CSS px window the page's `main` landmark holds its content in a column at most 1400 CSS px wide, centred in the window or in the space right of an element marked `data-slot="panel"` (rule 16).                      |
-| `reflow`            | No sideways scroll, cut-off text or text over text in each cell of the matrix, at 400% zoom, held sideways and with the text spacing of SC 1.4.12 set (rule 17).                                                                |
-| `fluid`             | The stylesheets restyle components by container and not by viewport media query, and use logical properties (rule 18).                                                                                                          |
-| `type-scale`        | No font size in pixels, the root's size not fixed, and every text grows when the root is 200% (rule 19).                                                                                                                        |
-| `input-modes`       | With a finger every target is at least 44 by 44 CSS px, and nothing is shown only on `:hover` (rule 20).                                                                                                                        |
-| `viewport`          | Dynamic viewport units, a viewport meta that allows zoom, safe-area insets for fixed bars, a focused field in view with the keyboard up (rule 21).                                                                              |
-| `nav`               | Every destination of the top bar is shown from 840 px up, none is behind a "More", and a bar that overflows scrolls (rule 22).                                                                                                  |
-| `media`             | Images and frames keep their box and fit their size, long lists skip off-screen work, and the layout shift is under 0.1 (rule 23).                                                                                              |
-| `budget`            | On a mid-range phone the largest paint is within 2.5 s, the blocked time under 300 ms, the JavaScript under 170 kB and the whole under 1 MB (rule 23).                                                                          |
-| `preferences`       | Forced colours keep an edge on controls, more contrast reaches 7:1, and a translucent surface has a reduced-transparency answer (rule 24).                                                                                      |
+| `transitions`       | Agent parity, when `check.transitions` is set: the registry is what the machines generate now, every transition has a comment saying what it does, a machine file holds one machine, and every transition a component calls is in the registry (the `view` and `allowed` are read freely).                                                                             |
+| `agent-endpoint`    | The MCP server's files (`check.transitions.server`) import only the registry, the agent channel, `node:`, the standard library and types: no app logic, and no package.                                                                                                                                                                                                |
+| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                                                                                                                                                             |
+| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                                                                                                                                                                  |
+| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                              |
+| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script.                                                                                                                                        |
+| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                                                                                                                                                            |
+| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                                                                                                                                                              |
+| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                                                                                                                                                                      |
+| `column`            | In a 1920 CSS px window the page's `main` landmark holds its content in a column at most 1400 CSS px wide, centred in the window or in the space right of an element marked `data-slot="panel"` (rule 16).                                                                                                                                                             |
+| `reflow`            | No sideways scroll, cut-off text or text over text in each cell of the matrix, at 400% zoom, held sideways and with the text spacing of SC 1.4.12 set (rule 17).                                                                                                                                                                                                       |
+| `fluid`             | The stylesheets restyle components by container and not by viewport media query, and use logical properties (rule 18).                                                                                                                                                                                                                                                 |
+| `type-scale`        | No font size in pixels, the root's size not fixed, and every text grows when the root is 200% (rule 19).                                                                                                                                                                                                                                                               |
+| `input-modes`       | With a finger every target is at least 44 by 44 CSS px, and nothing is shown only on `:hover` (rule 20).                                                                                                                                                                                                                                                               |
+| `viewport`          | Dynamic viewport units, a viewport meta that allows zoom, safe-area insets for fixed bars, a focused field in view with the keyboard up (rule 21).                                                                                                                                                                                                                     |
+| `nav`               | Every destination of the top bar is shown from 840 px up, none is behind a "More", and a bar that overflows scrolls (rule 22).                                                                                                                                                                                                                                         |
+| `media`             | Images and frames keep their box and fit their size, long lists skip off-screen work, and the layout shift is under 0.1 (rule 23).                                                                                                                                                                                                                                     |
+| `budget`            | On a mid-range phone the largest paint is within 2.5 s, the blocked time under 300 ms, the JavaScript under 170 kB and the whole under 1 MB (rule 23).                                                                                                                                                                                                                 |
+| `preferences`       | Forced colours keep an edge on controls, more contrast reaches 7:1, and a translucent surface has a reduced-transparency answer (rule 24).                                                                                                                                                                                                                             |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
@@ -706,21 +762,23 @@ the record.
 ```
 
 `moods` is optional, `budget` sets the project's own performance budget (rule 23; its default is in `checks/matrix.ts`),
-and `tsconfig` set to `null` skips the type check. `icons` is the icon set the design method's icons step chose
-(`"lucide"` alone is the same as `{ "set": "lucide" }`), and is absent until that step is closed; `drawings` lists the
-components that draw a chart or a diagram and may hold SVG. A page's `path` is its built HTML file; `build` is run from
-the root before the pages are opened, once for each distinct command; `click` takes Playwright selectors.
+and `tsconfig` set to `null` skips the type check. `transitions` is set when the project chose MCP
+(`{ "machines": "src/app.svelte.ts", "registry": "src/transitions.generated.ts", "server": ["server/mcp.ts"] }`: the
+store file, the generated registry and the MCP server's files). `icons` is the icon set the design method's icons step
+chose (`"lucide"` alone is the same as `{ "set": "lucide" }`), and is absent until that step is closed; `drawings` lists
+the components that draw a chart or a diagram and may hold SVG. A page's `path` is its built HTML file; `build` is run
+from the root before the pages are opened, once for each distinct command; `click` takes Playwright selectors.
 
 `plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
 check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-icons`,
-`ui-svelte-check`, `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`, `ui-column`,
-`ui-reflow`, `ui-fluid`, `ui-type-scale`, `ui-input-modes`, `ui-viewport`, `ui-nav`, `ui-media`, `ui-budget`,
-`ui-preferences`), so `naima check` runs them. In a checkout whose app folder holds no `stance-ui.json`, such as a trunk
-whose app lives on a development line, each check reports one note saying the stance is not adopted there, and no
-problem. And it adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports
-only the runtime's own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process
-under Deno, from the plugin's checkout, so Deno must be on the PATH.
+`ui-transitions`, `ui-agent-endpoint`, `ui-svelte-check`, `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`,
+`ui-reduced-motion`, `ui-column`, `ui-reflow`, `ui-fluid`, `ui-type-scale`, `ui-input-modes`, `ui-viewport`, `ui-nav`,
+`ui-media`, `ui-budget`, `ui-preferences`), so `naima check` runs them. In a checkout whose app folder holds no
+`stance-ui.json`, such as a trunk whose app lives on a development line, each check reports one note saying the stance
+is not adopted there, and no problem. And it adds `naima stance-ui adopt | status | check | hook`. The plugin file is
+plain JavaScript and imports only the runtime's own modules, so it loads under Deno, Node and Bun alike. The checks
+themselves run in a child process under Deno, from the plugin's checkout, so Deno must be on the PATH.
 
 `naima-plugin.json`, at the root, describes the plugin as data, so Naima can read it without running anything: its name,
 its kind (`stance`), its entry module, the plugin contract it is written for, its examples, who made it, and the design

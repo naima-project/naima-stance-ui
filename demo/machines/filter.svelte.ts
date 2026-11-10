@@ -25,6 +25,7 @@ export class Filter {
     return event.show !== this.#show;
   }
 
+  /** Chooses which tasks the list shows: all, the open ones or the done ones. */
   choose(show: Show): boolean {
     if (!this.allowed({ type: "choose", show })) return false;
     this.#show = show;

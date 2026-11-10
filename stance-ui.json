@@ -139,6 +139,11 @@
     "platforms": {
       "app": "examples/calculator",
       "e2e": "examples/calculator/e2e.js"
+    },
+    "transitions": {
+      "machines": "demo/app.svelte.ts",
+      "registry": "demo/transitions.generated.ts",
+      "server": []
     }
   }
 }

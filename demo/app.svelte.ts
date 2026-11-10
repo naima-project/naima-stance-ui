@@ -4,20 +4,24 @@ import { createStore } from "../src/lib/store/store.svelte.ts";
 import { documentTheme, savedTheme } from "../src/lib/theme/document.ts";
 import { Theme } from "../src/lib/theme/theme.svelte.ts";
 import { Filter } from "./machines/filter.svelte.ts";
+import { Focus } from "./machines/focus.svelte.ts";
 import { type Task, Tasks } from "./machines/tasks.svelte.ts";
 
 export function makeStore() {
+  const tasks = new Tasks({ limit: 12 }, {
+    save(tasks: readonly Task[]) {
+      try {
+        localStorage.setItem("stance-ui-demo", JSON.stringify(tasks));
+      } catch {
+        // Storage may be unavailable (a private window); the list still works for this visit.
+      }
+    },
+  });
+  const filter = new Filter();
   return createStore({
-    tasks: new Tasks({ limit: 12 }, {
-      save(tasks: readonly Task[]) {
-        try {
-          localStorage.setItem("stance-ui-demo", JSON.stringify(tasks));
-        } catch {
-          // Storage may be unavailable (a private window); the list still works for this visit.
-        }
-      },
-    }),
-    filter: new Filter(),
+    tasks,
+    filter,
+    focus: new Focus(tasks, filter),
     theme: new Theme({ initial: savedTheme("stance-ui-demo-theme") }, documentTheme("stance-ui-demo-theme")),
   });
 }

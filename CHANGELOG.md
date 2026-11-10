@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Agent parity: the user and an agent do the same things
+
+Rule 27 says every change of the UI is a transition of a machine, in its own `.svelte.ts` file, and agents call those
+same transitions. `deno task transitions` generates the registry from the machines (machine, name, arguments, what it
+does; `@sequence` marks a named sequence of transitions, `@person` one for a person alone). When a project says yes to
+MCP, `adopt --mcp` scaffolds the registry, the agent endpoint (`platform/agent-endpoint.ts`, the channel over the
+bridge's feed `agent` and command `agent-answer`), the page's `serveAgent` (`src/lib/agent/agent.ts`) and an entry
+`server/mcp.ts` with three tools, `store`, `transitions` and `transition`, beside the bridge's own read tool; `--mcp`
+now takes the web server along. The checks `transitions` and `agent-endpoint` (`ui-transitions` and `ui-agent-endpoint`
+in Naima) refuse a stale registry, a transition without a comment, a component that calls anything but a registered
+transition, and an MCP server file that imports app logic. The demo has a `focus` machine of such sequences.
+
 ### The project chooses its icon set
 
 The design method has a new step, icons, between typography and widget shapes. The owner chooses one of five predefined,

@@ -11,9 +11,14 @@
 // <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
 // pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
 // src-tauri/; with --server, the Deno bridge server to server/bridge-server.ts and its request handler to
-// server/bridge-handler.ts. With --mcp, the bridge as an MCP server for agents to server/bridge-mcp.ts
-// (platform/bridge-mcp.ts), a choice the project makes at design time: until it answers --mcp or --no-mcp, adopt
-// asks it in what it prints, and stance-ui.json records the answer. stance-ui.json records the copy and configures `deno task check`.
+// server/bridge-handler.ts. With --mcp, the bridge as an MCP server for agents, and agent parity with it (rule 27),
+// a choice the project makes at design time: until it answers --mcp or --no-mcp, adopt asks it in what it prints, and
+// stance-ui.json records the answer. Yes copies the MCP server's modules to server/ (bridge-mcp.ts, agent-endpoint.ts,
+// and the server of --server), the page's agent tools to <to>/agent/, the generator of the registry of transitions to
+// scripts/stance-ui-transitions.ts, and scaffolds the entry server/mcp.ts with the three tools `store`, `transitions`
+// and `transition` and the bridge's read tool, the page's wiring in src/main.ts, and the registry
+// src/transitions.generated.ts, which the checks `transitions` and `agent-endpoint` hold the project to.
+// stance-ui.json records the copy and configures `deno task check`.
 //
 // Then the scaffold, which a new project needs to build and run and which belongs to the project from the start:
 // deno.json (tasks tokens, dev, build, check, test), package.json (the npm packages at the stance's exact
@@ -33,6 +38,7 @@ import { ensureChromium } from "../checks/chromium.ts";
 import { loadConfig } from "../checks/config.ts";
 import { checkedLines } from "../checks/record.ts";
 import { buildTokens } from "./tokens.ts";
+import { readMachines, renderRegistry } from "./transitions.ts";
 
 const STANCE = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const RECORD = "stance-ui.json";
@@ -83,8 +89,13 @@ async function plan(
     files.set("platform/bridge-handler.ts", "server/bridge-handler.ts");
   }
   if (platforms.mcp) {
+    // Agents reach the page over the bridge's server, so the MCP server needs the web server and the agent channel.
+    files.set("platform/server.ts", "server/bridge-server.ts");
     files.set("platform/bridge-mcp.ts", "server/bridge-mcp.ts");
     files.set("platform/bridge-handler.ts", "server/bridge-handler.ts");
+    files.set("platform/agent-endpoint.ts", "server/agent-endpoint.ts");
+    files.set("src/lib/agent/agent.ts", `${to}/agent/agent.ts`);
+    files.set("scripts/transitions.ts", "scripts/stance-ui-transitions.ts");
   }
   if (platforms.tauri) {
     const shell = async (rel: string) => {
@@ -133,7 +144,7 @@ const json = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
  * (its exact package versions, its compiler options), and the templates of scaffold/, their imports of the
  * stance's copy pointed at `to`.
  */
-async function scaffoldFiles(to: string, tauri: boolean): Promise<Map<string, string>> {
+async function scaffoldFiles(to: string, tauri: boolean, mcp: boolean): Promise<Map<string, string>> {
   const pkg = JSON.parse(await Deno.readTextFile(`${STANCE}/package.json`)) as {
     devDependencies: { [name: string]: string };
   };
@@ -165,13 +176,22 @@ async function scaffoldFiles(to: string, tauri: boolean): Promise<Map<string, st
       nodeModulesDir: "auto",
       tasks: {
         tokens: `deno run -A scripts/stance-ui-tokens.ts --tokens tokens --out ${tokensCss}`,
+        ...(mcp
+          ? {
+            transitions: "deno run -A scripts/stance-ui-transitions.ts",
+            mcp: "deno run -A server/mcp.ts",
+          }
+          : {}),
         dev: `deno task tokens && ${vite}`,
-        build: `deno task tokens && ${vite} build --logLevel warn`,
+        build: `deno task tokens && ${mcp ? "deno task transitions && " : ""}${vite} build --logLevel warn`,
         check: `deno run -A npm:svelte-check@${v("svelte-check")} --tsconfig ./tsconfig.json`,
         test: "deno test -A test/",
         ...(tauri ? { tauri: `deno run -A npm:@tauri-apps/cli@${v("@tauri-apps/cli")}` } : {}),
       },
-      imports: { "@std/assert": denoJson.imports["@std/assert"] },
+      imports: {
+        "@std/assert": denoJson.imports["@std/assert"],
+        ...(mcp ? { "@std/http": denoJson.imports["@std/http"] } : {}),
+      },
       fmt: { exclude: ["node_modules", "dist", ".stance-ui"] },
       lint: { exclude: ["node_modules", "dist", ".stance-ui"] },
     }),
@@ -193,26 +213,28 @@ async function scaffoldFiles(to: string, tauri: boolean): Promise<Map<string, st
   // The templates import the copy at its default place, src/lib/ui; elsewhere, the import is rewritten.
   const rel = posix.relative("src", to);
   const ui = rel.startsWith(".") ? rel : `./${rel}`;
-  const walk = async (dir: string) => {
-    for await (const e of Deno.readDir(`${STANCE}/scaffold/${dir}`)) {
+  const walk = async (dir: string, from = "scaffold") => {
+    for await (const e of Deno.readDir(`${STANCE}/${from}/${dir}`)) {
       const path = dir ? `${dir}/${e.name}` : e.name;
-      if (e.isDirectory) await walk(path);
+      if (e.isDirectory) await walk(path, from);
       else if (e.isFile) {
-        let text = await Deno.readTextFile(`${STANCE}/scaffold/${path}`);
+        let text = await Deno.readTextFile(`${STANCE}/${from}/${path}`);
         if (path.startsWith("src/")) text = text.replaceAll(`"./lib/ui/`, `"${ui}/`);
         files.set(path === "gitignore" ? ".gitignore" : path, text);
       }
     }
   };
   await walk("");
+  // Agent parity: the page wires the agent's tools to its store, and the server for agents is the project's own file.
+  if (mcp) await walk("", "scaffold-mcp");
   files.set(".gitignore", files.get(".gitignore")! + `${tokensCss}\n`);
   return new Map([...files].sort());
 }
 
 /** Writes the scaffold's files the project does not have yet, and names those it keeps. */
-async function scaffold(project: string, to: string, tauri: boolean): Promise<string[]> {
+async function scaffold(project: string, to: string, tauri: boolean, mcp: boolean): Promise<string[]> {
   const lines: string[] = [];
-  for (const [path, text] of await scaffoldFiles(to, tauri)) {
+  for (const [path, text] of await scaffoldFiles(to, tauri, mcp)) {
     const target = `${project}/${path}`;
     if (await read(target)) {
       lines.push(`skipped ${path}: the project has one`);
@@ -243,9 +265,11 @@ export async function adopt(
   const to = opts.to ?? before?.to ?? "src/lib/ui";
   const platforms = {
     tauri: opts.tauri || (before?.platforms?.tauri ?? false),
-    server: opts.server || (before?.platforms?.server ?? false),
-    ...((opts.mcp ?? before?.platforms?.mcp) === undefined ? {} : { mcp: opts.mcp ?? before?.platforms?.mcp }),
+    mcp: opts.mcp ?? before?.platforms?.mcp,
+    // Agents reach the page through the web server: yes to MCP takes it along.
+    server: opts.server || (before?.platforms?.server ?? false) || (opts.mcp ?? before?.platforms?.mcp) === true,
   };
+  if (platforms.mcp === undefined) delete platforms.mcp;
   const files = await plan(mood, to, platforms);
   const lines: string[] = [];
   const conflicts: string[] = [];
@@ -282,6 +306,13 @@ export async function adopt(
   }
   const pkg = JSON.parse(await Deno.readTextFile(`${STANCE}/package.json`)) as { version: string };
   const dirty = (await git("status", "--porcelain")) !== "";
+  // Agent parity: where the machines are made, the registry of their transitions, and the MCP server's own files.
+  const transitions = {
+    machines: "src/app.svelte.ts",
+    registry: "src/transitions.generated.ts",
+    server: ["server/mcp.ts", "server/agent-endpoint.ts"],
+  };
+  const kept = (before?.check as { transitions?: unknown } | undefined)?.transitions;
   const out: Record = {
     stance: {
       name: "ui",
@@ -293,19 +324,22 @@ export async function adopt(
     to,
     platforms,
     files: record,
-    check: (before?.check as object | undefined) ?? {
-      tokens: "tokens",
-      widgets: [`${to}/components`],
-      components: ["src"],
-      store: [`${to}/store/store.svelte.ts`],
-      allowImports: [],
-      tsconfig: "tsconfig.json",
-      contrast: "tokens/contrast.json",
-      // The scaffold's page, built by its build task; a project without the scaffold lists its own.
-      pages: opts.scaffold === false
-        ? []
-        : [{ name: "app", path: "dist/index.html", build: ["deno", "task", "build"] }],
-    },
+    check: before?.check
+      ? { ...(before.check as object), ...(platforms.mcp ? { transitions: kept ?? transitions } : {}) }
+      : {
+        tokens: "tokens",
+        widgets: [`${to}/components`],
+        components: ["src"],
+        store: [`${to}/store/store.svelte.ts`],
+        allowImports: [],
+        tsconfig: "tsconfig.json",
+        contrast: "tokens/contrast.json",
+        // The scaffold's page, built by its build task; a project without the scaffold lists its own.
+        pages: opts.scaffold === false
+          ? []
+          : [{ name: "app", path: "dist/index.html", build: ["deno", "task", "build"] }],
+        ...(platforms.mcp ? { transitions } : {}),
+      },
   };
   await Deno.writeTextFile(`${project}/${RECORD}`, json(out));
   lines.push(
@@ -313,13 +347,31 @@ export async function adopt(
   );
   if (platforms.mcp === undefined) {
     lines.push(
-      "asked: should agents read and act through the app's bridge as an MCP server (server/bridge-mcp.ts)? Answer with --mcp or --no-mcp; until then it is not set up",
+      "asked: should agents read and act on the app as an MCP server, through its store and the same transitions the user's buttons call (agent parity, rule 27)? Answer with --mcp or --no-mcp; until then it is not set up",
     );
   }
-  if (opts.scaffold !== false) lines.push(...await scaffold(project, to, platforms.tauri));
+  if (opts.scaffold !== false) lines.push(...await scaffold(project, to, platforms.tauri, platforms.mcp === true));
+  if (platforms.mcp) lines.push(await writeRegistry(project, out.check as { transitions: typeof transitions }));
   await buildTokens(`${project}/tokens`, `${project}/${to}/tokens.css`, "tokens");
   lines.push(`built ${to}/tokens.css: mood ${mood}, light and dark`);
   return lines;
+}
+
+/** Generates the registry of transitions from the machines of the project's store, and says what it did. */
+async function writeRegistry(
+  project: string,
+  check: { transitions: { machines: string; registry: string } },
+): Promise<string> {
+  const { machines, registry } = check.transitions;
+  const { entries, problems } = await readMachines(project, machines);
+  if (problems.length) {
+    return `no registry yet: ${
+      problems.map((p) => `${p.file}: ${p.message}`).join("; ")
+    }; fix it and run deno task transitions`;
+  }
+  await Deno.mkdir(dirname(`${project}/${registry}`), { recursive: true });
+  await Deno.writeTextFile(`${project}/${registry}`, renderRegistry(entries, machines));
+  return `generated ${registry}: ${entries.length} transitions`;
 }
 
 /**
