@@ -1,3 +1,5 @@
+import type { Budget } from "./matrix.ts";
+
 // The stance's configuration in a project: stance-ui.json at its root. Every path is relative to the root.
 
 export interface StanceConfig {
@@ -24,7 +26,9 @@ export interface StanceConfig {
   platforms?: { app: string; e2e: string | null; web?: string };
   /** The colour pairs every theme must make legible: a contrast file (see tokens/contrast.json). */
   contrast: string;
-  /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion) open headless. */
+  /** The performance budget of a screen on a mid-range phone, where the project sets its own (see matrix.ts). */
+  budget?: Partial<Budget>;
+  /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion, column) open headless. */
   pages: Page[];
 }
 

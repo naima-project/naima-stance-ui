@@ -23,7 +23,7 @@
   },
   "modifiers": {
     "theme": {
-      "description": "Follows prefers-color-scheme unless the user chose one.",
+      "description": "Follows prefers-color-scheme unless the user chose one; light-more and dark-more answer prefers-contrast: more.",
       "contexts": {
         "light": [
           {
@@ -36,6 +36,22 @@
         "dark": [
           {
             "$ref": "themes/dark/color.tokens.json"
+          },
+          {
+            "$ref": "themes/dark/shadow.tokens.json"
+          }
+        ],
+        "light-more": [
+          {
+            "$ref": "themes/light-more/color.tokens.json"
+          },
+          {
+            "$ref": "themes/light/shadow.tokens.json"
+          }
+        ],
+        "dark-more": [
+          {
+            "$ref": "themes/dark-more/color.tokens.json"
           },
           {
             "$ref": "themes/dark/shadow.tokens.json"

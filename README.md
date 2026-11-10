@@ -74,13 +74,53 @@ can be loaded into Naima as a plugin.
 15. **Before building a UI, the agent proposes the design method** (see
     [Designing with variants](#designing-with-variants)), and says why its steps come in that order.
 
-16. **Every icon comes from the one icon set chosen at design time**, among a few predefined, published open sets
+16. **The layout is progressive: a centred column of a readable width.** One layout adapts from a phone (320 CSS px) to
+    a wide window, never one for each. Every screen's content sits in one centred column, about 750 CSS px for text and
+    lists and up to about 1200 for charts, tables or cards, its widths design tokens, never the window's full width,
+    with a side gutter that grows with the window. The shell leaves a slot for a left panel, and the column centres in
+    the space that remains. One page wrapper does it for every screen.
+
+17. **A page reflows at 320 CSS px and at 400% zoom, and loses nothing at 200% text or with the reader's text spacing**
+    (SC 1.4.10, 1.4.4, 1.4.12). No sideways scroll, no text cut off or laid over other text, in any window of the matrix
+    (rule 25). A box that holds text grows with it.
+
+18. **Layout is intrinsic.** Components adapt to the space they are given: grid and flex with `minmax()` and `auto-fit`,
+    and container queries for a component's own arrangement. Viewport media queries are for the page frame only, and
+    every direction is a logical property.
+
+19. **Type and space scale fluidly from `rem` tokens.** A size that grows with the window is a `clamp()` token with
+    `rem` bounds. No font size is fixed in pixels, and the root's size is never set in pixels.
+
+20. **The interface works with a mouse, a finger, a pen and a keyboard.** It asks the browser for `pointer` and `hover`,
+    shows nothing only on hover, makes targets at least 24 CSS px and 44 on a coarse pointer (SC 2.5.8), and offers a
+    single-pointer alternative to every gesture (SC 2.5.1) and every drag (SC 2.5.7).
+
+21. **The page fits the device's real window.** `dvh` or `svh`, never `100vh`; `env(safe-area-inset-*)` for a notch and
+    a home indicator; both orientations (SC 1.3.4); a focused field stays in view with the virtual keyboard up.
+
+22. **The top bar shows every destination on a wide window and stays usable on a phone**, with a scrolling row or a
+    compact pattern, and never a hidden "More" that holds primary screens.
+
+23. **Media is responsive, keeps its box, and each screen keeps a budget on a mid-range phone.** `srcset` and `sizes`,
+    `aspect-ratio` against layout shift, `content-visibility` for long lists; the largest paint in 2.5 s, a layout shift
+    under 0.1, 300 ms of blocked time and 170 kB of JavaScript.
+
+24. **The interface follows the user's settings**: `prefers-reduced-motion`, `prefers-color-scheme`, `prefers-contrast`,
+    `forced-colors` and `prefers-reduced-transparency`.
+
+25. **Every check runs in one testing matrix**, written once in `checks/matrix.ts`: six widths (320, 375, 768, 1024,
+    1280, 1920), a mouse and a finger, light and dark, text at 100% and 200%. See
+    [Responsive design](#responsive-design).
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 to 25 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
+
+26. **Every icon comes from the one icon set chosen at design time**, among a few predefined, published open sets
     (Lucide, Phosphor, Tabler Icons, Heroicons, Material Symbols). The choice is `check.icons` in `stance-ui.json`; no
     icon is drawn by hand as inline SVG or taken from another library.
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14
-and 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and
-the agent records the review as a note on the item the change lands with.
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11, 16 to 26 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
+13, 14 and 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and
+when, and the agent records the review as a note on the item the change lands with.
 
 Each rule is a Markdown file in `rules/`, one per rule, which the Naima plugin reads and ships to `naima rules`. Its
 front matter holds `name`, `title`, `audience` (agents, people or everyone), `strength` (must or should), optionally
@@ -143,7 +183,9 @@ A mood board is a folder. Typography, spacing (with sizes and border widths), ra
 themes and sit at its top; colour and shadow change with the theme and sit in `themes/light/` and `themes/dark/`.
 `mood.resolver.json` ties them together in the [DTCG Resolver Module](https://www.designtokens.org/TR/drafts/resolver/)
 format, version 2025.10: one set of shared files, then one modifier, `theme`, whose contexts are `light` and `dark`.
-Every theme of every mood board defines exactly the same token names.
+Every theme of every mood board defines exactly the same token names. A mood board also has a `light-more` and a
+`dark-more` theme in `themes/`, made for `prefers-contrast: more`: the same colours, with text at 7:1 and controls at
+4.5:1 against what they sit on (the contrast check holds them to those minimums).
 
 The tokens use the stable DTCG format, in which a colour is an object with a colour space and components, and a
 dimension or a duration is an object with a value and a unit. The build uses Style Dictionary 5, the usual tool for DTCG
@@ -155,7 +197,9 @@ The build writes both themes into one CSS file. The default theme (light) is on 
 `color-scheme: light
 dark`. The dark theme's values replace it when the system prefers dark and the page does not say
 `data-theme="light"`, and whenever the page says `data-theme="dark"`. When the system asks for reduced motion, every
-duration token is `0s`, so nothing the widgets animate moves.
+duration token is `0s`, so nothing the widgets animate moves. When the system asks for more contrast, the `light-more`
+or the `dark-more` colours replace those of the theme in force, and the widgets' control size is 44 CSS px for every
+pointer.
 
 ```sh
 deno task tokens --mood dusk --out dist/tokens.css
@@ -280,6 +324,54 @@ are rules that agents verify, since no check can see them: help, where there is 
 (SC 3.2.6), and nothing already entered is asked for again in the same process (SC 3.3.7). The stance has no form
 machine that remembers entered values across a process: carrying them is each process's machine's job, in memory only.
 The checks below cover what a machine can decide; they do not replace a test with assistive technology.
+
+## Responsive design
+
+An app built with the stance works on every device: a phone, a tablet, a laptop and a wide desktop, with a finger or a
+mouse, held upright or sideways, and in the desktop app's window. Rules 16 to 25 say how, and a check holds each one.
+Every check opens a page in the same matrix, which is written in one place, `checks/matrix.ts`:
+
+| Dimension | Values                                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| Width     | 320 (compact), 375 (compact), 768 (medium), 1024 (expanded), 1280 (large), 1920 (extra large), in CSS px  |
+| Pointer   | a mouse (fine, hovers) and a finger (touch events, coarse, no hover; a mobile device up to 1024 px)       |
+| Theme     | light and dark, through `prefers-color-scheme`                                                            |
+| Text      | the browser's default and 200% of it, set on the root                                                     |
+| Also      | 400% zoom (320 by 256), a phone held sideways (812 by 375), forced colours, more contrast, reduced motion |
+| Phone     | the mid-range profile of the budget: a 4 times slower processor, 150 ms of latency, 1.6 Mbit/s            |
+
+The full matrix is 48 cells. A check that does not depend on the theme or the text size uses each width with each
+pointer, and a slow one uses the two anchors, a phone with a finger (375) and a laptop with a mouse (1280). The widths
+are Material 3's window size classes. A size or a mode is added in the matrix alone.
+
+| Rule | Check         | What it opens, and what it refuses                                                                                                                                                 |
+| ---- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17   | `reflow`      | Sideways scroll, text cut off and text over text, in every width and text size, at 400% zoom, held sideways, and with the text spacing of SC 1.4.12.                               |
+| 18   | `fluid`       | In the stylesheets, a viewport media query that restyles a component rather than the page frame, and a physical property (`margin-left`, `left`, `text-align: left`).              |
+| 19   | `type-scale`  | A font size in pixels or in viewport units alone, the root's size in pixels, and text that does not grow when the root is set to 200%.                                             |
+| 20   | `input-modes` | With a finger, a target below 44 by 44 CSS px; in the stylesheets, something shown only on `:hover`.                                                                               |
+| 21   | `viewport`    | `vh` in a height, `100vw` as a width, a viewport meta that locks the zoom or lacks `viewport-fit=cover`, a fixed bar with no safe-area inset, a field hidden by the keyboard.      |
+| 22   | `nav`         | A navigation or tab row with a "More", folded into a menu button from 840 px, with undisplayed destinations, or outside the window and not scrolling.                              |
+| 23   | `media`       | An image, video or frame that reserves no box, an image far larger than shown with no `srcset`, a list of 50 or more items with no `content-visibility`, a layout shift above 0.1. |
+| 23   | `budget`      | A page on the mid-range phone profile over its largest paint (2.5 s), blocked time (300 ms), JavaScript (170 kB) or total (1 MB), the last two compressed with gzip.               |
+| 24   | `preferences` | In forced colours, a control with no border; with more contrast, text under 7:1 (4.5:1 for large text); `backdrop-filter` with no `prefers-reduced-transparency` rule.             |
+| 25   | (all)         | The matrix itself: no check writes a width of its own.                                                                                                                             |
+
+The stylesheet checks read the page's stylesheets as the browser holds them, so they read a built bundle as well as a
+project's sources. A project may set its own budget in `check.budget` (`lcp`, `cls`, `tbt` in ms, `jsKB`, `totalKB`).
+Two things no check sees: whether a layout is _good_ at a size, and how a real device behaves (a real keyboard, a real
+notch). A person looks at the app on a phone and a tablet before a release.
+
+Sources:
+
+- [WCAG 2.2](https://www.w3.org/TR/WCAG22/): SC 1.3.4 Orientation, 1.4.4 Resize Text, 1.4.10 Reflow, 1.4.12 Text
+  Spacing, 2.5.1 Pointer Gestures, 2.5.7 Dragging Movements, 2.5.8 Target Size (Minimum).
+- [Apple's Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/layout): Layout,
+  and adaptivity (size classes, safe areas, a 44 by 44 point control).
+- [Material 3's window size classes](https://m3.material.io/foundations/layout/applying-layout/window-size-classes):
+  compact, medium, expanded, large and extra large.
+- MDN on [container queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries), and on
+  [dynamic viewport units](https://developer.mozilla.org/en-US/docs/Web/CSS/length#viewport-percentage_lengths).
 
 ## The store and the machines
 
@@ -546,28 +638,39 @@ deno task check --project <app folder>   # any project with a stance-ui.json
 deno task check --only tokens,no-raw-literals --json
 ```
 
-| Check               | What it holds                                                                                                                                                                                                                                                                                                                                                          |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                                                                                                                                                        |
-| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                                                                                                                                                               |
-| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                                                                                                                                                       |
+| Check               | What it holds                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tokens`            | The token files follow the DTCG format: structure, names, `$type` (own or inherited), aliases that resolve without cycles, and each type's value. Every mood board defines the same tokens with the same types.                 |
+| `no-raw-literals`   | No raw colour, size or duration in a component, and every `var(--x)` names a token of the mood board or a custom property the component declares itself.                                                                        |
+| `component-imports` | A component imports only Svelte, other components, the widget set's index and the store module, and anything else only as a type. A widget of the set does not import the store.                                                |
 | `icons`             | Every icon comes from the set `check.icons` names, one of the predefined sets in `checks/icons.ts`: a component imports no other icon library (nor any set's package before one is chosen), no SVG file, holds no inline `<svg>` or one written through `{@html}`, and uses no other icon font's classes. Components listed under `check.icons.drawings` may hold SVG. |
-| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                                                                                                                                                             |
-| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                                                                                                                                                                  |
-| `no-raw-drag`       | Only the widget set's `Draggable` and `Pannable` handle dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.                                                                                                                                |
-| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script.                                                                                                                                        |
-| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                                                                                                                                                            |
-| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                                                                                                                                                              |
-| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                                                                                                                                                                      |
+| `svelte-check`      | The project type-checks, which includes refusing a write to the store, an entry or a view.                                                                                                                                      |
+| `contrast`          | Every pair in the contrast file reaches 4.5:1 (text) or 3:1 (controls, focus rings), computed with WCAG's formula from the tokens of every theme of every mood board.                                                           |
+| `no-raw-drag`       | Only the widget set's `Draggable` handles dragging: elsewhere, a pointer, mouse or touch move handler, an HTML5 drag event, a `draggable` attribute, `setPointerCapture` or such a listener added in a script is refused.       |
+| `auth-only`         | Only the widget set's `Auth` asks for a secret: elsewhere, `type="password"` (as text or as a string in an expression) or an `autocomplete` of current-password, new-password or one-time-code is refused, in markup or script. |
+| `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                     |
+| `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                       |
+| `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                               |
+| `column`            | In a 1920 CSS px window the page's `main` landmark holds its content in a column at most 1400 CSS px wide, centred in the window or in the space right of an element marked `data-slot="panel"` (rule 16).                      |
+| `reflow`            | No sideways scroll, cut-off text or text over text in each cell of the matrix, at 400% zoom, held sideways and with the text spacing of SC 1.4.12 set (rule 17).                                                                |
+| `fluid`             | The stylesheets restyle components by container and not by viewport media query, and use logical properties (rule 18).                                                                                                          |
+| `type-scale`        | No font size in pixels, the root's size not fixed, and every text grows when the root is 200% (rule 19).                                                                                                                        |
+| `input-modes`       | With a finger every target is at least 44 by 44 CSS px, and nothing is shown only on `:hover` (rule 20).                                                                                                                        |
+| `viewport`          | Dynamic viewport units, a viewport meta that allows zoom, safe-area insets for fixed bars, a focused field in view with the keyboard up (rule 21).                                                                              |
+| `nav`               | Every destination of the top bar is shown from 840 px up, none is behind a "More", and a bar that overflows scrolls (rule 22).                                                                                                  |
+| `media`             | Images and frames keep their box and fit their size, long lists skip off-screen work, and the layout shift is under 0.1 (rule 23).                                                                                              |
+| `budget`            | On a mid-range phone the largest paint is within 2.5 s, the blocked time under 300 ms, the JavaScript under 170 kB and the whole under 1 MB (rule 23).                                                                          |
+| `preferences`       | Forced colours keep an edge on controls, more contrast reaches 7:1, and a translucent surface has a reduced-transparency answer (rule 24).                                                                                      |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
-served over HTTP on the loopback address for the run. Each page is opened in the light and the dark theme (through
-`prefers-color-scheme`) and on a desktop (1280 by 800) and a phone (390 by 844), and in each state its configuration
-reaches by clicking. A problem names the page, the state and every variant it was seen in. A project that lists no page
-fails them rather than passing unseen. Two things are outside what a static check can see. A style value computed by an
-expression (`style:width={w}`) is not checked. And whether a component's own `$state` is really UI state, rather than
-app state kept in the wrong place, is a judgment left to review.
+served over HTTP on the loopback address for the run. Each page is opened in the cells of the
+[testing matrix](#responsive-design): six widths from 320 to 1920 CSS px, a mouse and a finger, the light and the dark
+theme (through `prefers-color-scheme`) and text at 100% and 200%, and in each state its configuration reaches by
+clicking. A problem names the page, the state and every variant it was seen in. A project that lists no page fails them
+rather than passing unseen. Two things are outside what a static check can see. A style value computed by an expression
+(`style:width={w}`) is not checked. And whether a component's own `$state` is really UI state, rather than app state
+kept in the wrong place, is a judgment left to review.
 
 Every run of `deno task check` records, in `stance-ui.checked.json` beside `stance-ui.json`, whether each check passed,
 how many problems it found, when, and a fingerprint of the files the checks read. `stance-ui status` compares it with
@@ -589,6 +692,7 @@ the record.
     "icons": { "set": "lucide", "drawings": [] },
     "tsconfig": "tsconfig.json",
     "contrast": "tokens/contrast.json",
+    "budget": { "jsKB": 120 },
     "pages": [
       {
         "name": "home",
@@ -601,80 +705,22 @@ the record.
 }
 ```
 
-`moods` is optional, and `tsconfig` set to `null` skips the type check. `icons` is the icon set the design method's
-icons step chose (`"lucide"` alone is the same as `{ "set": "lucide" }`), and is absent until that step is closed;
-`drawings` lists the components that draw a chart or a diagram and may hold SVG. A page's `path` is its built HTML file;
-`build` is run from the root before the pages are opened, once for each distinct command; `click` takes Playwright
-selectors.
-
-## Adopting the stance in a project
-
-The widget set is not a package the project depends on. Its source is copied into the project, where it belongs to the
-project and can be edited like any other file. The copy records which version of the stance it came from, so a later
-update can be compared with what the project changed.
-
-1. Copy the stance in, choosing the mood board:
-
-   ```sh
-   deno task adopt --project <app folder> --mood white
-   ```
-
-   This copies the widget set to `src/lib/ui/components/`, the store module to `src/lib/ui/store/`, the theme machine
-   and its outputs for the page to `src/lib/ui/theme/`, the sign-in machine to `src/lib/ui/auth/`, the platform bridge
-   to `src/lib/ui/platform/`, the mood board with both themes and the contrast pairs to `tokens/`, and the token build
-   to `scripts/stance-ui-tokens.ts` (use `--to` for another place than `src/lib/ui`). It writes `stance-ui.json`, which
-   records the stance's version and commit, the mood board, and the sha256 of every file as it was copied, and which
-   configures the checks.
-
-   It then writes what a new project needs to build and run, from `scaffold/`: `deno.json` with its tasks,
-   `package.json` with the npm packages at the stance's exact versions, `tsconfig.json`, `vite.config.ts`, `index.html`,
-   `.gitignore`, and a minimal app wired to the store (`src/main.ts`, `src/App.svelte`, `src/app.svelte.ts`, a counter
-   machine in `src/machines/` and its test in `test/`). These files are the project's from the start: a file the project
-   already has is never overwritten, and adopt prints `skipped <file>` for it. `--no-scaffold` writes none of them. Then
-   it builds the mood board, both themes, into `src/lib/ui/tokens.css`, which `src/main.ts` imports. Last, when the
-   project has a `package.json`, it installs the npm packages with `deno install`, run by the same Deno, so the checks
-   find them in place, and then Playwright's Chromium when this machine has no copy of the pinned build; `--no-install`
-   skips both, and it says so when it cannot install them (with no network, say).
-
-2. Build and run it. In an empty folder, these work straight after adopt, with no edit:
-
-   ```sh
-   deno task dev     # the tokens, then Vite's dev server
-   deno task build   # the tokens, then the app into dist/
-   deno task test    # the tests in test/
-   deno task check   # the type check (svelte-check)
-   ```
-
-   **Tests go in `test/`, outside `tsconfig.json`'s `include`.** The type check reads `src/` only (and skips any
-   `*.test.ts`); `deno test` type-checks and runs the tests itself. A test imports the plain logic of a machine (its
-   `initial`, `step` and `allowed`, as `src/machines/counter.ts` has them), which runs without Svelte and without a
-   browser.
-
-3. Replace the counter with the app's machines, in the store made in `src/app.svelte.ts`, and its page with the app's
-   components. The theme machine stays.
-
-4. `stance-ui.json` lists the scaffold's page, `dist/index.html`, built by `deno task build`, under `check.pages`; add
-   the app's other pages and states there, so the browser checks open them.
-
-5. Run the stance's checks, from this repository (`deno task check --project <app folder>`) or through Naima (below).
-
-Later, `deno task adopt --project <app folder> --status` lists the files the project customized since the copy (their
-sha256 is no longer the one recorded), the files that are newer in the stance, and, for each check, whether it passed
-after the last change to the files it reads, failed, or has not run since. Running `adopt` again updates the files the
-project has not changed. It refuses to overwrite a file the project did change, or one that was there before and never
-came from the stance, and names each of them so they can be merged by hand. `--force` overwrites them anyway.
-
-## As a Naima plugin
+`moods` is optional, `budget` sets the project's own performance budget (rule 23; its default is in `checks/matrix.ts`),
+and `tsconfig` set to `null` skips the type check. `icons` is the icon set the design method's icons step chose
+(`"lucide"` alone is the same as `{ "set": "lucide" }`), and is absent until that step is closed; `drawings` lists the
+components that draw a chart or a diagram and may hold SVG. A page's `path` is its built HTML file; `build` is run from
+the root before the pages are opened, once for each distinct command; `click` takes Playwright selectors.
 
 `plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
 check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-icons`,
-`ui-svelte-check`, `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check`
-runs them. In a checkout whose app folder holds no `stance-ui.json`, such as a trunk whose app lives on a development
-line, each check reports one note saying the stance is not adopted there, and no problem. And it adds
-`naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's own
-modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from the
-plugin's checkout, so Deno must be on the PATH.
+`ui-svelte-check`, `ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`, `ui-column`,
+`ui-reflow`, `ui-fluid`, `ui-type-scale`, `ui-input-modes`, `ui-viewport`, `ui-nav`, `ui-media`, `ui-budget`,
+`ui-preferences`), so `naima check` runs them. In a checkout whose app folder holds no `stance-ui.json`, such as a trunk
+whose app lives on a development line, each check reports one note saying the stance is not adopted there, and no
+problem. And it adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports
+only the runtime's own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process
+under Deno, from the plugin's checkout, so Deno must be on the PATH.
 
 `naima-plugin.json`, at the root, describes the plugin as data, so Naima can read it without running anything: its name,
 its kind (`stance`), its entry module, the plugin contract it is written for, its examples, who made it, and the design
@@ -777,8 +823,9 @@ deno fmt && deno lint
 
 `test/fixtures/clean` is a small project that passes every check. `test/fixtures/violating` breaks each rule in each way
 the checks know. `test/fixtures/inaccessible` has a dark theme below the contrast minimums and a page that fails axe,
-the keyboard walk, reflow, the target size and reduced motion. `test/fixtures/types` writes to the store around its
-transitions and must fail the type check.
+the keyboard walk, reflow, the target size and reduced motion. `test/fixtures/responsive` has a page that fixes its
+widths, its type and its box in each way the responsive checks know. `test/fixtures/types` writes to the store around
+its transitions and must fail the type check.
 
 ## Licence
 

@@ -183,7 +183,8 @@ const block = (selector: string, lines: string[], indent = "") =>
 /**
  * Builds a mood board into CSS custom properties and returns the file written. The default theme is on
  * :root; the dark theme replaces the values that differ when the system prefers dark, unless the user chose
- * light, and whenever the user chose dark (`<html data-theme="dark">`). Every duration is zero when the
+ * light, and whenever the user chose dark (`<html data-theme="dark">`). The light-more and dark-more themes, when a
+ * mood board has them, answer `prefers-contrast: more`. Every duration is zero when the
  * system asks for reduced motion.
  */
 export async function buildTokens(dir: string, out: string, label = dir): Promise<string> {
@@ -205,7 +206,7 @@ export async function buildTokens(dir: string, out: string, label = dir): Promis
     ...decl(base.props),
   ]);
   if (rest.length) css += "\n" + block(`:root[data-theme="${base.name}"]`, [`color-scheme: ${base.name};`]);
-  for (const t of rest) {
+  for (const t of rest.filter((t) => !t.name.endsWith("-more"))) {
     const lines = decl(t.props, base.props);
     if (t.name === "dark") {
       css += "\n" + `@media (prefers-color-scheme: dark) {\n` +
@@ -213,6 +214,26 @@ export async function buildTokens(dir: string, out: string, label = dir): Promis
     }
     css += "\n" +
       block(`:root[data-theme="${t.name}"]`, [...(scheme(t.name) ? [`color-scheme: ${t.name};`] : []), ...lines]);
+  }
+  // A theme named light-more or dark-more is the answer to prefers-contrast: more, over the light or the dark theme.
+  const more = (name: string) => built.find((t) => t.name === name);
+  const lightMore = more("light-more");
+  const darkMore = more("dark-more");
+  const lightLines = lightMore ? decl(lightMore.props, base.props) : [];
+  // The dark-more block also undoes what the light-more block changed, as it follows it on a dark system.
+  const darkLines = darkMore
+    ? [...darkMore.props].filter(([n, p]) =>
+      p.value !== base.props.get(n)?.value || lightMore?.props.get(n)?.value !== base.props.get(n)?.value
+    ).map(([n, p]) => `${n}: ${p.value};`)
+    : [];
+  if (lightMore) {
+    css += "\n" + `@media (prefers-contrast: more) {\n` +
+      block(`:root:not([data-theme="dark"])`, lightLines, "  ") + "}\n";
+  }
+  if (darkMore) {
+    css += "\n" + `@media (prefers-contrast: more) and (prefers-color-scheme: dark) {\n` +
+      block(`:root:not([data-theme="light"])`, darkLines, "  ") + "}\n";
+    css += "\n" + `@media (prefers-contrast: more) {\n` + block(`:root[data-theme="dark"]`, darkLines, "  ") + "}\n";
   }
   const durations = [...base.props].filter(([, p]) => p.type === "duration").map(([n]) => `${n}: 0s;`);
   if (durations.length) {

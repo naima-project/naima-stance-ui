@@ -8,6 +8,9 @@ import type { Token } from "./tokens.ts";
 
 const CHECK = "contrast";
 export const MINIMUM = { text: 4.5, ui: 3 } as const;
+/** The minimums of a theme made for `prefers-contrast: more` (a theme named light-more or dark-more): WCAG's enhanced
+ *  contrast for text (SC 1.4.6) and 4.5:1 for what identifies a control. */
+export const MINIMUM_MORE = { text: 7, ui: 4.5 } as const;
 
 export interface Pair {
   kind: keyof typeof MINIMUM;
@@ -72,6 +75,7 @@ function srgb(tokens: Map<string, Token>, path: string): number[] | string {
 /** Every pair below its minimum in one theme of one mood board (`label`). */
 export function checkContrast(label: string, tokens: Map<string, Token>, pairs: Pair[]): Finding[] {
   const findings: Finding[] = [];
+  const minimum = /-more\)$/.test(label) ? MINIMUM_MORE : MINIMUM;
   for (const p of pairs) {
     for (const fg of p.fg) {
       for (const bg of p.bg) {
@@ -87,12 +91,12 @@ export function checkContrast(label: string, tokens: Map<string, Token>, pairs: 
           continue;
         }
         const r = ratio(a, b);
-        if (r < MINIMUM[p.kind]) {
+        if (r < minimum[p.kind]) {
           findings.push({
             check: CHECK,
             level: "problem",
             file: label,
-            message: `${fg} on ${bg}: ${r.toFixed(2)}:1, below ${MINIMUM[p.kind]}:1 for ${
+            message: `${fg} on ${bg}: ${r.toFixed(2)}:1, below ${minimum[p.kind]}:1 for ${
               p.kind === "text" ? "text" : "a control or a focus ring"
             } (${p.use})`,
           });
