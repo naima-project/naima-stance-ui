@@ -225,6 +225,6 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   }
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));
   const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
-  findings.push(...await browserChecks(root, cfg.pages, browser));
+  findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget));
   return findings;
 }

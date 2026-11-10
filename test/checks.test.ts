@@ -90,7 +90,7 @@ Deno.test("an inaccessible page fails axe at WCAG 2.2 AA, the keyboard walk and 
       "at 320 CSS px wide the page scrolls sideways",
     ]
   ) has(fs, "a11y", text);
-  assert(fs.some((f) => f.message.includes("light, desktop") && f.message.includes("dark, phone")));
+  assert(fs.some((f) => f.message.includes("light, 320 mouse") && f.message.includes("dark, 320")));
 });
 
 Deno.test("targets under 24 by 24 CSS px next to each other are refused", async () => {
@@ -152,4 +152,62 @@ Deno.test("a main column that spans a wide window or sits off centre is refused,
   has(fs, "column", "spans the window: the main column is 1888 CSS px wide in a 1920 px window, wider than 1400");
   has(fs, "column", "sits at the left: the main column is not centred in a 1920 px window");
   assertEquals(fs.length, 2, JSON.stringify(fs));
+});
+
+Deno.test("the testing matrix has the six widths, both pointers, both themes and both text sizes, and the checks take their windows from it", async () => {
+  const { SIZES, cells, anchors, frames } = await import("../checks/matrix.ts");
+  assertEquals(SIZES.map((s) => s.width), [320, 375, 768, 1024, 1280, 1920]);
+  assertEquals(cells().length, 6 * 2 * 2 * 2);
+  assertEquals(frames().length, 12);
+  assertEquals(anchors().map((c) => c.name), ["light, 375 touch", "light, 1280 mouse"]);
+  assert(cells().filter((c) => c.pointer === "touch").every((c) => c.options.hasTouch));
+  for (const file of ["browser.ts", "responsive.ts"]) {
+    const source = await Deno.readTextFile(new URL(`../checks/${file}`, import.meta.url));
+    assert(!/viewport:\s*\{\s*width:\s*\d/.test(source), `${file} writes a window of its own`);
+  }
+});
+
+Deno.test("a page that fixes its widths, type and box is refused by each responsive check", async () => {
+  const fs = await problems("responsive", [
+    "reflow",
+    "fluid",
+    "type-scale",
+    "input-modes",
+    "viewport",
+    "nav",
+    "media",
+    "budget",
+    "preferences",
+  ]);
+  for (
+    const [check, text] of [
+      ["reflow", 'the page scrolls sideways, past its right edge at div "A box of a fixed width."'],
+      ["reflow", 'div "A long line that does not fit in its box" cuts its text off'],
+      ["reflow", "with the text spacing of SC 1.4.12 set, the page scrolls sideways"],
+      ["fluid", "@media (max-width: 600px) restyles components (.card)"],
+      ["fluid", "margin-left is physical"],
+      ["fluid", "float is physical"],
+      ["fluid", "text-align is physical"],
+      ["type-scale", "html (14px) sets the root's size in pixels"],
+      ["type-scale", ".card (13px)"],
+      ["type-scale", "is 13 px and grows only to 13 px when the text is set to 200%"],
+      ["input-modes", 'button "a" is 21×24 CSS px: a finger needs 44 by 44'],
+      ["input-modes", ".row:hover .actions shows something only on :hover"],
+      ["viewport", "vh in a height (body)"],
+      ["viewport", "stops the reader from zooming"],
+      ["viewport", "no viewport-fit=cover"],
+      ["viewport", "no env(safe-area-inset-*) anywhere"],
+      ["viewport", 'input "Search" is under div "Bar" while it has the focus and the keyboard is up'],
+      ["nav", 'nav "Primary" keeps destinations behind button "More"'],
+      ["nav", 'nav "Folding" folds into button "Menu"'],
+      ["media", "img reserves no box"],
+      ["media", "img is 1200 px wide and shown 100 px wide: give it srcset and sizes"],
+      ["media", "holds 60 items and none skips its rendering off screen"],
+      ["budget", "the main thread is blocked for"],
+      ["budget", "kB received (gzip), over 1 kB"],
+      ["preferences", 'button "Flat" has no border in forced colours'],
+      ["preferences", "under the 7:1 more contrast asks for"],
+      ["preferences", "backdrop-filter is used"],
+    ] as const
+  ) has(fs, check, text);
 });

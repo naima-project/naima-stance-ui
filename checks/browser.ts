@@ -12,6 +12,9 @@
 //   column          in a 1920 CSS px window the page's main landmark holds its content in a column of a readable width,
 //                   at most 1400 CSS px, centred in the window (or in the space right of a [data-slot=panel]): the
 //                   layout is progressive, never the window's full width.
+//   reflow, fluid, type-scale, input-modes, viewport, nav, media, budget, preferences
+//                   the responsive checks (rules 17 to 24): see responsive.ts. Every check takes its windows, pointers,
+//                   themes and text sizes from the testing matrix (matrix.ts).
 //
 // The pages are served over HTTP from the project's root, on the loopback address, for the run only.
 
@@ -20,16 +23,59 @@ import { posix } from "node:path";
 import type { Page as PageConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { launchChromium } from "./chromium.ts";
+import {
+  anchors,
+  BUDGET,
+  type Budget,
+  cells,
+  DESKTOP,
+  LANDSCAPE,
+  NARROWEST,
+  PHONE,
+  SCHEMES,
+  slowCells,
+  TEXT_SPACING_CSS,
+  ZOOM_400,
+} from "./matrix.ts";
+import {
+  budgetProblems,
+  cssProblems,
+  cutOff,
+  dumpCss,
+  edgeBars,
+  fixedType,
+  forcedColorsProblems,
+  keyboardCovers,
+  mediaProblems,
+  mobileProfile,
+  moreContrastProblems,
+  NAME_SOURCE,
+  navProblems,
+  overlaps,
+  sideways,
+  targetsBelow,
+} from "./responsive.ts";
 
-export const BROWSER_CHECKS = ["a11y", "target-size", "reduced-motion", "column"] as const;
+export const BROWSER_CHECKS = [
+  "a11y",
+  "target-size",
+  "reduced-motion",
+  "column",
+  "reflow",
+  "fluid",
+  "type-scale",
+  "input-modes",
+  "viewport",
+  "nav",
+  "media",
+  "budget",
+  "preferences",
+] as const;
 export type BrowserCheck = typeof BROWSER_CHECKS[number];
 
 /** The axe-core tags of WCAG 2.2 level A and AA, earlier versions' criteria included. */
 export const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-const SCHEMES = ["light", "dark"] as const;
-const VIEWPORTS = { desktop: { width: 1280, height: 800 }, phone: { width: 390, height: 844 } } as const;
-/** The wide window the column check opens, and the widest content a page may have in it, in CSS px. */
-const WIDE_WINDOW = { width: 1920, height: 1080 } as const;
+/** The widest content a page may have in the widest window of the matrix (1920 CSS px), in CSS px. */
 const MAX_COLUMN = 1400;
 
 /** One problem seen in one or more variants of a page (theme, viewport). */
@@ -46,7 +92,11 @@ class Collector {
       check: e.check,
       level: "problem",
       file: e.file,
-      message: `${e.message} (${e.variants.join("; ")})`,
+      message: `${e.message} (${
+        e.variants.length > 6
+          ? `${e.variants.slice(0, 4).join("; ")}; and ${e.variants.length - 4} more`
+          : e.variants.join("; ")
+      })`,
     }));
   }
 }
@@ -69,15 +119,6 @@ async function build(root: string, command: string[]): Promise<string | null> {
 }
 
 // --- What runs inside the page. Each function is serialised by Playwright, so it uses nothing from outside.
-
-/** A short, readable name for an element: its tag and its accessible-ish name. */
-const NAME_SOURCE = `(el) => {
-  const tag = el.tagName.toLowerCase();
-  const label = el.getAttribute("aria-label") || (el.labels && el.labels[0] && el.labels[0].textContent) ||
-    el.textContent || el.getAttribute("title") || el.getAttribute("name") || "";
-  const text = label.replace(/\\s+/g, " ").trim().slice(0, 40);
-  return text ? tag + ' "' + text + '"' : tag + (el.id ? "#" + el.id : "");
-}`;
 
 interface FocusStop {
   name: string;
@@ -276,8 +317,11 @@ export async function browserChecks(
   root: string,
   pages: PageConfig[],
   only: readonly BrowserCheck[],
+  budget: Partial<Budget> = {},
 ): Promise<Finding[]> {
   if (only.length === 0) return [];
+  const on = (c: BrowserCheck) => only.includes(c);
+  const slowNames = new Set(slowCells().map((c) => c.name));
   if (pages.length === 0) {
     return only.map((check) => ({
       check,
@@ -320,7 +364,7 @@ export async function browserChecks(
       }
       for (const state of [{ name: "", click: [] as string[] }, ...(p.states ?? [])]) {
         const where = `${p.name}${state.name ? ` (${state.name})` : ""}`;
-        const open = async (options: import("playwright").BrowserContextOptions) => {
+        const open = async (options: import("playwright").BrowserContextOptions, text = 100) => {
           const context = await browser.newContext(options);
           const page = await context.newPage();
           const errors: string[] = [];
@@ -330,6 +374,13 @@ export async function browserChecks(
             (r) => r.status() >= 400 && errors.push(`${r.url().slice(base.length)} answered ${r.status()}`),
           );
           await page.goto(url, { waitUntil: "networkidle" });
+          // The reader's text size, set on the root as the browser's own setting would be.
+          if (text !== 100) {
+            await page.evaluate(
+              (t) => document.documentElement.style.setProperty("font-size", `${t}%`, "important"),
+              text,
+            );
+          }
           for (const sel of state.click) {
             try {
               await page.click(sel, { timeout: 5000 });
@@ -340,80 +391,129 @@ export async function browserChecks(
           await page.waitForTimeout(state.click.length ? 400 : 50);
           return { context, page, errors };
         };
-        for (const scheme of SCHEMES) {
-          for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
-            const variant = `${scheme}, ${vp}`;
-            const { context, page, errors } = await open({
-              viewport,
-              colorScheme: scheme,
-              reducedMotion: "no-preference",
-              ...(vp === "phone" ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}),
-            });
-            for (const e of errors) found.add(only[0], p.path, `${where}: ${e}`, variant);
-            if (only.includes("a11y")) {
-              await page.addScriptTag({ content: axeSource });
-              const violations = await page.evaluate(async (tags) => {
+        const add = (check: BrowserCheck, messages: string[], variant: string, limit = 15) => {
+          for (const m of messages.slice(0, limit)) found.add(check, p.path, `${where}: ${m}`, variant);
+        };
+        /** The reflow probes: no sideways scroll, no cut-off text, no text over text, then again with the text spacing
+         *  of SC 1.4.12 set. */
+        const reflowAt = async (page: import("playwright").Page, variant: string) => {
+          add("reflow", await sideways(page), variant);
+          const cut = await cutOff(page);
+          const over = await overlaps(page);
+          add("reflow", cut, variant);
+          add("reflow", over, variant);
+          await page.addStyleTag({ content: TEXT_SPACING_CSS });
+          const spacing = "with the text spacing of SC 1.4.12 set, ";
+          add("reflow", (await sideways(page)).map((m) => spacing + m), variant);
+          add("reflow", (await cutOff(page)).filter((m) => !cut.includes(m)).map((m) => spacing + m), variant);
+          add("reflow", (await overlaps(page)).filter((m) => !over.includes(m)).map((m) => spacing + m), variant);
+        };
+        for (const cell of cells()) {
+          const plain = cell.text === 100;
+          const light = cell.scheme === "light";
+          const phone = cell.name === PHONE.name;
+          const axe = slowNames.has(cell.name);
+          const work = {
+            base: plain && (on("a11y") || on("target-size")),
+            reflow: on("reflow") && light,
+            touch: on("input-modes") && plain && light && cell.pointer === "touch",
+            nav: on("nav") && plain && light,
+            media: on("media") && plain && light,
+            css: plain && light && phone &&
+              (["fluid", "type-scale", "input-modes", "viewport", "preferences"] as const).some(on),
+            type: on("type-scale") && plain && light && phone,
+            keyboard: on("viewport") && plain && light && phone,
+            column: on("column") && plain && light && cell.size.width === 1920 && cell.pointer === "mouse",
+          };
+          if (!Object.values(work).some(Boolean)) continue;
+          const { context, page, errors } = await open(cell.options, cell.text);
+          if (plain) { for (const e of errors) found.add(only[0], p.path, `${where}: ${e}`, cell.name); }
+          if (work.base && axe && on("a11y")) {
+            await page.addScriptTag({ content: axeSource });
+            const violations = await page.evaluate(async (tags) => {
+              // deno-lint-ignore no-explicit-any
+              const axe = (globalThis as any).axe;
+              const r = await axe.run(document, {
+                runOnly: { type: "tag", values: tags },
+                resultTypes: ["violations"],
+              });
+              // deno-lint-ignore no-explicit-any
+              return r.violations.flatMap((v: any) =>
                 // deno-lint-ignore no-explicit-any
-                const axe = (globalThis as any).axe;
-                const r = await axe.run(document, {
-                  runOnly: { type: "tag", values: tags },
-                  resultTypes: ["violations"],
-                });
-                // deno-lint-ignore no-explicit-any
-                return r.violations.flatMap((v: any) =>
-                  // deno-lint-ignore no-explicit-any
-                  v.nodes.map((n: any) => `${v.id}: ${v.help} at ${n.target.join(" ")}`)
-                );
-              }, WCAG_TAGS);
-              for (const v of violations) found.add("a11y", p.path, `${where}: ${v}`, variant);
-              // The keyboard walk starts from the page as it loads: in a state reached by clicking, a modal
-              // dialog or an open menu holds the focus on purpose.
-              if (vp === "desktop" && state.click.length === 0) {
-                const { stops, missed } = await tabWalk(page);
-                for (const s of stops) {
-                  if (!s.ring) {
-                    found.add("a11y", p.path, `${where}: ${s.name} shows no focus ring when focused`, variant);
-                  }
-                  if (s.covered) {
-                    found.add("a11y", p.path, `${where}: ${s.name} is under ${s.covered} when focused`, variant);
-                  }
+                v.nodes.map((n: any) => `${v.id}: ${v.help} at ${n.target.join(" ")}`)
+              );
+            }, WCAG_TAGS);
+            for (const v of violations) found.add("a11y", p.path, `${where}: ${v}`, cell.name);
+            // The keyboard walk starts from the page as it loads: in a state reached by clicking, a modal
+            // dialog or an open menu holds the focus on purpose.
+            if (cell.size.width === 1280 && cell.pointer === "mouse" && state.click.length === 0) {
+              const { stops, missed } = await tabWalk(page);
+              for (const s of stops) {
+                if (!s.ring) {
+                  found.add("a11y", p.path, `${where}: ${s.name} shows no focus ring when focused`, cell.name);
                 }
-                for (const m of missed) found.add("a11y", p.path, `${where}: ${m} cannot be reached with Tab`, variant);
-                await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
-                const over = await overflows(page);
-                if (over > 1) {
-                  found.add(
-                    "a11y",
-                    p.path,
-                    `${where}: with text at 200% the page scrolls sideways by ${over} px`,
-                    variant,
-                  );
+                if (s.covered) {
+                  found.add("a11y", p.path, `${where}: ${s.name} is under ${s.covered} when focused`, cell.name);
                 }
               }
+              for (const m of missed) found.add("a11y", p.path, `${where}: ${m} cannot be reached with Tab`, cell.name);
+              await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+              const over = await overflows(page);
+              if (over > 1) {
+                found.add(
+                  "a11y",
+                  p.path,
+                  `${where}: with text at 200% the page scrolls sideways by ${over} px`,
+                  cell.name,
+                );
+              }
             }
-            if (only.includes("target-size")) {
-              for (const t of await smallTargets(page)) found.add("target-size", p.path, `${where}: ${t}`, variant);
-            }
-            await context.close();
           }
-          if (only.includes("a11y")) {
-            const { context, page } = await open({ viewport: { width: 320, height: 640 }, colorScheme: scheme });
+          if (work.base && on("target-size")) {
+            for (const t of await smallTargets(page)) found.add("target-size", p.path, `${where}: ${t}`, cell.name);
+          }
+          if (work.reflow) await reflowAt(page, cell.name);
+          if (work.touch) {
+            add("input-modes", (await targetsBelow(page, 44)).map((t) => `${t}: a finger needs 44 by 44`), cell.name);
+          }
+          if (work.nav) add("nav", await navProblems(page), cell.name);
+          if (work.media) add("media", await mediaProblems(page), cell.name);
+          if (work.type) add("type-scale", await fixedType(page), cell.name);
+          if (work.css) {
+            const dump = await dumpCss(page);
+            for (const pr of cssProblems(dump, (await edgeBars(page)).length > 0)) {
+              if (on(pr.check)) found.add(pr.check, p.path, `${where}: ${pr.message}`, "stylesheets");
+            }
+          }
+          if (work.keyboard) add("viewport", await keyboardCovers(page), cell.name);
+          if (work.column) {
+            for (const m of await columnProblems(page, MAX_COLUMN)) {
+              found.add("column", p.path, `${where}: ${m}`, "wide");
+            }
+          }
+          await context.close();
+        }
+        if (on("a11y")) {
+          for (const scheme of SCHEMES) {
+            const { context, page } = await open({ ...NARROWEST.options, colorScheme: scheme });
             const over = await overflows(page);
             if (over > 1) {
               found.add("a11y", p.path, `${where}: at 320 CSS px wide the page scrolls sideways by ${over} px`, scheme);
             }
             await context.close();
           }
-          if (only.includes("column") && scheme === "light") {
-            const { context, page } = await open({ viewport: WIDE_WINDOW, colorScheme: scheme });
-            for (const m of await columnProblems(page, MAX_COLUMN)) {
-              found.add("column", p.path, `${where}: ${m}`, "wide");
-            }
+        }
+        if (on("reflow")) {
+          for (const cell of [ZOOM_400, LANDSCAPE]) {
+            const { context, page } = await open(cell.options);
+            await reflowAt(page, cell.name);
             await context.close();
           }
-          if (only.includes("reduced-motion")) {
+        }
+        for (const scheme of SCHEMES) {
+          if (on("reduced-motion")) {
             const { context, page } = await open({
-              viewport: VIEWPORTS.desktop,
+              ...DESKTOP.options,
               colorScheme: scheme,
               reducedMotion: "reduce",
             });
@@ -421,6 +521,23 @@ export async function browserChecks(
               found.add("reduced-motion", p.path, `${where}: with reduced motion asked for, ${m}`, scheme);
             }
             await context.close();
+          }
+          if (on("preferences")) {
+            for (const cell of anchors()) {
+              const options = { ...cell.options, colorScheme: scheme };
+              const kind = `${scheme}, ${cell.size.width} ${cell.pointer}`;
+              const forced = await open({ ...options, forcedColors: "active" });
+              add("preferences", await forcedColorsProblems(forced.page), `${kind}, forced colours`);
+              await forced.context.close();
+              const more = await open({ ...options, contrast: "more" });
+              add("preferences", await moreContrastProblems(more.page), `${kind}, more contrast`);
+              await more.context.close();
+            }
+          }
+        }
+        if ((on("budget") || on("media")) && state.click.length === 0) {
+          for (const pr of budgetProblems(await mobileProfile(browser, url), { ...BUDGET, ...budget })) {
+            if (on(pr.check)) found.add(pr.check, p.path, `${where}: ${pr.message}`, "mobile profile");
           }
         }
       }

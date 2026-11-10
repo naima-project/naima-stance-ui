@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Fixed widths</title>
+    <style>
+    html {
+      font-size: 14px;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui;
+      background: #fff;
+      color: #777;
+    }
+    .wrap {
+      width: 600px;
+    }
+    .clip {
+      width: 6rem;
+      height: 1.5rem;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .card {
+      float: left;
+      margin-left: 8px;
+      text-align: left;
+      font-size: 13px;
+    }
+    @media (max-width: 600px) {
+      .card {
+        padding: 0;
+      }
+    }
+    .row .actions {
+      opacity: 0;
+    }
+    .row:hover .actions {
+      opacity: 1;
+    }
+    .small {
+      min-height: 1.5rem;
+      min-width: 1.5rem;
+      padding: 0;
+    }
+    .flat {
+      border: 0;
+      background: none;
+      color: #1a1a1a;
+      font: inherit;
+    }
+    .glass {
+      backdrop-filter: blur(4px);
+    }
+    .dock {
+      position: fixed;
+      inset-inline: 0;
+      bottom: 0;
+      height: 4rem;
+      background: #ddd;
+      z-index: 2;
+    }
+    .field {
+      position: fixed;
+      bottom: 1rem;
+      left: 1rem;
+      z-index: 1;
+    }
+    nav a {
+      margin-inline-end: 1rem;
+    }
+    .menu {
+      display: none;
+    }
+    :focus-visible {
+      outline: 2px solid #2f6fde;
+      outline-offset: 2px;
+    }
+    </style>
+  </head>
+  <body>
+    <nav
+      aria-label="Primary"><a href="#a">Home</a><a href="#b">Maps</a><button type="button" aria-label="More">More</button></nav>
+    <nav
+      aria-label="Folding"><button type="button" aria-expanded="false" aria-controls="m">Menu</button><div id="m" class="menu"><a href="#c">One</a><a href="#d">Two</a></div></nav>
+    <main>
+      <div class="wrap">A box of a fixed width.</div>
+      <div class="clip">A long line that does not fit in its box.</div>
+      <p class="card">A card that floats.</p>
+      <div class="row"><span>Row</span><span class="actions"><a href="#e">Edit</a></span></div>
+      <button class="small" type="button">a</button>
+      <button class="flat" type="button">Flat</button>
+      <div class="glass">Frosted</div>
+      <img src="big.png" alt="A big picture" style="width: 100px" />
+      <ul>
+        <li>Item 0</li>
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+        <li>Item 4</li>
+        <li>Item 5</li>
+        <li>Item 6</li>
+        <li>Item 7</li>
+        <li>Item 8</li>
+        <li>Item 9</li>
+        <li>Item 10</li>
+        <li>Item 11</li>
+        <li>Item 12</li>
+        <li>Item 13</li>
+        <li>Item 14</li>
+        <li>Item 15</li>
+        <li>Item 16</li>
+        <li>Item 17</li>
+        <li>Item 18</li>
+        <li>Item 19</li>
+        <li>Item 20</li>
+        <li>Item 21</li>
+        <li>Item 22</li>
+        <li>Item 23</li>
+        <li>Item 24</li>
+        <li>Item 25</li>
+        <li>Item 26</li>
+        <li>Item 27</li>
+        <li>Item 28</li>
+        <li>Item 29</li>
+        <li>Item 30</li>
+        <li>Item 31</li>
+        <li>Item 32</li>
+        <li>Item 33</li>
+        <li>Item 34</li>
+        <li>Item 35</li>
+        <li>Item 36</li>
+        <li>Item 37</li>
+        <li>Item 38</li>
+        <li>Item 39</li>
+        <li>Item 40</li>
+        <li>Item 41</li>
+        <li>Item 42</li>
+        <li>Item 43</li>
+        <li>Item 44</li>
+        <li>Item 45</li>
+        <li>Item 46</li>
+        <li>Item 47</li>
+        <li>Item 48</li>
+        <li>Item 49</li>
+        <li>Item 50</li>
+        <li>Item 51</li>
+        <li>Item 52</li>
+        <li>Item 53</li>
+        <li>Item 54</li>
+        <li>Item 55</li>
+        <li>Item 56</li>
+        <li>Item 57</li>
+        <li>Item 58</li>
+        <li>Item 59</li>
+      </ul>
+      <label for="q">Search</label>
+      <input id="q" class="field" />
+    </main>
+    <div class="dock">Bar</div>
+    <script>
+    var t = Date.now();
+    while (Date.now() - t < 450) {}
+    </script>
+  </body>
+</html>

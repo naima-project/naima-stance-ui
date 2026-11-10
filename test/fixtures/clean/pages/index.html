@@ -33,12 +33,17 @@
     }
     button,
     input {
-      min-height: 2.25rem;
+      min-height: 2.75rem;
+      min-inline-size: 2.75rem;
       font: inherit;
       color: var(--text);
       background: var(--surface);
       border: 1px solid var(--text);
       transition: background-color var(--fast);
+    }
+    input {
+      inline-size: min(100%, 16rem);
+      box-sizing: border-box;
     }
     main {
       max-width: 40rem;
