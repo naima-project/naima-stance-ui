@@ -167,7 +167,8 @@ function channel(options: { open?: boolean; timeoutMs?: number } = {}) {
     snapshot: () => ({ counter: { ...machines.counter.view } }),
   });
   const call = (tool: string, args: { [k: string]: unknown } = {}) =>
-    agent.handlers[tool]!(args as never) as Promise<any>; // deno-lint-ignore no-explicit-any
+    // deno-lint-ignore no-explicit-any
+    agent.handlers[tool]!(args as never) as Promise<any>;
   return { machines, call, stop };
 }
 
