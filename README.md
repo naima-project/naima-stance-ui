@@ -74,7 +74,13 @@ can be loaded into Naima as a plugin.
 15. **Before building a UI, the agent proposes the design method** (see
     [Designing with variants](#designing-with-variants)), and says why its steps come in that order.
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10 and 11 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14 and
+16. **The layout is progressive: a centred column of a readable width.** One layout adapts from a phone (320 CSS px) to a
+    wide window, never one for each. Every screen's content sits in one centred column, about 750 CSS px for text and
+    lists and up to about 1200 for charts, tables or cards, its widths design tokens, never the window's full width, with
+    a side gutter that grows with the window. The shell leaves a slot for a left panel, and the column centres in the
+    space that remains. One page wrapper does it for every screen.
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12, 13, 14 and
 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and when, and the
 agent records the review as a note on the item the change lands with.
 
@@ -498,6 +504,7 @@ deno task check --only tokens,no-raw-literals --json
 | `a11y`              | Each page passes axe-core at WCAG 2.2 AA with no violation; Tab reaches every control, which shows a focus ring and is not covered; the page fits at 320 CSS px wide and with text at 200%.                                     |
 | `target-size`       | Every pointer target is at least 24 by 24 CSS px, or its 24 px circle meets no other target (SC 2.5.8). A control inside its label counts with the label.                                                                       |
 | `reduced-motion`    | With reduced motion asked for, no element or pseudo-element has a transition or an animation that lasts any time.                                                                                                               |
+| `column`            | In a 1920 CSS px window the page's `main` landmark holds its content in a column at most 1400 CSS px wide, centred in the window or in the space right of an element marked `data-slot="panel"` (rule 16).                      |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),
@@ -604,7 +611,7 @@ came from the stance, and names each of them so they can be merged by hand. `--f
 `plugin/index.mjs` is written to Naima's plugin contract 4. It reads the rules in `rules/` (`plugin/rules.mjs`) and
 ships them to the rules point, so `naima rules` lists them for every agent of the project. It contributes one Naima
 check per stance check (`ui-tokens`, `ui-contrast`, `ui-no-raw-literals`, `ui-component-imports`, `ui-svelte-check`,
-`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`), so `naima check` runs them. And it
+`ui-no-raw-drag`, `ui-auth-only`, `ui-a11y`, `ui-target-size`, `ui-reduced-motion`, `ui-column`), so `naima check` runs them. And it
 adds `naima stance-ui adopt | status | check | hook`. The plugin file is plain JavaScript and imports only the runtime's
 own modules, so it loads under Deno, Node and Bun alike. The checks themselves run in a child process under Deno, from
 the plugin's checkout, so Deno must be on the PATH.

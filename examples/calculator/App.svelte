@@ -26,6 +26,8 @@
     -webkit-font-smoothing: antialiased;
   }
   main {
+    max-width: var(--size-dialog-width);
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;

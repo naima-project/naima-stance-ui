@@ -146,3 +146,10 @@ Deno.test("a password or a one-time code asked for outside the sign-in component
 Deno.test("the widget set's Draggable and Auth are the ones allowed to drag and to ask for secrets", async () => {
   assertEquals(await problems("clean", ["no-raw-drag", "auth-only"]), []);
 });
+
+Deno.test("a main column that spans a wide window or sits off centre is refused, a centred one, with or without a panel, passes", async () => {
+  const fs = await problems("wide", ["column"]);
+  has(fs, "column", "spans the window: the main column is 1888 CSS px wide in a 1920 px window, wider than 1400");
+  has(fs, "column", "sits at the left: the main column is not centred in a 1920 px window");
+  assertEquals(fs.length, 2, JSON.stringify(fs));
+});

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wide</title>
+    <style>
+    body { margin: 0; font-family: system-ui; }
+    body { display: flex; }
+    aside { width: 20rem; flex: none; }
+    main { flex: 1; max-width: 40rem; margin-inline: auto; padding: 0 1rem; }
+    </style>
+  </head>
+  <body>
+    <aside data-slot="panel">A panel</aside>
+    <main><h1>Beside a panel</h1><p>Text.</p></main>
+  </body>
+</html>

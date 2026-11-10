@@ -1,0 +1,27 @@
+{
+  "check": {
+    "tokens": "tokens",
+    "widgets": [],
+    "components": [],
+    "store": [],
+    "tsconfig": null,
+    "pages": [
+      {
+        "name": "spans the window",
+        "path": "pages/spans.html"
+      },
+      {
+        "name": "sits at the left",
+        "path": "pages/left.html"
+      },
+      {
+        "name": "centred",
+        "path": "pages/centred.html"
+      },
+      {
+        "name": "beside a panel",
+        "path": "pages/panel.html"
+      }
+    ]
+  }
+}

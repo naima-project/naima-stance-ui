@@ -9,6 +9,9 @@
 //                   (SC 1.4.10), and still fits with text at 200% (SC 1.4.4).
 //   target-size     every pointer target is at least 24 by 24 CSS px, or far enough from the others (SC 2.5.8).
 //   reduced-motion  with the system asking for reduced motion, no transition or animation lasts any time.
+//   column          in a 1920 CSS px window the page's main landmark holds its content in a column of a readable width,
+//                   at most 1400 CSS px, centred in the window (or in the space right of a [data-slot=panel]): the
+//                   layout is progressive, never the window's full width.
 //
 // The pages are served over HTTP from the project's root, on the loopback address, for the run only.
 
@@ -18,13 +21,16 @@ import type { Page as PageConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { launchChromium } from "./chromium.ts";
 
-export const BROWSER_CHECKS = ["a11y", "target-size", "reduced-motion"] as const;
+export const BROWSER_CHECKS = ["a11y", "target-size", "reduced-motion", "column"] as const;
 export type BrowserCheck = typeof BROWSER_CHECKS[number];
 
 /** The axe-core tags of WCAG 2.2 level A and AA, earlier versions' criteria included. */
 export const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 const SCHEMES = ["light", "dark"] as const;
 const VIEWPORTS = { desktop: { width: 1280, height: 800 }, phone: { width: 390, height: 844 } } as const;
+/** The wide window the column check opens, and the widest content a page may have in it, in CSS px. */
+const WIDE_WINDOW = { width: 1920, height: 1080 } as const;
+const MAX_COLUMN = 1400;
 
 /** One problem seen in one or more variants of a page (theme, viewport). */
 class Collector {
@@ -232,6 +238,36 @@ async function moving(page: import("playwright").Page): Promise<string[]> {
   }, NAME_SOURCE);
 }
 
+/** What is wrong with the page's main column in a wide window: wider than a readable column, or not centred. */
+function columnProblems(page: import("playwright").Page, max: number): Promise<string[]> {
+  return page.evaluate((limit) => {
+    const main = document.querySelector("main, [role=main]");
+    if (!main) return [];
+    const vw = document.documentElement.clientWidth;
+    const cs = getComputedStyle(main);
+    const r = main.getBoundingClientRect();
+    const left = r.left + parseFloat(cs.paddingLeft);
+    const right = r.right - parseFloat(cs.paddingRight);
+    const panel = document.querySelector("[data-slot=panel]");
+    const origin = panel ? panel.getBoundingClientRect().right : 0;
+    if (right - left > limit) {
+      return [
+        `the main column is ${
+          Math.round(right - left)
+        } CSS px wide in a ${vw} px window, wider than ${limit}: give the page a readable maximum width`,
+      ];
+    }
+    if (Math.abs(left - origin - (vw - right)) > 2) {
+      return [
+        `the main column is not centred in a ${vw} px window (${Math.round(left - origin)} px free at its left, ${
+          Math.round(vw - right)
+        } at its right): centre it`,
+      ];
+    }
+    return [];
+  }, max);
+}
+
 const overflows = (page: import("playwright").Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
@@ -365,6 +401,13 @@ export async function browserChecks(
             const over = await overflows(page);
             if (over > 1) {
               found.add("a11y", p.path, `${where}: at 320 CSS px wide the page scrolls sideways by ${over} px`, scheme);
+            }
+            await context.close();
+          }
+          if (only.includes("column") && scheme === "light") {
+            const { context, page } = await open({ viewport: WIDE_WINDOW, colorScheme: scheme });
+            for (const m of await columnProblems(page, MAX_COLUMN)) {
+              found.add("column", p.path, `${where}: ${m}`, "wide");
             }
             await context.close();
           }

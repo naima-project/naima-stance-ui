@@ -19,7 +19,7 @@ export interface StanceConfig {
   platforms?: { app: string; e2e: string | null };
   /** The colour pairs every theme must make legible: a contrast file (see tokens/contrast.json). */
   contrast: string;
-  /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion) open headless. */
+  /** The app's pages, built, which the browser checks (a11y, target-size, reduced-motion, column) open headless. */
   pages: Page[];
 }
 

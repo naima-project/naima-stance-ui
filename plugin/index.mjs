@@ -99,6 +99,12 @@ const CHECKS = [
     runs: "reduced-motion",
     says: "nothing moves when the system asks for reduced motion",
   },
+  {
+    name: "ui-column",
+    runs: "column",
+    says:
+      "in a wide window the page's main column is at most 1400 CSS px and centred: the layout is progressive, never the window's full width",
+  },
 ];
 
 /** The stance's rules, read from rules/, one Markdown file each (plugin/rules.mjs), as the `rules` point takes them. */
