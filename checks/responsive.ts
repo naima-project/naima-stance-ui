@@ -117,11 +117,11 @@ export function overlaps(page: Page): Promise<string[]> {
       if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") continue;
       // Labels drawn inside a chart (SVG) or hidden from assistive technology are placed on purpose.
       if (el.closest("svg, [aria-hidden=true]")) continue;
-      // A bar fixed to the window lies over the content by design.
+      // A bar fixed to the window, or a popup placed by its anchor, lies over the content by design.
       let pinned = false;
       for (let a: Element | null = el; a && !pinned; a = a.parentElement) {
         const pos = getComputedStyle(a).position;
-        pinned = pos === "fixed" || pos === "sticky";
+        pinned = pos === "fixed" || pos === "sticky" || pos === "absolute";
       }
       if (pinned) continue;
       const own = [...el.childNodes].filter((n) => n.nodeType === 3 && n.textContent!.trim() !== "");
@@ -161,6 +161,10 @@ export function fixedType(page: Page): Promise<string[]> {
       return cs.display !== "none" && cs.visibility !== "hidden" &&
         [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim() !== "");
     });
+    // A transition on the font size would still be under way when it is read.
+    const still = document.createElement("style");
+    still.textContent = "*, *::before, *::after { transition: none !important; animation: none !important; }";
+    document.head.append(still);
     const size = (el: Element) => parseFloat(getComputedStyle(el).fontSize);
     const before = els.map(size);
     const root = document.documentElement;
@@ -168,6 +172,7 @@ export function fixedType(page: Page): Promise<string[]> {
     root.style.setProperty("font-size", "200%", "important");
     const after = els.map(size);
     root.style.removeProperty("font-size");
+    still.remove();
     if (had) root.style.setProperty("font-size", had);
     const fixed = new Map<string, { n: number; from: number; to: number }>();
     els.forEach((el, i) => {
@@ -246,6 +251,9 @@ export async function keyboardCovers(page: Page): Promise<string[]> {
     for (const el of [...document.querySelectorAll<HTMLElement>(sel)].slice(0, 20)) {
       const cs = getComputedStyle(el);
       if (cs.display === "none" || cs.visibility === "hidden" || el.closest("[inert]")) continue;
+      // Behind a modal dialog the page is inert: only the dialog's own fields can take the focus.
+      const modal = document.querySelector("dialog[open]");
+      if (modal && modal.matches(":modal") && !modal.contains(el)) continue;
       el.focus();
       await new Promise((ok) => setTimeout(ok, 60));
       const r = el.getBoundingClientRect();

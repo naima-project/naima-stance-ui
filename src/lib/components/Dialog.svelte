@@ -41,7 +41,8 @@
 
 <style>
   .dialog {
-    width: var(--size-dialog-width);
+    box-sizing: border-box;
+    width: min(var(--size-dialog-width), 100%);
     max-width: 100%;
     padding: var(--space-xl);
     border: var(--border-width-thin) solid var(--color-border);

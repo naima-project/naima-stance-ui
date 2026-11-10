@@ -54,7 +54,7 @@
     "$type": "dimension",
     "control": {
       "$value": {
-        "value": 2.25,
+        "value": 2.75,
         "unit": "rem"
       }
     },

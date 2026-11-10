@@ -101,7 +101,8 @@
     inset-inline-start: 0;
     margin: var(--space-xs) 0 0;
     padding: var(--space-xs);
-    min-width: var(--size-dropdown-width);
+    min-inline-size: min(var(--size-dropdown-width), 100%);
+    box-sizing: border-box;
     list-style: none;
     border: var(--border-width-thin) solid var(--color-border);
     border-radius: var(--radius-md);
@@ -113,6 +114,9 @@
     inset-inline-end: 0;
   }
   [role="menuitem"] {
+    display: flex;
+    align-items: center;
+    min-height: var(--size-control);
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-sm);
     color: var(--color-text);

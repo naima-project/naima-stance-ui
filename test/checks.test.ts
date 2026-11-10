@@ -211,3 +211,32 @@ Deno.test("a page that fixes its widths, type and box is refused by each respons
     ] as const
   ) has(fs, check, text);
 });
+
+Deno.test("a theme made for more contrast is held to 7:1 for text, and the token build answers prefers-contrast: more", async () => {
+  const { checkContrast } = await import("../checks/contrast.ts");
+  const colour = (c: number) => ({
+    path: "",
+    type: "color",
+    file: "",
+    value: { colorSpace: "srgb", components: [c, c, c] },
+  });
+  const tokens = new Map<string, import("../checks/tokens.ts").Token>();
+  tokens.set("color.text", { ...colour(0.39), path: "color.text" });
+  tokens.set("color.surface", { ...colour(1), path: "color.surface" });
+  const pairs = [{ kind: "text" as const, use: "body", fg: ["color.text"], bg: ["color.surface"] }];
+  assertEquals(checkContrast("mood (light)", tokens, pairs), []);
+  assertEquals(checkContrast("mood (light-more)", tokens, pairs).length, 1);
+  const { buildTokens } = await import("../scripts/tokens.ts");
+  const out = await Deno.makeTempDir();
+  const css = await Deno.readTextFile(
+    await buildTokens(new URL("../tokens/moods/white", import.meta.url).pathname, `${out}/white.css`),
+  );
+  for (
+    const query of [
+      "@media (prefers-contrast: more) {",
+      "@media (prefers-contrast: more) and (prefers-color-scheme: dark) {",
+    ]
+  ) {
+    assert(css.includes(query), query);
+  }
+});

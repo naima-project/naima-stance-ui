@@ -175,7 +175,9 @@ A mood board is a folder. Typography, spacing (with sizes and border widths), ra
 themes and sit at its top; colour and shadow change with the theme and sit in `themes/light/` and `themes/dark/`.
 `mood.resolver.json` ties them together in the [DTCG Resolver Module](https://www.designtokens.org/TR/drafts/resolver/)
 format, version 2025.10: one set of shared files, then one modifier, `theme`, whose contexts are `light` and `dark`.
-Every theme of every mood board defines exactly the same token names.
+Every theme of every mood board defines exactly the same token names. A mood board also has a `light-more` and a
+`dark-more` theme in `themes/`, made for `prefers-contrast: more`: the same colours, with text at 7:1 and controls at
+4.5:1 against what they sit on (the contrast check holds them to those minimums).
 
 The tokens use the stable DTCG format, in which a colour is an object with a colour space and components, and a
 dimension or a duration is an object with a value and a unit. The build uses Style Dictionary 5, the usual tool for DTCG
@@ -187,7 +189,9 @@ The build writes both themes into one CSS file. The default theme (light) is on 
 `color-scheme: light
 dark`. The dark theme's values replace it when the system prefers dark and the page does not say
 `data-theme="light"`, and whenever the page says `data-theme="dark"`. When the system asks for reduced motion, every
-duration token is `0s`, so nothing the widgets animate moves.
+duration token is `0s`, so nothing the widgets animate moves. When the system asks for more contrast, the `light-more`
+or the `dark-more` colours replace those of the theme in force, and the widgets' control size is 44 CSS px for every
+pointer.
 
 ```sh
 deno task tokens --mood dusk --out dist/tokens.css

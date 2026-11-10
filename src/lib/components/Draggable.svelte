@@ -105,6 +105,7 @@
 <style>
   .draggable {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-sm);
     padding: var(--space-xs);
@@ -119,7 +120,7 @@
   .handle {
     min-width: var(--size-control);
     min-height: var(--size-control);
-    border: none;
+    border: var(--border-width-thin) solid transparent;
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--color-text-muted);
@@ -135,11 +136,12 @@
     outline-offset: 0;
   }
   .content {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
   }
   .moves {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-xs);
   }
 </style>

@@ -11,6 +11,14 @@ widths from 320 to 1920 CSS px, a mouse and a finger, light and dark, text at 10
 `check.budget` in `stance-ui.json` sets a project's own performance budget. A project adopted earlier meets the new
 checks on its next run: see [Responsive design](README.md#responsive-design).
 
+The widget set, the gallery, the demo and the calculator hold to the new rules. A control is 44 CSS px high (the token
+`size.control` is 2.75rem) for every pointer, the keycaps, the drag handles and the buttons keep a transparent border
+for forced colours, a menu, a dialog, a button and a drag row stay inside a 320 px window at 200% text, and each mood
+board has a `light-more` and a `dark-more` theme (colour tokens at 7:1 for text) that the token build writes under
+`prefers-contrast: more`. The contrast check holds those themes to 7:1 and 4.5:1. Fixes to three checks: the keyboard
+probe skips a field behind a modal dialog, the text-over-text probe skips popups placed by their anchor, and the type
+probe no longer reads a font size in the middle of a transition.
+
 ### The platform port is now the platform bridge
 
 The interface through which the app's machines reach whatever lies outside the page was called a port, after the
