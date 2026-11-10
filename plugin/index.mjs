@@ -105,6 +105,58 @@ const CHECKS = [
     says:
       "in a wide window the page's main column is at most 1400 CSS px and centred: the layout is progressive, never the window's full width",
   },
+  {
+    name: "ui-reflow",
+    runs: "reflow",
+    says:
+      "no sideways scroll, cut-off text or text over text in any window of the matrix, at 400% zoom, with text at 200% and with the text spacing of WCAG 2.2 SC 1.4.12",
+  },
+  {
+    name: "ui-fluid",
+    runs: "fluid",
+    says:
+      "components adapt to their container, viewport media queries restyle only the page frame, and directions are logical",
+  },
+  {
+    name: "ui-type-scale",
+    runs: "type-scale",
+    says: "no font size is fixed in pixels, and every text grows with the reader's setting",
+  },
+  {
+    name: "ui-input-modes",
+    runs: "input-modes",
+    says: "targets are 44 by 44 CSS px for a finger, and nothing is shown only on hover",
+  },
+  {
+    name: "ui-viewport",
+    runs: "viewport",
+    says:
+      "dynamic viewport units, a viewport meta that allows zoom, safe-area insets for fixed bars, and a focused field stays in view with the keyboard up",
+  },
+  {
+    name: "ui-nav",
+    runs: "nav",
+    says:
+      "every destination of the top bar is shown on a wide window, none is behind a catch-all, and a narrow bar stays usable",
+  },
+  {
+    name: "ui-media",
+    runs: "media",
+    says:
+      "images and frames keep their box and fit their size, long lists skip off-screen work, and the layout shift is under 0.1",
+  },
+  {
+    name: "ui-budget",
+    runs: "budget",
+    says:
+      "on a mid-range phone's profile each screen paints within 2.5 s, blocks under 300 ms and stays within its bytes",
+  },
+  {
+    name: "ui-preferences",
+    runs: "preferences",
+    says:
+      "forced colours keep an edge on controls, more contrast reaches 7:1, and translucent surfaces have a reduced-transparency answer",
+  },
 ];
 
 /** The stance's rules, read from rules/, one Markdown file each (plugin/rules.mjs), as the `rules` point takes them. */

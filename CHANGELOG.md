@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Responsive design: rules 17 to 25 and nine checks
+
+The stance has a complete set of responsive rules, each with a check, run in one testing matrix (`checks/matrix.ts`: six
+widths from 320 to 1920 CSS px, a mouse and a finger, light and dark, text at 100% and 200%). New checks: `reflow`,
+`fluid`, `type-scale`, `input-modes`, `viewport`, `nav`, `media`, `budget` and `preferences`, each also a Naima check
+(`ui-reflow` and so on). The browser checks now open every width of the matrix and not only a desktop and a phone, and
+`check.budget` in `stance-ui.json` sets a project's own performance budget. A project adopted earlier meets the new
+checks on its next run: see [Responsive design](README.md#responsive-design).
+
 ### The platform port is now the platform bridge
 
 The interface through which the app's machines reach whatever lies outside the page was called a port, after the
