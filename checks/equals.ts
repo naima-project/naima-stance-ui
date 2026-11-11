@@ -182,6 +182,21 @@ function openSurfaces(page: Page): Promise<{ id: string; name: string; box: DOMR
   }, NAME_SOURCE);
 }
 
+/** The state's clicks, as the DOM's own click on each element: a state is the same screen in every profile, even where
+ *  the control that leads to it is hidden at that width (the phone reaches it otherwise, which action-parity checks). */
+async function reachState(page: Page, clicks: string[]) {
+  for (const sel of clicks) {
+    const at = page.locator(sel).first();
+    try {
+      await at.waitFor({ state: "attached", timeout: 5000 });
+      await at.evaluate((el) => (el as HTMLElement).click());
+      await page.waitForTimeout(150);
+    } catch {
+      // nothing to click: the screen stays as it is, and the checks say what they find there
+    }
+  }
+}
+
 /** Opens a screen: the page, the state's clicks, then a moment for it to settle. */
 async function openScreen(
   browser: Browser,
@@ -193,7 +208,7 @@ async function openScreen(
   await context.addInitScript(PROBE);
   const page = await context.newPage();
   await page.goto(url, { waitUntil: "networkidle" });
-  for (const sel of clicks) await page.click(sel, { timeout: 5000 }).catch(() => {});
+  await reachState(page, clicks);
   await page.waitForTimeout(clicks.length ? 400 : 100);
   return { page, close: () => context.close() };
 }
@@ -201,7 +216,7 @@ async function openScreen(
 async function goto(page: Page, url: string, clicks: string[]) {
   await page.goto("about:blank");
   await page.goto(url, { waitUntil: "networkidle" });
-  for (const sel of clicks) await page.click(sel, { timeout: 5000 }).catch(() => {});
+  await reachState(page, clicks);
   await page.waitForTimeout(clicks.length ? 400 : 100);
 }
 
@@ -765,10 +780,20 @@ export async function equalsChecks(
 ): Promise<void> {
   const on = (c: EqualsCheck) => only.includes(c);
   if (!EQUALS_CHECKS.some(on)) return;
+  const total = pages.reduce((n, p) => n + 1 + (p.states?.length ?? 0), 0);
+  let done = 0;
+  const started = Date.now();
   for (const p of pages) {
     const url = `${base}/${p.path.replace(/^\.?\//, "")}`;
     for (const state of [{ name: "", click: [] as string[] }, ...(p.states ?? [])]) {
       const where = `${p.name}${state.name ? ` (${state.name})` : ""}`;
+      // The progress, on stderr: the screen, how many are done of the total, and the time left at this pace.
+      const left = done ? Math.round(((Date.now() - started) / done) * (total - done) / 1000) : null;
+      console.error(
+        `stance ui: phone and desktop, screen ${done + 1} of ${total}: ${where}${
+          left === null ? "" : `, about ${left} s left`
+        }`,
+      );
       const jobs: Promise<void>[] = [];
       if (on("action-parity")) jobs.push(actionParity(browser, url, p.path, where, state.click, registry, add));
       if (on("hover-only")) jobs.push(hoverOnly(browser, url, p.path, where, state.click, add));
@@ -776,6 +801,7 @@ export async function equalsChecks(
       if (on("phone-layout")) jobs.push(phoneLayout(browser, url, p.path, where, state.click, add));
       if (on("desktop-keys")) jobs.push(desktopKeys(browser, url, p.path, where, state.click, add));
       await Promise.all(jobs);
+      done++;
     }
   }
 }
