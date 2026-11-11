@@ -138,3 +138,10 @@ export interface Budget {
 
 export const BUDGET: Budget = { lcp: 2500, cls: 0.1, tbt: 300, jsKB: 170, totalKB: 1024 };
 export const MOBILE_PROFILE = { cpuSlowdown: 4, latencyMs: 150, downKbps: 1600, upKbps: 750 } as const;
+
+/** The profiles of rule 29 (phone and desktop are equals): a laptop with a mouse that hovers, two phones (375 and 390
+ *  wide) and a tablet (820 wide), each with a finger and no hover. The action-parity check runs each screen in all four. */
+const PHONE_390: Cell = cell({ width: 390, height: 844, sizeClass: "compact" }, "touch", "light", 100);
+const TABLET_820: Cell = cell({ width: 820, height: 1180, sizeClass: "medium" }, "touch", "light", 100);
+export const PHONES: readonly Cell[] = [PHONE, PHONE_390];
+export const EQUALS_PROFILES: readonly Cell[] = [DESKTOP, PHONE, PHONE_390, TABLET_820];

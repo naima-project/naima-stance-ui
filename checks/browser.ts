@@ -23,6 +23,7 @@ import { posix } from "node:path";
 import type { Page as PageConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { launchChromium } from "./chromium.ts";
+import { EQUALS_CHECKS, equalsChecks } from "./equals.ts";
 import {
   anchors,
   BUDGET,
@@ -70,6 +71,7 @@ export const BROWSER_CHECKS = [
   "media",
   "budget",
   "preferences",
+  ...EQUALS_CHECKS,
 ] as const;
 export type BrowserCheck = typeof BROWSER_CHECKS[number];
 
@@ -126,7 +128,7 @@ interface FocusStop {
   covered: string | null;
 }
 
-async function tabWalk(page: import("playwright").Page): Promise<{ stops: FocusStop[]; missed: string[] }> {
+export async function tabWalk(page: import("playwright").Page): Promise<{ stops: FocusStop[]; missed: string[] }> {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const count = await page.evaluate(() => document.querySelectorAll("*").length);
   const stops: FocusStop[] = [];
@@ -318,6 +320,7 @@ export async function browserChecks(
   pages: PageConfig[],
   only: readonly BrowserCheck[],
   budget: Partial<Budget> = {},
+  registry: Set<string> | null = null,
 ): Promise<Finding[]> {
   if (only.length === 0) return [];
   const on = (c: BrowserCheck) => only.includes(c);
@@ -542,6 +545,15 @@ export async function browserChecks(
         }
       }
     }
+    // Rule 29, phone and desktop are equals: its own probes, which explore each screen in several profiles at once.
+    await equalsChecks(
+      browser,
+      base,
+      pages,
+      only,
+      registry,
+      (check, file, message, variant) => found.add(check, file, message, variant),
+    );
   } finally {
     await browser.close();
     await server.shutdown();

@@ -26,7 +26,7 @@ export const NAME_SOURCE = `(el) => {
   return text ? tag + ' "' + text + '"' : tag + (el.id ? "#" + el.id : "");
 }`;
 
-const TARGETS = [
+export const TARGETS = [
   "a[href]",
   "button",
   "input:not([type=hidden])",

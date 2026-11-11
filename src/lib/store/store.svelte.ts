@@ -28,6 +28,9 @@ const KEY = Symbol("stance-ui/store");
 export function createStore<T extends Record<string, Machine>>(machines: T): Store<T> {
   // $state makes the record itself deep-reactive; each machine keeps its own state in its own $state fields.
   const store = $state(machines);
+  // The action-parity check (checks/equals.ts) opens the app with a probe that records each transition called; it
+  // is absent in every other run, and the store then does nothing more.
+  (globalThis as { __stanceProbe?: { attach(store: object): void } }).__stanceProbe?.attach(store);
   return store;
 }
 

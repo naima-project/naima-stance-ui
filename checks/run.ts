@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkIcons, readIconChoice } from "./icons.ts";
-import { checkAgentEndpoint, checkTransitions } from "./parity.ts";
+import { checkAgentEndpoint, checkTransitions, parseRegistry } from "./parity.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVES } from "./primitives.ts";
@@ -256,6 +256,16 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   if (only.includes("agent-endpoint")) findings.push(...await checkAgentEndpoint(root, cfg));
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));
   const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
-  findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget));
+  // The action-parity check counts only the transitions of the generated registry, when the project has one.
+  let registry: Set<string> | null = null;
+  if (cfg.transitions?.registry) {
+    try {
+      const entries = parseRegistry(await Deno.readTextFile(`${root}/${cfg.transitions.registry}`));
+      if (entries) registry = new Set(entries.map((e) => `${e.machine}.${e.name}`));
+    } catch {
+      // no registry yet: the transitions check says so
+    }
+  }
+  findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget, registry));
   return findings;
 }
