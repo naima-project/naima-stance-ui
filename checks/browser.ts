@@ -18,7 +18,7 @@
 //
 // The pages are served over HTTP from the project's root, on the loopback address, for the run only.
 
-import { serveDir } from "@std/http/file-server";
+import { serveFiles } from "./serve.ts";
 import { posix } from "node:path";
 import type { Page as PageConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
@@ -342,7 +342,7 @@ export async function browserChecks(
 
   const server = Deno.serve(
     { hostname: "127.0.0.1", port: 0, onListen: () => {} },
-    (req) => serveDir(req, { fsRoot: root, quiet: true }),
+    (req) => serveFiles(req, root),
   );
   const base = `http://127.0.0.1:${server.addr.port}`;
   const axeSource: string = ((await import("axe-core")) as unknown as { default: { source: string } }).default.source;

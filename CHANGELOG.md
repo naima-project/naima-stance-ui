@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### The budget check serves the pages compressed
+
+The browser checks serve the app's pages as a real server does: text files (HTML, JavaScript, CSS, JSON, SVG) gzip-compressed
+when the browser sends `Accept-Encoding: gzip` (`checks/serve.ts`). The largest-paint time of the mobile profile is measured
+over the slow network, and it now counts the same compressed transfer as the size budget, instead of about three times the
+bytes.
+
 ### Agent parity: the user and an agent do the same things
 
 Rule 27 says every change of the UI is a transition of a machine, in its own `.svelte.ts` file, and agents call those
