@@ -232,17 +232,17 @@ async function openScreen(
   const context = await browser.newContext(options);
   await context.addInitScript(PROBE);
   const page = await context.newPage();
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "load" });
   await reachState(page, clicks);
-  await page.waitForTimeout(clicks.length ? 400 : 100);
+  await page.waitForTimeout(clicks.length ? 400 : 250);
   return { page, close: () => context.close() };
 }
 
 async function goto(page: Page, url: string, clicks: string[]) {
   await page.goto("about:blank");
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "load" });
   await reachState(page, clicks);
-  await page.waitForTimeout(clicks.length ? 400 : 100);
+  await page.waitForTimeout(clicks.length ? 400 : 250);
 }
 
 const calls = (page: Page) =>
@@ -315,9 +315,28 @@ async function reach(
           for (const c of fewOfEach(opened)) {
             queue.push({ path: [...path, c.key], name: `${c.name} (in what ${name} opens)` });
           }
-          const same = page.url() === url && now.length === base.length && now.every((c) => baseKeys.has(c.key));
+          // Back to the screen as it was without a reload where it can: Escape closes what opened, a second click
+          // folds what unfolded. The screen is the same when the same controls show again.
+          const back = async () => {
+            const again = await visibleControls(page);
+            return page.url() === url && again.length === base.length && again.every((c) => baseKeys.has(c.key));
+          };
+          let same = page.url() === url && now.length === base.length && now.every((c) => baseKeys.has(c.key));
+          if (page.url() === url) {
+            await page.keyboard.press("Escape").catch(() => {});
+            await page.waitForTimeout(100);
+            if (!same) same = await back();
+            if (!same && now.some((c) => c.key === path[0])) {
+              const expanded = await page.locator(`[data-stance-ctl="${path[0]!.replaceAll('"', '\\"')}"]`).first()
+                .getAttribute("aria-expanded").catch(() => null);
+              if (expanded === "true" && await press(page, path[0]!, touch)) {
+                await page.waitForTimeout(SETTLE);
+                for (const c of await calls(page)) if (!reached.has(c)) reached.set(c, name);
+                same = await back();
+              }
+            }
+          }
           fresh = same;
-          if (same) await page.keyboard.press("Escape").catch(() => {});
         } else fresh = false;
       }
       if (!ok) fresh = false;
