@@ -23,6 +23,9 @@ export interface StanceConfig {
    * with createStore), the generated registry of their transitions, and the MCP server's files, which import only the
    * registry and the agent channel. Absent until then. */
   transitions?: { machines: string; registry: string; server: string[] };
+  /** The generated registry of transitions, for the action-parity check, where `transitions` is not set: the check then
+   *  counts only the transitions it lists, and nothing else a page's machines do. */
+  registry?: string;
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
   /** For the platforms check: the app's folder (where src-tauri is), its end-to-end script, or null, and for the

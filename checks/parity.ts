@@ -36,8 +36,11 @@ const CHANNEL = new Set(["agent-endpoint.ts", "bridge-mcp.ts", "bridge-handler.t
 
 /** The entries of a generated registry file, or null when the file is not one. */
 export function parseRegistry(source: string): RegistryEntry[] | null {
-  const start = source.indexOf("[\n");
-  const end = source.lastIndexOf("] as const");
+  // The list after "= [", ending at "] as const" (the stance's registry) or at "];" (a project's own, typed one).
+  const at = source.indexOf("= [\n");
+  const start = at >= 0 ? at + 2 : source.indexOf("[\n");
+  const asConst = source.lastIndexOf("] as const");
+  const end = asConst >= 0 ? asConst : source.lastIndexOf("];");
   if (start < 0 || end < 0) return null;
   try {
     return JSON.parse(source.slice(start, end).replace(/,\s*$/, "") + "]") as RegistryEntry[];

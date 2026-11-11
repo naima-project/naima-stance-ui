@@ -258,9 +258,10 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
   // The action-parity check counts only the transitions of the generated registry, when the project has one.
   let registry: Set<string> | null = null;
-  if (cfg.transitions?.registry) {
+  const registryFile = cfg.transitions?.registry ?? cfg.registry;
+  if (registryFile) {
     try {
-      const entries = parseRegistry(await Deno.readTextFile(`${root}/${cfg.transitions.registry}`));
+      const entries = parseRegistry(await Deno.readTextFile(`${root}/${registryFile}`));
       if (entries) registry = new Set(entries.map((e) => `${e.machine}.${e.name}`));
     } catch {
       // no registry yet: the transitions check says so
