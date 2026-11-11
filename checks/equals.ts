@@ -157,7 +157,9 @@ function visibleControls(page: Page): Promise<Control[]> {
             [...a.classList].filter((c) => !c.startsWith("svelte-")).map((c) => `.${c}`).join(""),
         );
       }
-      return `${role(el)}|${parts.reverse().join(">")}`;
+      // A link's address is part of its shape: the destinations of a bar are each explored.
+      const href = el instanceof HTMLAnchorElement ? `|${el.getAttribute("href")}` : "";
+      return `${role(el)}|${parts.reverse().join(">")}${href}`;
     };
     for (const el of document.querySelectorAll("[data-stance-ctl]")) el.removeAttribute("data-stance-ctl");
     for (const el of document.querySelectorAll(targets)) {
@@ -209,7 +211,7 @@ function openSurfaces(page: Page): Promise<{ id: string; name: string; box: DOMR
 
 /** The state's clicks, as the DOM's own click on each element: a state is the same screen in every profile, even where
  *  the control that leads to it is hidden at that width (the phone reaches it otherwise, which action-parity checks). */
-async function reachState(page: Page, clicks: string[]) {
+export async function reachState(page: Page, clicks: string[]) {
   for (const sel of clicks) {
     const at = page.locator(sel).first();
     try {
@@ -301,6 +303,7 @@ async function reach(
         if (i > 0) await visibleControls(page);
         await calls(page);
         const href = page.url();
+        const title = await page.title();
         if (!(await press(page, key, touch))) {
           ok = false;
           break;
@@ -308,7 +311,10 @@ async function reach(
         clicked++;
         await page.waitForTimeout(SETTLE);
         for (const c of await calls(page)) if (!reached.has(c)) reached.set(c, name);
-        if (i === path.length - 1 && path.length < 2 && page.url() === href) {
+        // A click that went to another place (its address or the page's title changed) is not explored further: that
+        // place is another screen, which its own state stands for.
+        const moved = page.url() !== href || (await page.title()) !== title;
+        if (i === path.length - 1 && path.length < 2 && !moved) {
           // What this click opened: explore its controls in turn.
           const now = await visibleControls(page);
           const opened = now.filter((c) => !baseKeys.has(c.key));
@@ -831,7 +837,10 @@ export async function equalsChecks(
   const started = Date.now();
   for (const p of pages) {
     const url = `${base}/${p.path.replace(/^\.?\//, "")}`;
+    // STANCE_UI_STATES, a comma-separated list of state names ("" for the page itself), narrows a run to those screens.
+    const wanted = Deno.env.get("STANCE_UI_STATES")?.split(",");
     for (const state of [{ name: "", click: [] as string[] }, ...(p.states ?? [])]) {
+      if (wanted && !wanted.includes(state.name)) continue;
       const where = `${p.name}${state.name ? ` (${state.name})` : ""}`;
       // The progress, on stderr: the screen, how many are done of the total, and the time left at this pace.
       const left = done ? Math.round(((Date.now() - started) / done) * (total - done) / 1000) : null;

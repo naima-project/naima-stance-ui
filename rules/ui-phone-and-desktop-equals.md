@@ -22,7 +22,7 @@ More menu or of a sheet on the phone, and both call the same transition. Don't: 
 nothing in its place, or make a keyboard shortcut, a right-click, a long-press or a swipe the only way to an action.
 
 The check `action-parity` opens every screen in the four profiles, clicks or taps each visible control and each control
-that a click opens (a menu, a sheet), and records the store's transitions that are called (the store's probe hook,
+that a click opens (a menu, a sheet; a click that goes to another screen is not followed, since that screen is a state of its own), and records the store's transitions that are called (the store's probe hook,
 counted against the generated registry of agent parity). The sets must be equal: a finding names the transition, the
 screen and the profile that cannot reach it. Gestures do not count, only what a click or a tap reaches.
 

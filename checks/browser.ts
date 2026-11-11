@@ -388,7 +388,12 @@ export async function browserChecks(
             try {
               await page.click(sel, { timeout: 5000 });
             } catch {
-              errors.push(`nothing to click at ${sel}`);
+              // A control hidden at this width (a phone reaches the screen by its own bar) is clicked as the DOM does.
+              const at = page.locator(sel).first();
+              if ((await at.count()) === 0) errors.push(`nothing to click at ${sel}`);
+              else {await at.evaluate((el) => (el as HTMLElement).click()).catch(() =>
+                  errors.push(`nothing to click at ${sel}`)
+                );}
             }
           }
           await page.waitForTimeout(state.click.length ? 400 : 50);
