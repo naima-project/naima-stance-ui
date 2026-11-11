@@ -101,7 +101,21 @@ interface Control {
   name: string;
   /** It opens something (a menu, a sheet, a disclosure). */
   opens: boolean;
+  /** Its shape: its role and the tags and classes of its place in the page, without its text. The rows of one list
+   *  share it, and only the first few of a shape are explored: the others reach what they reach. */
+  shape: string;
 }
+
+/** How many controls of one shape are explored on a screen. */
+const PER_SHAPE = 3;
+const fewOfEach = (cs: Control[]) => {
+  const n = new Map<string, number>();
+  return cs.filter((c) => {
+    const k = (n.get(c.shape) ?? 0) + 1;
+    n.set(c.shape, k);
+    return k <= PER_SHAPE;
+  });
+};
 
 /** The controls a person can see now, each tagged data-stance-ctl with its key. Serialised into the page. */
 function visibleControls(page: Page): Promise<Control[]> {
@@ -134,7 +148,17 @@ function visibleControls(page: Page): Promise<Control[]> {
       return true;
     };
     const count = new Map<string, number>();
-    const out: { key: string; name: string; opens: boolean }[] = [];
+    const out: { key: string; name: string; opens: boolean; shape: string }[] = [];
+    const shapeOf = (el: Element) => {
+      const parts: string[] = [];
+      for (let a: Element | null = el; a && a !== document.body && parts.length < 6; a = a.parentElement) {
+        parts.push(
+          a.tagName.toLowerCase() +
+            [...a.classList].filter((c) => !c.startsWith("svelte-")).map((c) => `.${c}`).join(""),
+        );
+      }
+      return `${role(el)}|${parts.reverse().join(">")}`;
+    };
     for (const el of document.querySelectorAll("[data-stance-ctl]")) el.removeAttribute("data-stance-ctl");
     for (const el of document.querySelectorAll(targets)) {
       if ((el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true" || !seen(el)) continue;
@@ -154,6 +178,7 @@ function visibleControls(page: Page): Promise<Control[]> {
         name: name(el),
         opens: (popup !== null && popup !== "false") || el.getAttribute("aria-expanded") === "false" ||
           el.tagName === "SUMMARY",
+        shape: shapeOf(el),
       });
     }
     return out;
@@ -261,7 +286,7 @@ async function reach(
     for (const c of await calls(page)) ambient.add(c);
     const base = await visibleControls(page);
     const baseKeys = new Set(base.map((c) => c.key));
-    const queue: { path: string[]; name: string }[] = base.map((c) => ({ path: [c.key], name: c.name }));
+    const queue: { path: string[]; name: string }[] = fewOfEach(base).map((c) => ({ path: [c.key], name: c.name }));
     let clicked = 0;
     let fresh = true;
     while (queue.length && clicked < MAX_CLICKS) {
@@ -287,7 +312,9 @@ async function reach(
           // What this click opened: explore its controls in turn.
           const now = await visibleControls(page);
           const opened = now.filter((c) => !baseKeys.has(c.key));
-          for (const c of opened) queue.push({ path: [...path, c.key], name: `${c.name} (in what ${name} opens)` });
+          for (const c of fewOfEach(opened)) {
+            queue.push({ path: [...path, c.key], name: `${c.name} (in what ${name} opens)` });
+          }
           const same = page.url() === url && now.length === base.length && now.every((c) => baseKeys.has(c.key));
           fresh = same;
           if (same) await page.keyboard.press("Escape").catch(() => {});
@@ -612,7 +639,7 @@ async function phoneLayout(browser: Browser, url: string, file: string, where: s
     const { page, close } = await openScreen(browser, url, clicks, phone.options);
     try {
       for (const m of await phoneFacts(page)) add("phone-layout", file, `${where}: ${m}`, phone.name);
-      const openers = (await visibleControls(page)).filter((c) => c.opens).slice(0, 25);
+      const openers = fewOfEach((await visibleControls(page)).filter((c) => c.opens)).slice(0, 25);
       const before = new Set((await openSurfaces(page)).map((s) => s.id));
       for (const c of openers) {
         if (!(await press(page, c.key, true))) continue;
@@ -688,7 +715,7 @@ async function desktopKeys(browser: Browser, url: string, file: string, where: s
       await goto(page, url, clicks);
     }
     // What a control opens takes the keyboard, and Escape closes it, giving the focus back.
-    const openers = (await visibleControls(page)).filter((c) => c.opens).slice(0, 20);
+    const openers = fewOfEach((await visibleControls(page)).filter((c) => c.opens)).slice(0, 20);
     for (const c of openers) {
       const before = new Set((await openSurfaces(page)).map((s) => s.id));
       const at = page.locator(`[data-stance-ctl="${c.key.replaceAll('"', '\\"')}"]`).first();
