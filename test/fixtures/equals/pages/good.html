@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Good</title>
+<style>
+  body { margin: 0; font-family: sans-serif; padding-bottom: 80px; }
+  :focus-visible { outline: 3px solid blue; }
+  button, a { display: inline-block; min-width: 44px; min-height: 44px; }
+  nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-around; background: white; }
+  dialog { margin: 0; inset: auto 0 0 0; width: 100%; max-width: 100%; box-sizing: border-box; }
+  .primary { position: fixed; bottom: 72px; right: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <input type="search" aria-label="Search" enterkeyhint="search">
+  <button aria-keyshortcuts="Control+K" id="find">Find</button>
+  <button class="primary" data-primary-action id="start">Start</button>
+</main>
+<nav aria-label="Screens">
+  <a href="#one">One</a><a href="#two">Two</a><a href="#three">Three</a>
+  <button aria-haspopup="dialog" id="more">More</button>
+</nav>
+<dialog id="sheet" aria-label="More" data-sheet>
+  <a href="#four">Four</a>
+  <button id="close">Close</button>
+</dialog>
+<dialog id="keys" aria-label="Keyboard shortcuts" data-sheet>
+  <p data-keys="Control+K"><kbd>Ctrl</kbd> <kbd>K</kbd> Find</p>
+  <button id="close-keys">Close</button>
+</dialog>
+<script>
+  const store = { a: { view: {}, go(to) {}, find() {}, start() {}, more() {} } };
+  globalThis.__stanceProbe?.attach(store);
+  for (const a of document.querySelectorAll("nav a, dialog a")) {
+    a.addEventListener("click", () => {
+      store.a.go(a.textContent);
+      document.getElementById("sheet").close();
+    });
+  }
+  document.getElementById("find").addEventListener("click", () => store.a.find());
+  document.getElementById("start").addEventListener("click", () => store.a.start());
+  document.getElementById("more").addEventListener("click", () => {
+    store.a.more();
+    document.getElementById("sheet").showModal();
+  });
+  document.getElementById("close").addEventListener("click", () => document.getElementById("sheet").close());
+  document.getElementById("close-keys").addEventListener("click", () => document.getElementById("keys").close());
+  addEventListener("keydown", (e) => {
+    if (e.key === "?" && !(e.target instanceof HTMLInputElement)) document.getElementById("keys").showModal();
+  });
+</script>
+</body>
+</html>

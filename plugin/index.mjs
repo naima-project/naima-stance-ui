@@ -175,6 +175,34 @@ const CHECKS = [
     says:
       "forced colours keep an edge on controls, more contrast reaches 7:1, and translucent surfaces have a reduced-transparency answer",
   },
+  {
+    name: "ui-action-parity",
+    runs: "action-parity",
+    says:
+      "every transition a screen reaches with a mouse on a desktop it reaches with a finger on two phones and a tablet, and the other way round",
+  },
+  {
+    name: "ui-hover-only",
+    runs: "hover-only",
+    says: "nothing a :hover rule or a mouseenter handler reveals stays hidden without hover or out of a tap's reach",
+  },
+  {
+    name: "ui-keyboard-viewport",
+    runs: "keyboard-viewport",
+    says: "a focused field stays inside the 60% of the window the on-screen keyboard leaves, and says what Enter does",
+  },
+  {
+    name: "ui-phone-layout",
+    runs: "phone-layout",
+    says:
+      "on a phone the navigation is a bottom bar in the thumb's reach, what opens is a bottom sheet with Close, no table is wider than the window and the primary action is in the bottom third",
+  },
+  {
+    name: "ui-desktop-keys",
+    runs: "desktop-keys",
+    says:
+      "on a desktop every control takes the focus with a ring, what opens takes the keyboard and closes with Escape, and ? opens a Keyboard shortcuts sheet listing every shortcut",
+  },
 ];
 
 /** The stance's rules, read from rules/, one Markdown file each (plugin/rules.mjs), as the `rules` point takes them. */

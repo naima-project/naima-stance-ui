@@ -125,7 +125,13 @@ can be loaded into Naima as a plugin.
     "show the open tasks" is a named sequence of transitions in a machine, which components and agents call alike. Only
     a sign-in with a secret is for the person alone.
 
-Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 to 27 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
+28. **Phone and desktop are equals.** Responsive is not enough: each is used with its own gestures. Every action is
+    reachable on both, a secondary action opens one menu by its More button, right-click, the menu key or a long-press,
+    nothing is hover-only, a field stays in view above the on-screen keyboard, every drag has a touch and a keyboard
+    way, the phone gets a bottom bar and sheets, and the desktop gets density, the full keyboard and a shortcuts sheet
+    (`rules/ui-phone-and-desktop-equals.md`).
+
+Rules 1, 2, 4, 5, 6, 8, 9, 10, 11 and 16 to 28 are checked by machine (see [the checks](#the-checks)). Rules 3, 7, 12,
 13, 14 and 15 are conventions that agents verify: no check can see them, so each rule says what the agent reviews and
 when, and the agent records the review as a note on the item the change lands with.
 
@@ -717,6 +723,11 @@ deno task check --only tokens,no-raw-literals --json
 | `media`             | Images and frames keep their box and fit their size, long lists skip off-screen work, and the layout shift is under 0.1 (rule 23).                                                                                                                                                                                                                                     |
 | `budget`            | On a mid-range phone the largest paint is within 2.5 s, the blocked time under 300 ms, the JavaScript under 170 kB and the whole under 1 MB (rule 23).                                                                                                                                                                                                                 |
 | `preferences`       | Forced colours keep an edge on controls, more contrast reaches 7:1, and a translucent surface has a reduced-transparency answer (rule 24).                                                                                                                                                                                                                             |
+| `action-parity`     | Each screen is explored by click on a desktop (1280, mouse) and by tap on two phones (375, 390) and a tablet (820); the store's transitions each reaches are the same in all four (rule 28).                                                                                                                                                                           |
+| `hover-only`        | Without hover, nothing a `:hover` rule or a `mouseenter` handler reveals stays hidden, unless a tap shows it too (rule 28).                                                                                                                                                                                                                                            |
+| `keyboard-viewport` | On a phone, a focused field lies inside the 60% of the window the on-screen keyboard leaves, and has an `enterkeyhint` (rule 28).                                                                                                                                                                                                                                      |
+| `phone-layout`      | On a phone: a bottom navigation bar in the thumb's reach, bottom sheets with a Close button, no table wider than the window, the primary action in the bottom third (rule 28).                                                                                                                                                                                         |
+| `desktop-keys`      | On a desktop: every control that takes a click takes the focus with a ring, what opens takes the keyboard and closes with Escape, ? opens a Keyboard shortcuts sheet (rule 28).                                                                                                                                                                                        |
 
 The components are parsed with Svelte's own compiler and each CSS value with postcss-value-parser, and the token files
 are read as JSON and walked as data. The browser checks open the app's built pages in headless Chromium (Playwright),

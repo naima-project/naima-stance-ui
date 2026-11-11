@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-// Phone and desktop are equals (rule 29): five browser checks, each run on the app's built pages and on every state
+// Phone and desktop are equals (rule 28): five browser checks, each run on the app's built pages and on every state
 // stance-ui.json names, in the profiles of the testing matrix (matrix.ts, EQUALS_PROFILES).
 //
 //   action-parity      in each profile (a desktop with a mouse, two phones and a tablet with a finger), every visible
@@ -72,6 +72,7 @@ const PROBE = `(() => {
     if (this instanceof Element && /^(mouseenter|mouseover|pointerenter|pointerover)$/.test(type)) {
       this.setAttribute("data-stance-hover", "");
     }
+    if (this instanceof Element && type === "click") this.setAttribute("data-stance-click", "");
     return add.call(this, type, ...rest);
   };
   // The visual viewport, which the keyboard probe shrinks as an on-screen keyboard does.
@@ -637,7 +638,8 @@ function clickOnly(page: Page): Promise<string[]> {
       "[role=toolbar], [role=tree], [role=treegrid]";
     for (const el of document.querySelectorAll<HTMLElement>("*")) {
       const own = el as unknown as Record<string, unknown>;
-      const clicks = el.hasAttribute("onclick") || typeof own["__click"] === "function" ||
+      const clicks = el.hasAttribute("onclick") || el.hasAttribute("data-stance-click") ||
+        typeof own["__click"] === "function" ||
         typeof own["onclick"] === "function" ||
         /^(button|link|menuitem|tab|checkbox|switch|option)$/.test(el.getAttribute("role") ?? "");
       if (!clicks || el.tabIndex >= 0 || el.closest("[inert], [aria-hidden=true]")) continue;
@@ -733,7 +735,9 @@ async function desktopKeys(browser: Browser, url: string, file: string, where: s
       }
       return null;
     });
-    if (!sheet) say("pressing ? opens no Keyboard shortcuts sheet");
+    // A page that declares no shortcut needs no sheet to list them.
+    if (!sheet && declared.length > 0) say("pressing ? opens no Keyboard shortcuts sheet");
+    else if (!sheet) { /* nothing to list */ }
     else {
       if (sheet.kbd === 0) say("the Keyboard shortcuts sheet shows no key (kbd)");
       const listed = new Set(sheet.keys.map((k) => k.toLowerCase()));
@@ -750,7 +754,7 @@ async function desktopKeys(browser: Browser, url: string, file: string, where: s
   }
 }
 
-/** Runs the chosen checks of rule 29 on every page and state. */
+/** Runs the chosen checks of rule 28 on every page and state. */
 export async function equalsChecks(
   browser: Browser,
   base: string,

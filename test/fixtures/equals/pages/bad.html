@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bad</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  .row .actions { opacity: 0; }
+  .row:hover .actions { opacity: 1; }
+  @media (max-width: 700px) { .wide-only { display: none; } }
+  .menu { position: absolute; top: 120px; left: 10px; width: 120px; background: white; border: 1px solid; }
+  .field { position: fixed; bottom: 8px; left: 8px; }
+  table { width: 900px; }
+  button, a { min-width: 44px; min-height: 44px; }
+</style>
+</head>
+<body>
+<nav aria-label="Screens"><a href="#one">One</a> <a href="#two">Two</a> <a href="#three">Three</a></nav>
+<main>
+  <button data-primary-action>Start</button>
+  <button class="wide-only">Wide only</button>
+  <button aria-haspopup="menu" aria-expanded="false" id="opener">Options</button>
+  <div class="menu" role="menu" hidden><a href="#x" role="menuitem">Rename</a></div>
+  <div class="row">A row <span class="actions"><button>Delete</button></span></div>
+  <div id="tipped">Hover me</div>
+  <p id="tip" hidden>Secret tip</p>
+  <div id="box" style="min-height: 44px">Clickable box</div>
+  <button aria-keyshortcuts="Control+K">Find</button>
+  <table><tr><td>A wide table</td></tr></table>
+  <input class="field" type="text" aria-label="Search">
+</main>
+<script>
+  const store = {
+    a: { view: {}, go(to) {}, desktopOnly() {}, open() {}, remove() {}, find() {}, start() {}, poke() {} },
+  };
+  globalThis.__stanceProbe?.attach(store);
+  for (const a of document.querySelectorAll("nav a")) a.addEventListener("click", () => store.a.go(a.textContent));
+  document.querySelector(".wide-only").addEventListener("click", () => store.a.desktopOnly());
+  document.querySelector("[data-primary-action]").addEventListener("click", () => store.a.start());
+  document.querySelector(".actions button").addEventListener("click", () => store.a.remove());
+  document.querySelector("[aria-keyshortcuts]").addEventListener("click", () => store.a.find());
+  document.getElementById("box").addEventListener("click", () => store.a.poke());
+  const opener = document.getElementById("opener");
+  opener.addEventListener("click", () => {
+    store.a.open();
+    document.querySelector(".menu").hidden = false;
+    opener.setAttribute("aria-expanded", "true");
+  });
+  const tipped = document.getElementById("tipped");
+  tipped.addEventListener("mouseenter", () => (document.getElementById("tip").hidden = false));
+  tipped.addEventListener("mouseleave", () => (document.getElementById("tip").hidden = true));
+</script>
+</body>
+</html>

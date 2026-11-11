@@ -305,7 +305,14 @@ export function navProblems(page: Page): Promise<string[]> {
       const buttons = [...bar.querySelectorAll("button, [role=button]")];
       const entries = [...bar.querySelectorAll("button, [role=button], a, [role=link], [role=tab]")];
       const catchAll = entries.filter((b) => /^(more|others?|overflow|…|⋯|\.{3}|more options)$/i.test(label(b)));
+      // On a phone, the bottom bar of rule 28 holds at most five destinations and a More that opens the rest in a
+      // sheet; anywhere else, and on a wide window, a More is a hidden catch-all.
+      const box = bar.getBoundingClientRect();
+      const bottomBar = vw < expanded && box.bottom >= innerHeight - 2 && box.top >= innerHeight * 0.75;
       for (const b of catchAll) {
+        const opens = b.hasAttribute("aria-haspopup") || b.hasAttribute("aria-controls") ||
+          b.hasAttribute("aria-expanded");
+        if (bottomBar && opens) continue;
         out.push(`${here} keeps destinations behind ${name(b)}: show every primary destination`);
       }
       const folds = buttons.filter((b) =>

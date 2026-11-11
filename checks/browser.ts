@@ -545,7 +545,7 @@ export async function browserChecks(
         }
       }
     }
-    // Rule 29, phone and desktop are equals: its own probes, which explore each screen in several profiles at once.
+    // Rule 28, phone and desktop are equals: its own probes, which explore each screen in several profiles at once.
     await equalsChecks(
       browser,
       base,
