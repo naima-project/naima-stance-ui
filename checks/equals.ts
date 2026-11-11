@@ -470,7 +470,7 @@ async function keyboardViewport(
       }, FIELDS);
       const full = page.viewportSize()!;
       for (let i = 0; i < Math.min(count, 15); i++) {
-        const facts = await page.evaluate(async ({ i, nameSource, resizes }) => {
+        const facts = await page.evaluate(({ i, nameSource, resizes }) => {
           const name = new Function(`return ${nameSource}`)() as (el: Element) => string;
           const el = document.querySelector<HTMLElement>(`[data-stance-field="${i}"]`)!;
           scrollTo(0, 0);
