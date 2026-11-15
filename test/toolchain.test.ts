@@ -220,5 +220,11 @@ Deno.test("the Windows app is launched by a scheduled task in the desktop sessio
   const quser = (out: string) => desktopSignedIn({ ok: true, out });
   assertEquals(quser(" USERNAME  SESSIONNAME  ID  STATE\n>me  console  1  Active\n"), true);
   assertEquals(quser(" USERNAME  SESSIONNAME  ID  STATE\n me    2  Disc\n"), false);
+  // quser is translated: the state is Attivo on an Italian Windows, and a disconnected session has no name
+  const it =
+    " UTENTE   SESSIONE   ID  STATO   INATTIVITÀ  ORA ACCESSO\n>io   console   1  Attivo   none  12/11/2026 09:00\n";
+  assertEquals(quser(it), true);
+  assertEquals(quser(" UTENTE   SESSIONE   ID  STATO\n io      2  Disconnesso\n"), false);
+  assertEquals(quser(" UTENTE   SESSIONE   ID  STATO\n Mario Rossi   rdp-tcp#3   4  Attivo\n"), true);
   assertEquals(quser(""), null);
 });

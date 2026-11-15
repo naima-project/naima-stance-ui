@@ -63,10 +63,18 @@ export function taskCommands(l: SessionLaunch): Record<"create" | "run" | "end" 
   };
 }
 
-/** Whether someone is signed in to the desktop, from quser's output; null when quser could not say. */
+/**
+ * Whether someone is signed in to the desktop, from quser's output; null when quser could not say. quser's headings
+ * and its state column are translated (Active is Attivo in Italian), so the state is never read: a session that is
+ * connected has a name (console, rdp-tcp#2) in the second column, and a disconnected one has none.
+ */
 export function desktopSignedIn(quser: { ok: boolean; out: string }): boolean | null {
   if (!quser.out.trim()) return null;
-  return quser.out.split(/\r?\n/).slice(1).some((l) => /\bActive\b/i.test(l));
+  return quser.out.split(/\r?\n/).slice(1).some((l) => {
+    // user, session name (empty when disconnected), numeric id, state in any language
+    const m = /^[ >]?(\S.*?)\s+(\S*)\s+(\d+)\s+\S/.exec(l);
+    return m !== null && m[2] !== "";
+  });
 }
 
 const run = async (cmd: string, args: string[]) => {
