@@ -1,10 +1,11 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { copy } from "@std/fs";
-import { fromFileUrl } from "@std/path";
+import { dirname, fromFileUrl } from "@std/path";
 import { runChecks } from "../checks/run.ts";
 import { AGENT_ANSWER, AGENT_FEED, agentEndpoint, agentTools } from "../platform/agent-endpoint.ts";
 import { bridgeMcp } from "../platform/bridge-mcp.ts";
 import { adopt } from "../scripts/adopt.ts";
+import { readMachines } from "../scripts/transitions.ts";
 import * as page from "../src/lib/agent/agent.ts";
 import { localBridge } from "../src/lib/platform/bridge.ts";
 
@@ -90,9 +91,173 @@ Deno.test("a transition with no comment, and a file with two machines, are refus
     "defines Notes and Other, each with a view: one machine to a file",
   );
   refused(
-    await broken({ "src/app.svelte.ts": (t) => t.replace("new Counter()", "new Counter(), again: new Notes()") }),
+    await broken({
+      "src/machines/notes.svelte.ts": (t) => t + "\nexport class Helper {}\n",
+      "src/app.svelte.ts": (t) =>
+        t.replace("import { Notes }", "import { Helper, Notes }").replace(
+          "new Counter()",
+          "new Counter(), again: new Helper()",
+        ),
+    }),
     "holds the machines again and notes: one file for each machine",
   );
+  // The same machine made twice is one machine declared once.
+  assertEquals(
+    await broken({ "src/app.svelte.ts": (t) => t.replace("new Counter()", "new Counter(), again: new Notes()") }),
+    ["transitions src/transitions.generated.ts: is not what the machines generate now: run deno task transitions"],
+  );
+});
+
+/** A project made of `files` alone, read for its machines. */
+async function read(files: { [file: string]: string }) {
+  const dir = await Deno.makeTempDir();
+  try {
+    for (const [file, body] of Object.entries(files)) {
+      await Deno.mkdir(dirname(`${dir}/${file}`), { recursive: true });
+      await Deno.writeTextFile(`${dir}/${file}`, body);
+    }
+    const { entries, problems } = await readMachines(dir, "src/app.svelte.ts");
+    return {
+      machines: [...new Set(entries.map((e) => e.machine))],
+      names: entries.map((e) => `${e.machine}.${e.name}`),
+      files: [...new Set(entries.map((e) => e.file))],
+      problems: problems.map((p) => `${p.file}: ${p.message}`),
+    };
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+}
+
+const ZOOM = `export class Zoom {
+  readonly view = { level: 1 };
+  /** Zooms in. */
+  in(): boolean {
+    return true;
+  }
+}
+`;
+
+Deno.test("a machine made by a factory function is found, in whichever file the factory and its class are", async () => {
+  const r = await read({
+    "src/app.svelte.ts": `import { createStore } from "./store.ts";
+import { makeZoom, other } from "./make.ts";
+const local = () => (makeZoom());
+export function makeStore() {
+  const z = makeZoom();
+  const within = <R,>(group: string, make: () => R): R => make();
+  return createStore({ one: makeZoom(), two: local(), z, three: other(), four: within("g", () => makeZoom()) });
+}
+`,
+    "src/make.ts": `import { Zoom } from "./zoom.svelte.ts";
+export function makeZoom(): Zoom {
+  return new Zoom();
+}
+export const other = () => {
+  const made = new Zoom();
+  return made;
+};
+`,
+    "src/zoom.svelte.ts": ZOOM,
+  });
+  assertEquals(r.problems, []);
+  assertEquals(r.machines, ["one", "two", "z", "three", "four"]);
+  assertEquals(r.files, ["src/zoom.svelte.ts"]);
+  assertEquals(r.names.length, 5);
+  // What no file of the app makes is refused, not skipped.
+  const bad = await read({
+    "src/app.svelte.ts": `import { createStore } from "./store.ts";
+import { build } from "elsewhere";
+createStore({ x: build() });
+`,
+  });
+  assertEquals(bad.problems, ["src/app.svelte.ts: x: not made by `new Machine()` or a factory of a file of the app"]);
+});
+
+Deno.test("machines nested in a machine are found through it: held in a field, set in the constructor, made by a method", async () => {
+  const files = {
+    "src/app.svelte.ts": `import { createStore } from "./store.ts";
+import { Screen } from "./screen.svelte.ts";
+createStore({ screen: new Screen() });
+`,
+    "src/screen.svelte.ts": `import { Zoom } from "./zoom.svelte.ts";
+import { makeZoom } from "./make.ts";
+export class Screen {
+  readonly view = {};
+  readonly zoom = new Zoom();
+  readonly list = new Map<string, number>();
+  #hidden = new Zoom();
+  other: Zoom;
+  constructor() {
+    this.other = makeZoom();
+  }
+  /** Opens it. */
+  open(): boolean {
+    return true;
+  }
+  /** The zoom of one row, made when asked. */
+  rowZoom(ref: string): Zoom {
+    return new Zoom();
+  }
+}
+`,
+    "src/make.ts": `import { Zoom } from "./zoom.svelte.ts";
+export const makeZoom = () => new Zoom();
+`,
+    "src/zoom.svelte.ts": ZOOM,
+  };
+  const r = await read(files);
+  assertEquals(r.problems, []);
+  assertEquals(r.machines, ["screen", "screen.zoom", "screen.other", "screen.rowZoom(ref)"]);
+  // A method that makes a machine is a way to reach it, not a transition.
+  assertEquals(r.names, ["screen.open", "screen.zoom.in", "screen.other.in", "screen.rowZoom(ref).in"]);
+  assertEquals(r.files, ["src/screen.svelte.ts", "src/zoom.svelte.ts"]);
+
+  // A file with two machines is refused when the machine is reached through its parent too.
+  const two = await read({ ...files, "src/zoom.svelte.ts": ZOOM + "export class Pan {\n  readonly view = {};\n}\n" });
+  assertEquals(two.problems, ["src/zoom.svelte.ts: defines Zoom and Pan, each with a view: one machine to a file"]);
+
+  // Two machine classes in one file, one of them nested.
+  const shared = await read({
+    ...files,
+    "src/screen.svelte.ts": files["src/screen.svelte.ts"].replace(
+      "export class Screen {",
+      "export class Screen {\n  readonly pan = new Pan();",
+    ),
+    "src/zoom.svelte.ts": ZOOM.replace(
+      "export class Zoom",
+      "export class Pan {\n  readonly view = {};\n}\nexport class Zoom",
+    ),
+  });
+  assert(shared.problems.some((p) => p.includes("one machine to a file")), shared.problems.join("\n"));
+
+  // A machine that holds itself does not loop.
+  const loop = await read({
+    ...files,
+    "src/zoom.svelte.ts": ZOOM.replace(
+      "readonly view = { level: 1 };",
+      "readonly view = { level: 1 };\n  readonly again = new Zoom();",
+    ),
+  });
+  assert(loop.problems.some((p) => p.includes("a machine that holds itself")), loop.problems.join("\n"));
+});
+
+Deno.test("an agent calls a transition of a nested machine by its path", () => {
+  const inner = new Counter();
+  const machines = { screen: { view: {}, zoom: inner } };
+  const reg = [{
+    machine: "screen.zoom",
+    name: "add",
+    args: [],
+    description: "Adds one.",
+    sequence: false,
+    person: false,
+  }];
+  const r = page.callTransition(machines, reg, () => ({ screen: { zoom: { count: inner.n } } }), {
+    machine: "screen.zoom",
+    name: "add",
+  });
+  assertEquals(inner.n, 1);
+  assertEquals((r as { done: boolean }).done, true);
 });
 
 Deno.test("an MCP server file that imports app logic, a package or a computed path is refused; types and the standard library are not", async () => {

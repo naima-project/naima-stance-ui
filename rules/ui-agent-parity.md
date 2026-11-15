@@ -25,9 +25,17 @@ clicks, types or runs code in the page, a second API for agents beside the bridg
 counts as open, what to do next) that the store does not.
 
 The check `transitions` regenerates the registry and refuses one that differs from the machines, a transition with no
-comment saying what it does, a file with two machines, and a component that calls on a machine anything but a
-transition of the registry (or reads its `view`, or asks `allowed`). The check `agent-endpoint` refuses an MCP server
-file that imports anything of the app: only the registry, the agent channel and the standard library.
+comment saying what it does, a file with two machines, and a component that calls on a machine anything but a transition
+of the registry (or reads its `view`, or asks `allowed`). A machine may be made by a factory function and may hold other
+machines. The check finds a machine made by `new Machine()`, by a call of a function that returns one (in the store file
+or another file of the app), or by a call that is given a function making it (`lazily(group, () => new Machine())`); the
+store may make the same machine class many times, since the class is what is declared once, in one file. It finds the
+machines a machine holds (a field `zoom = new Zoom()`, a constructor's `this.zoom = makeZoom()`, or a method that makes
+one by an argument, `historyOf(ref)`, which is then no transition) and checks each through its parent: each class in a
+file of its own, each transition commented. A nested machine is named in the registry by its path (`features.gantt`,
+`bugs.historyOf(ref)`), and an agent calls it by that name. A class is a nested machine when it has a `view`; a machine
+that holds itself is refused. The check `agent-endpoint` refuses an MCP server file that imports anything of the app:
+only the registry, the agent channel and the standard library.
 
 ## Why
 

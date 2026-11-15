@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### The transitions check reads machines made by factories and machines nested in machines
+
+The one-machine-per-file check used to find only `createStore({ name: new Machine() })`. It now also follows a factory
+function (in the store file or another file of the app, also one that is given a function making the machine) and the
+machines a machine holds: a field, a constructor's assignment, or a method that makes one by an argument. Each class is
+declared once, in one file, and the store may make it many times; a nested machine is checked through its parent and
+named by its path (`features.gantt`). The agent's `transition` tool calls a nested machine by that path.
+
 ### The landing report never reads a dead checker as a clean run, and shows its progress
 
 A checker that prints no findings, or exits with anything but 0 or 1, now refuses the landing as one that could not run,

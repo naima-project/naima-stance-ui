@@ -1,6 +1,11 @@
 // Generates the transition registry: what every machine of the app's store can be told to do, read from the machines'
-// own files, so that nothing about it is written twice. The store file's createStore({ name: new Machine(...) }) names
-// the machines; each machine's file, one machine to a file, holds its class; every public method of the class is a
+// own files, so that nothing about it is written twice. The store file's createStore({ name: ... }) names the machines:
+// each is made by `new Machine(...)`, by a call of a factory function that returns one (in the store file or another
+// file of the app), or by a call that is given a function making it (`lazily(group, () => new Machine())`). A machine's
+// class is declared once, in a file of its own, and the store may make it many times. A machine can hold others: a field
+// (`zoom = new Zoom()`), a constructor's `this.zoom = makeZoom()`, or a method that makes one by an argument
+// (`historyOf(ref)`, no transition); each is found through its parent and named by its path, `features.gantt`,
+// `bugs.historyOf(ref)`. A class counts as a nested machine when it has a `view`. Every public method of a machine is a
 // transition (machine, name, arguments, description), except `allowed`, a name that begins with an underscore and
 // anything its comment tags @internal. A comment tagged @sequence says the method is a named sequence of transitions
 // (a convenience such as "show the open tasks"), which components and agents call like any other. One tagged @person
@@ -44,43 +49,158 @@ const docOf = (node: ts.Node): Doc | undefined => {
 const parse = (file: string, source: string) =>
   ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
-/** The machines createStore names in the store file: name, class, and the module the class is imported from. */
-function storeMachines(sf: ts.SourceFile): { name: string; cls: string; from: string | null }[] {
-  const imports = new Map<string, { imported: string; from: string }>();
-  for (const s of sf.statements) {
-    if (!ts.isImportDeclaration(s) || !ts.isStringLiteral(s.moduleSpecifier)) continue;
-    const bindings = s.importClause?.namedBindings;
-    if (bindings && ts.isNamedImports(bindings)) {
-      for (const e of bindings.elements) {
-        imports.set(e.name.text, { imported: (e.propertyName ?? e.name).text, from: s.moduleSpecifier.text });
+type Module = { sf: ts.SourceFile; imports: Map<string, { imported: string; from: string }> };
+/** A machine as the sources show it: its class, and the file that declares the class. */
+type Made = { cls: string; file: string };
+
+const unwrap = (e: ts.Expression): ts.Expression => {
+  while (
+    ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e) || ts.isAwaitExpression(e)
+  ) {
+    e = e.expression;
+  }
+  return e;
+};
+
+/** Reads and parses the files of the app by name, once each; the imports of each by the name they bind. */
+class Sources {
+  #modules = new Map<string, Module | null>();
+  constructor(readonly root: string) {}
+
+  async load(file: string): Promise<Module | null> {
+    if (this.#modules.has(file)) return this.#modules.get(file)!;
+    let m: Module | null = null;
+    try {
+      const sf = parse(file, await Deno.readTextFile(`${this.root}/${file}`));
+      const imports = new Map<string, { imported: string; from: string }>();
+      for (const s of sf.statements) {
+        if (!ts.isImportDeclaration(s) || !ts.isStringLiteral(s.moduleSpecifier)) continue;
+        const bindings = s.importClause?.namedBindings;
+        if (bindings && ts.isNamedImports(bindings)) {
+          for (const e of bindings.elements) {
+            imports.set(e.name.text, { imported: (e.propertyName ?? e.name).text, from: s.moduleSpecifier.text });
+          }
+        }
+      }
+      m = { sf, imports };
+    } catch {
+      m = null;
+    }
+    this.#modules.set(file, m);
+    return m;
+  }
+
+  /** The file an import of `file` names, when it is a file of the app (a relative path). */
+  static target(file: string, from: string): string | null {
+    return from.startsWith(".") ? posix.normalize(posix.join(posix.dirname(file), from)) : null;
+  }
+
+  /** The class `name` as `file` sees it: declared there, or imported from a file of the app. */
+  async classOf(file: string, name: string, depth = 0): Promise<Made | null> {
+    const m = await this.load(file);
+    if (!m || depth > 4) return null;
+    if (m.sf.statements.some((s) => ts.isClassDeclaration(s) && s.name?.text === name)) return { cls: name, file };
+    const imp = m.imports.get(name);
+    const target = imp && Sources.target(file, imp.from);
+    return imp && target ? await this.classOf(target, imp.imported, depth + 1) : null;
+  }
+
+  /** The function `name` as `file` sees it, with the file it is declared in. */
+  async functionOf(
+    file: string,
+    name: string,
+    depth = 0,
+  ): Promise<{ file: string; fn: ts.FunctionLikeDeclaration } | null> {
+    const m = await this.load(file);
+    if (!m || depth > 4) return null;
+    // Declared anywhere in the file, a function inside another (a helper the store's own function defines) included.
+    let found: { file: string; fn: ts.FunctionLikeDeclaration } | null = null;
+    const visit = (n: ts.Node) => {
+      if (found) return;
+      if (ts.isFunctionDeclaration(n) && n.name?.text === name && n.body) found = { file, fn: n };
+      else if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name && n.initializer) {
+        const init = unwrap(n.initializer);
+        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) found = { file, fn: init };
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(m.sf);
+    if (found) return found;
+    const imp = m.imports.get(name);
+    const target = imp && Sources.target(file, imp.from);
+    return imp && target ? await this.functionOf(target, imp.imported, depth + 1) : null;
+  }
+
+  /** The machine an expression makes: `new Cls(..)`, a call of a factory that returns one, or a name bound to either. */
+  async machineOf(file: string, expr: ts.Expression, scope: ts.Node, depth = 0): Promise<Made | null> {
+    if (depth > 6) return null;
+    const e = unwrap(expr);
+    if (ts.isNewExpression(e) && ts.isIdentifier(e.expression)) return await this.classOf(file, e.expression.text);
+    if (ts.isIdentifier(e)) {
+      const init = bound(scope, e.text);
+      return init ? await this.machineOf(file, init, scope, depth + 1) : null;
+    }
+    if (ts.isCallExpression(e) && ts.isIdentifier(e.expression)) {
+      const f = await this.functionOf(file, e.expression.text);
+      for (const r of f ? returned(f.fn) : []) {
+        const made = await this.machineOf(f!.file, r, f!.fn, depth + 1);
+        if (made) return made;
       }
     }
+    // A call that is given a function making the machine (`lazily(group, () => new Screen())`): that machine.
+    if (ts.isCallExpression(e)) {
+      for (const a of e.arguments) {
+        const f = unwrap(a);
+        if (!ts.isArrowFunction(f) && !ts.isFunctionExpression(f)) continue;
+        for (const r of returned(f)) {
+          const made = await this.machineOf(file, r, f, depth + 1);
+          if (made) return made;
+        }
+      }
+    }
+    return null;
   }
-  const out: { name: string; cls: string; from: string | null }[] = [];
-  // A machine made before the store, `const tasks = new Tasks(...)`, and put in it by name.
-  const made = new Map<string, string>();
-  const find = (n: ts.Node) => {
-    if (
-      ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer && ts.isNewExpression(n.initializer) &&
-      ts.isIdentifier(n.initializer.expression)
-    ) made.set(n.name.text, n.initializer.expression.text);
-    ts.forEachChild(n, find);
+}
+
+/** What a variable called `name` is initialised with, anywhere under `scope`. */
+function bound(scope: ts.Node, name: string): ts.Expression | null {
+  let found: ts.Expression | null = null;
+  const visit = (n: ts.Node) => {
+    if (!found && ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === name && n.initializer) {
+      found = n.initializer;
+    }
+    if (!found) ts.forEachChild(n, visit);
   };
-  find(sf);
-  const machine = (name: string, cls: string | undefined) => {
-    if (cls) out.push({ name, cls: imports.get(cls)?.imported ?? cls, from: imports.get(cls)?.from ?? null });
+  visit(scope);
+  return found;
+}
+
+/** The expressions a function returns, not looking into the functions it holds. */
+function returned(fn: ts.FunctionLikeDeclaration): ts.Expression[] {
+  if (!fn.body) return [];
+  if (!ts.isBlock(fn.body)) return [fn.body];
+  const out: ts.Expression[] = [];
+  const visit = (n: ts.Node) => {
+    if (ts.isFunctionLike(n)) return;
+    if (ts.isReturnStatement(n) && n.expression) out.push(n.expression);
+    ts.forEachChild(n, visit);
   };
+  visit(fn.body);
+  return out;
+}
+
+/** The machines createStore names in the store file: the name and the expression that makes each. */
+function storeMachines(sf: ts.SourceFile): { name: string; expr: ts.Expression }[] {
+  const out: { name: string; expr: ts.Expression }[] = [];
   const visit = (n: ts.Node) => {
     if (
       ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "createStore" &&
       n.arguments[0] && ts.isObjectLiteralExpression(n.arguments[0])
     ) {
       for (const p of n.arguments[0].properties) {
-        if (ts.isShorthandPropertyAssignment(p)) machine(p.name.text, made.get(p.name.text));
+        if (ts.isShorthandPropertyAssignment(p)) out.push({ name: p.name.text, expr: p.name });
         else if (ts.isPropertyAssignment(p) && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name))) {
-          const v = p.initializer;
-          if (ts.isNewExpression(v) && ts.isIdentifier(v.expression)) machine(p.name.text, v.expression.text);
-          else if (ts.isIdentifier(v)) machine(p.name.text, made.get(v.text));
+          out.push({ name: p.name.text, expr: p.initializer });
         }
       }
     }
@@ -90,70 +210,104 @@ function storeMachines(sf: ts.SourceFile): { name: string; cls: string; from: st
   return out;
 }
 
+const hasView = (c: ts.ClassDeclaration) =>
+  c.members.some((x) => (ts.isPropertyDeclaration(x) || ts.isGetAccessor(x)) && x.name.getText() === "view");
+
 /** The machines of the store at `storeFile` (from `root`), and what each can be told to do. */
 export async function readMachines(root: string, storeFile: string): Promise<Reading> {
   const entries: Entry[] = [];
   const problems: Reading["problems"] = [];
-  let source: string;
-  try {
-    source = await Deno.readTextFile(`${root}/${storeFile}`);
-  } catch {
-    return { entries, problems: [{ file: storeFile, message: "the store file is not there" }] };
-  }
-  const machines = storeMachines(parse(storeFile, source));
+  const sources = new Sources(root);
+  const store = await sources.load(storeFile);
+  if (!store) return { entries, problems: [{ file: storeFile, message: "the store file is not there" }] };
+  const machines = storeMachines(store.sf);
   if (machines.length === 0) {
     problems.push({
       file: storeFile,
       message: "no machine: createStore({ name: new Machine(...) }) is not called here",
     });
   }
-  const used = new Map<string, string>();
-  for (const m of machines) {
-    if (!m.from?.startsWith(".")) {
-      problems.push({ file: storeFile, message: `${m.name}: ${m.cls} is not imported from a file of the app` });
-      continue;
+  // A file holds one machine class, however many times the store makes it (a zoom in each of three screens).
+  const classIn = new Map<string, { cls: string; name: string }>();
+  const viewed = new Set<string>();
+
+  /** Reads one machine at `path`: its transitions, then the machines it holds and the machines it makes on demand. */
+  const read = async (path: string, made: Made, stack: string[]) => {
+    const { cls: className, file } = made;
+    const held = classIn.get(file);
+    if (held && held.cls !== className) {
+      problems.push({ file, message: `holds the machines ${held.name} and ${path}: one file for each machine` });
     }
-    const file = posix.normalize(posix.join(posix.dirname(storeFile), m.from));
-    if (used.has(file)) {
-      problems.push({ file, message: `holds the machines ${used.get(file)} and ${m.name}: one file for each machine` });
-    }
-    used.set(file, m.name);
-    let msrc: string;
-    try {
-      msrc = await Deno.readTextFile(`${root}/${file}`);
-    } catch {
-      problems.push({ file: storeFile, message: `${m.name}: ${m.from} is not there` });
-      continue;
-    }
-    const sf = parse(file, msrc);
+    classIn.set(file, held ?? { cls: className, name: path });
+    const m = (await sources.load(file))!;
+    const sf = m.sf;
     const classes = sf.statements.filter((s): s is ts.ClassDeclaration => ts.isClassDeclaration(s) && !!s.name);
-    const withView = classes.filter((c) =>
-      c.members.some((x) => ts.isPropertyDeclaration(x) && x.name.getText() === "view")
-    );
-    if (withView.length > 1) {
+    const withView = classes.filter(hasView);
+    if (withView.length > 1 && !viewed.has(file)) {
       problems.push({
         file,
         message: `defines ${withView.map((c) => c.name!.text).join(" and ")}, each with a view: one machine to a file`,
       });
     }
-    const cls = classes.find((c) => c.name!.text === m.cls);
-    if (!cls) {
-      problems.push({ file, message: `${m.name}: no class ${m.cls}` });
-      continue;
+    viewed.add(file);
+    const cls = classes.find((c) => c.name!.text === className)!;
+    const key = `${file}#${className}`;
+    // The machines the class holds in a field, or sets in its constructor, and those a method makes by an argument.
+    const nested: { path: string; made: Made }[] = [];
+    const makes = new Set<ts.Node>();
+    const isHidden = (member: ts.ClassElement, name: string) =>
+      name.startsWith("_") || name.startsWith("#") ||
+      !!(ts.getCombinedModifierFlags(member as ts.Declaration) &
+        (ts.ModifierFlags.Private | ts.ModifierFlags.Protected | ts.ModifierFlags.Static));
+    const holds = async (name: string, expr: ts.Expression) => {
+      const inner = await sources.machineOf(file, expr, sf);
+      if (inner && hasViewClass(await sources.load(inner.file), inner.cls)) {
+        nested.push({ path: `${path}.${name}`, made: inner });
+      }
+    };
+    for (const member of cls.members) {
+      if (ts.isPropertyDeclaration(member) && member.initializer && !ts.isPrivateIdentifier(member.name)) {
+        const name = member.name.getText(sf);
+        if (!isHidden(member, name)) await holds(name, member.initializer);
+      } else if (ts.isConstructorDeclaration(member) && member.body) {
+        for (const st of member.body.statements) {
+          if (
+            ts.isExpressionStatement(st) && ts.isBinaryExpression(st.expression) &&
+            st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+            ts.isPropertyAccessExpression(st.expression.left) &&
+            st.expression.left.expression.kind === ts.SyntaxKind.ThisKeyword &&
+            !ts.isPrivateIdentifier(st.expression.left.name)
+          ) await holds(st.expression.left.name.text, st.expression.right);
+        }
+      } else if (ts.isMethodDeclaration(member) && member.name.kind !== ts.SyntaxKind.PrivateIdentifier) {
+        const name = member.name.getText(sf);
+        if (isHidden(member, name) || name === "allowed") continue;
+        for (const r of returned(member)) {
+          const inner = await sources.machineOf(file, r, member);
+          if (inner && hasViewClass(await sources.load(inner.file), inner.cls)) {
+            nested.push({
+              path: `${path}.${name}(${member.parameters.map((p) => p.name.getText(sf)).join(", ")})`,
+              made: inner,
+            });
+            makes.add(member);
+            break;
+          }
+        }
+      }
     }
     for (const member of cls.members) {
       if (!ts.isMethodDeclaration(member) || member.name.kind === ts.SyntaxKind.PrivateIdentifier) continue;
       const name = member.name.getText(sf);
       const modifiers = ts.getCombinedModifierFlags(member);
       if (
-        name === "allowed" || name.startsWith("_") || name.startsWith("#") ||
+        name === "allowed" || name.startsWith("_") || name.startsWith("#") || makes.has(member) ||
         modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected | ts.ModifierFlags.Static)
       ) continue;
       const doc = docOf(member);
       const tags = new Set((doc?.tags ?? []).map((t) => t.tagName.text));
       if (tags.has("internal")) continue;
       entries.push({
-        machine: m.name,
+        machine: path,
         name,
         args: member.parameters.map((p) => ({
           name: p.name.getText(sf),
@@ -166,8 +320,32 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
         file,
       });
     }
+    for (const n of nested) {
+      if (stack.includes(key)) {
+        problems.push({ file, message: `${n.path}: a machine that holds itself` });
+        continue;
+      }
+      await read(n.path, n.made, [...stack, key]);
+    }
+  };
+
+  for (const m of machines) {
+    const made = await sources.machineOf(storeFile, m.expr, store.sf);
+    if (!made) {
+      problems.push({
+        file: storeFile,
+        message: `${m.name}: not made by \`new Machine()\` or a factory of a file of the app`,
+      });
+      continue;
+    }
+    await read(m.name, made, []);
   }
   return { entries, problems };
+}
+
+function hasViewClass(m: Module | null, cls: string): boolean {
+  const c = m?.sf.statements.find((s): s is ts.ClassDeclaration => ts.isClassDeclaration(s) && s.name?.text === cls);
+  return !!c && hasView(c);
 }
 
 /** The registry's file: data only, so that a server on any runtime can import it. */

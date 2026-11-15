@@ -84,8 +84,18 @@ function eventOf(t: TransitionInfo, args: { [key: string]: Json }): object {
   return { type: t.name, ...args };
 }
 
+/** A machine of the store by its registry name: a top-level one (`shell`), or one it holds (`features.gantt`). */
+function machineAt(machines: Machines, path: string): Machine | undefined {
+  let v: unknown = machines;
+  for (const seg of Object.hasOwn(machines, path) ? [path] : path.split(".")) {
+    if (typeof v !== "object" || v === null || !(seg in v)) return undefined;
+    v = (v as { [k: string]: unknown })[seg];
+  }
+  return typeof v === "object" && v !== null ? v as Machine : undefined;
+}
+
 function allowedNow(machines: Machines, t: TransitionInfo, args: { [key: string]: Json } | null): boolean | null {
-  const m = machines[t.machine] as Machine | undefined;
+  const m = machineAt(machines, t.machine);
   if (!m || typeof m.allowed !== "function") return null;
   const needed = t.args.filter((a) => !a.optional);
   if (args === null && needed.length > 0) return null;
@@ -142,10 +152,11 @@ export function callTransition(
   const given = isObject(args["args"]) ? args["args"] : {};
   const missing = t.args.filter((a) => !a.optional && !(a.name in given)).map((a) => a.name);
   if (missing.length) throw new Error(`${machine}.${name} needs ${missing.join(", ")}`);
-  const m = machines[machine] as Machine | undefined;
+  const m = machineAt(machines, machine);
   const fn = m?.[name];
   if (typeof fn !== "function") throw new Error(`the store has no ${machine}.${name}`);
-  const shown = () => readStore(snapshot, { machine });
+  // What a machine it holds shows is inside the machine that holds it: the top one is shown.
+  const shown = () => readStore(snapshot, { machine: machine.split(".")[0]! });
   if (allowedNow(machines, t, given) === false) return { done: false, reason: "not allowed now", shows: shown() };
   const done = (fn as (...a: unknown[]) => unknown).apply(m, t.args.map((a) => given[a.name])) !== false;
   return { done, shows: shown() };
