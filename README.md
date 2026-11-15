@@ -670,8 +670,9 @@ program that runs the check, such as the terminal; without it the macOS line say
 unaffected. On Linux, Playwright has builds only for the distributions it lists, so on another one the three browsers
 are reported skipped. On Windows, WebView2 opens a window only in an interactive desktop session. Run over ssh, the
 check starts the app through a scheduled task in the desktop session of the user who is signed in, reads its output from
-the files it writes there, and ends the app and deletes the task afterwards. With nobody signed in to the desktop it
-reports the launch skipped.
+the files it writes there, and ends the app and deletes the task afterwards. With nobody signed in to the desktop (a
+connected session, whatever the language of the system, has a session name in `quser`'s output) it reports the launch
+skipped.
 
 Each platform is reported at the furthest level it reached, and each level proves something more:
 
@@ -796,10 +797,11 @@ When a project customizes its mood board, its tokens or its widgets, the checks 
   a file the checks read (a token file, a mood board, the contrast pairs, a widget, a component or `stance-ui.json`),
   every check runs, browser checks included, and each problem refuses the landing. The report is a `refuses` one, so
   Naima says the branch fails a check, and `--stale-proofs` does not let it through. A checker that cannot run refuses
-  it too, since the change was not checked. A landing that changes none of those files runs nothing. The report runs the
-  checks with `--no-record`, so a landing leaves no `stance-ui.checked.json` behind in the checkout it looked at. It is
-  marked heavy, since the browser checks take minutes: a landing on a development line runs it only on the landing host
-  the coordination plugin's `landingHost` option names.
+  it too, since the change was not checked; a checker that prints no findings counts as one that could not run. It
+  writes its progress, a line at each stage and page, to the landing's log. A landing that changes none of those files
+  runs nothing. The report runs the checks with `--no-record`, so a landing leaves no `stance-ui.checked.json` behind in
+  the checkout it looked at. It is marked heavy, since the browser checks take minutes: a landing on a development line
+  runs it only on the landing host the coordination plugin's `landingHost` option names.
 - **Right after an agent's edit.** The plugin contributes an agent hook, `ui-edit-hook`: a `PostToolUse` hook on
   `Edit|Write|MultiEdit` that runs `naima stance-ui hook`. Naima installs it in the agent tool's settings
   (`.claude/settings.json` for Claude Code) at `naima stance adopt`, `naima init` and `naima update`, beside the

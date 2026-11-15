@@ -209,7 +209,11 @@ async function svelteCheck(root: string, tsconfig: string): Promise<Finding[]> {
 }
 
 /** Every finding of the chosen checks on the project at `root`. */
-export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS): Promise<Finding[]> {
+export async function runChecks(
+  dir: string,
+  only: readonly CheckName[] = CHECKS,
+  progress: (message: string) => void = () => {},
+): Promise<Finding[]> {
   // The OS's own resolve: on Windows posix.resolve would treat C:\\app as relative.
   const root = resolve(dir);
   const cfg = await loadConfig(root);
@@ -222,6 +226,7 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   const inWidgets = (f: string) => widgetDirs.some((d) => f.startsWith(d + "/"));
   const icons = readIconChoice(cfg.icons);
   if (only.includes("icons")) findings.push(...icons.findings);
+  progress("static checks");
   const files = new Set<string>();
   for (const dir of [...cfg.widgets, ...cfg.components]) for (const f of await svelteFiles(root, dir)) files.add(f);
   for (const file of [...files].sort()) {
@@ -256,6 +261,7 @@ export async function runChecks(dir: string, only: readonly CheckName[] = CHECKS
   if (only.includes("agent-endpoint")) findings.push(...await checkAgentEndpoint(root, cfg));
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));
   const browser = only.filter((c): c is BrowserCheck => (BROWSER_CHECKS as readonly string[]).includes(c));
-  findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget));
+  findings.push(...await browserChecks(root, cfg.pages, browser, cfg.budget, progress));
+  progress(`done: ${findings.filter((f) => f.level === "problem").length} problem(s)`);
   return findings;
 }

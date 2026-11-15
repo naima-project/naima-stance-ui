@@ -2,12 +2,25 @@
 
 ## Unreleased
 
+### The landing report never reads a dead checker as a clean run, and shows its progress
+
+A checker that prints no findings, or exits with anything but 0 or 1, now refuses the landing as one that could not run,
+where it used to count as a run with no findings. `check --progress` writes a line to stderr at each stage and each page
+(building, static checks, the browser checks on a page and state, the total), and the landing report passes it to the
+landing's log, so a run of many minutes is seen to move.
+
+### The platforms check reads no translated word from quser
+
+`desktopSignedIn` told a signed-in desktop by the English word `Active` in `quser`'s state column, which a Windows in
+another language translates (`Attivo`). It now takes a session as connected when it has a session name (`console`,
+`rdp-tcp#2`), which a disconnected session lacks.
+
 ### The budget check serves the pages compressed
 
-The browser checks serve the app's pages as a real server does: text files (HTML, JavaScript, CSS, JSON, SVG) gzip-compressed
-when the browser sends `Accept-Encoding: gzip` (`checks/serve.ts`). The largest-paint time of the mobile profile is measured
-over the slow network, and it now counts the same compressed transfer as the size budget, instead of about three times the
-bytes.
+The browser checks serve the app's pages as a real server does: text files (HTML, JavaScript, CSS, JSON, SVG)
+gzip-compressed when the browser sends `Accept-Encoding: gzip` (`checks/serve.ts`). The largest-paint time of the mobile
+profile is measured over the slow network, and it now counts the same compressed transfer as the size budget, instead of
+about three times the bytes.
 
 ### Agent parity: the user and an agent do the same things
 

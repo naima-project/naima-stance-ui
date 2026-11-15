@@ -1,11 +1,12 @@
-// deno task check [--project <dir>] [--only <check>[,<check>]] [--json] [--no-record] [--changed <json list>]
+// deno task check [--project <dir>] [--only <check>[,<check>]] [--json] [--no-record] [--changed <json list>] [--progress]
 // deno task check --only platforms [--platforms web,macos,...] [--out <dir>]
 //
 // Runs the stance's checks on a project (the current directory by default) and exits 1 when one finds a
 // problem. With --json it prints the findings as one JSON array, which the Naima plugin reads. Unless told not to,
 // it records what each check found in stance-ui.checked.json (checks/record.ts), which `stance-ui status` reads.
 // With --changed, a JSON list of files from the project's folder, it runs nothing unless one of them is a file the
-// checks read: what a landing asks.
+// checks read: what a landing asks. With --progress it writes a line to stderr at each stage and page, so a long run
+// is seen to move.
 //
 // `platforms` builds and launches the app, so it runs only when named; the others run by default.
 
@@ -38,7 +39,9 @@ if (changed !== undefined) {
     Deno.exit(0);
   }
 }
-const findings: Finding[] = only.length ? await runChecks(root, only) : [];
+const findings: Finding[] = only.length
+  ? await runChecks(root, only, args.includes("--progress") ? (m) => console.error(`stance ui: ${m}`) : undefined)
+  : [];
 if (only.length && !args.includes("--no-record")) await recordRun(root, await loadConfig(root), only, findings);
 if (asked.includes("platforms")) {
   const cfg = await loadConfig(root);

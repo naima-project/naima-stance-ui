@@ -318,6 +318,7 @@ export async function browserChecks(
   pages: PageConfig[],
   only: readonly BrowserCheck[],
   budget: Partial<Budget> = {},
+  progress: (message: string) => void = () => {},
 ): Promise<Finding[]> {
   if (only.length === 0) return [];
   const on = (c: BrowserCheck) => only.includes(c);
@@ -335,6 +336,7 @@ export async function browserChecks(
   for (const p of pages) {
     if (!p.build || built.has(JSON.stringify(p.build))) continue;
     built.add(JSON.stringify(p.build));
+    progress(`building ${p.name}: ${p.build.join(" ")}`);
     const err = await build(root, p.build);
     if (err) findings.push({ check: only[0], level: "problem", file: p.path, message: `the build failed: ${err}` });
   }
@@ -364,6 +366,7 @@ export async function browserChecks(
       }
       for (const state of [{ name: "", click: [] as string[] }, ...(p.states ?? [])]) {
         const where = `${p.name}${state.name ? ` (${state.name})` : ""}`;
+        progress(`browser checks on ${where}`);
         const open = async (options: import("playwright").BrowserContextOptions, text = 100) => {
           const context = await browser.newContext(options);
           const page = await context.newPage();

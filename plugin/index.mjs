@@ -181,7 +181,7 @@ const CHECKS = [
 export const RULES = readRules(join(STANCE, "rules"));
 
 /** Runs the stance's checker on the app and returns its findings, or throws with why it could not. */
-function runChecker(deno, args) {
+function runChecker(deno, args, onProgress) {
   return new Promise((done, fail) => {
     const child = spawn(deno, ["run", "-A", "--quiet", join(STANCE, "checks", "cli.ts"), ...args], {
       cwd: STANCE,
@@ -190,11 +190,17 @@ function runChecker(deno, args) {
     let out = "";
     let err = "";
     child.stdout.on("data", (d) => (out += d));
-    child.stderr.on("data", (d) => (err += d));
+    child.stderr.on("data", (d) => {
+      err += d;
+      if (onProgress) { for (const l of String(d).split("\n")) if (l.trim()) onProgress(l.trim()); }
+    });
     child.on("error", (e) => fail(new Error(`cannot run ${deno}: ${e.message}`)));
     child.on("close", (code) => {
       try {
-        done({ code, findings: JSON.parse(out.trim().split("\n").pop() || "[]") });
+        // The checker exits 0 or 1 and prints its findings: no output, or any other exit, is a checker that died, never
+        // a run without findings.
+        if (!out.trim() || (code !== 0 && code !== 1)) throw new Error("no findings printed");
+        done({ code, findings: JSON.parse(out.trim().split("\n").pop()) });
       } catch {
         fail(new Error(`the stance's checker exited with ${code}: ${err.trim().split("\n").slice(-3).join(" ")}`));
       }
@@ -292,7 +298,8 @@ export default function stanceUi(options = {}, api = {}) {
               "--json",
               // The landing only asks: it writes no record into the checkout it looks at.
               "--no-record",
-            ]);
+              "--progress",
+            ], (line) => print(ctx, "err")(line));
             return findings.filter((f) => f.level === "problem").map((f) =>
               `${f.check}: ${where(f)}${where(f) ? ": " : ""}${f.message}`
             );

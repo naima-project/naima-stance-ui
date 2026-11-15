@@ -135,6 +135,29 @@ Deno.test("a landing that changes what the checks read is refused while one fail
   assert(held.length === 1 && held[0].includes("could not run"), held.join("\n"));
 });
 
+Deno.test("a checker that prints nothing is a checker that died, never a landing check without findings", {
+  ignore: Deno.build.os === "windows",
+}, async () => {
+  const dir = await Deno.makeTempDir();
+  const fake = join(dir, "deno");
+  await Deno.writeTextFile(fake, "#!/bin/sh\necho 'stance ui: stage' >&2\nexit 0\n");
+  await Deno.chmod(fake, 0o755);
+  const m: Any = stanceUi({ app: "violating", deno: fake }, { plugin: "stance-ui" });
+  const seen: string[] = [];
+  const held = await m.contributes["landing-reports"][0].refuses({
+    root: fixture(""),
+    err: (l: string) => seen.push(l),
+  }, {
+    branch: "b",
+    from: "a",
+    to: "b",
+    changed: ["violating/tokens/base.tokens.json"],
+  });
+  assert(held.length === 1 && held[0].includes("could not run"), held.join("\n"));
+  assertEquals(seen, ["stance ui: stage"], "the checker's progress reaches the landing's log");
+  await Deno.remove(dir, { recursive: true });
+});
+
 Deno.test("the edit hook is an agent hook Naima installs; the stance writes no settings file, and declares what its checks run", () => {
   const m: Any = stanceUi({ deno: "/opt/deno" }, { plugin: "stance-ui" });
   assertEquals(m.contract, 4);
