@@ -5,7 +5,8 @@ import { runChecks } from "../checks/run.ts";
 import { AGENT_ANSWER, AGENT_FEED, agentEndpoint, agentTools } from "../platform/agent-endpoint.ts";
 import { bridgeMcp } from "../platform/bridge-mcp.ts";
 import { adopt } from "../scripts/adopt.ts";
-import { readMachines } from "../scripts/transitions.ts";
+import { parseRegistry } from "../checks/parity.ts";
+import { readMachines, renderRegistry } from "../scripts/transitions.ts";
 import * as page from "../src/lib/agent/agent.ts";
 import { localBridge } from "../src/lib/platform/bridge.ts";
 
@@ -43,10 +44,23 @@ Deno.test("a component that calls what the registry does not list is refused, wh
         "<button onclick={() => counter.poke(2)}>{store.counter.poke}{notes['write']}{counter.nope()}</button><button onclick={counter.reset}>",
       ),
   });
-  refused(found, "uses counter.poke, which is not a transition in the registry");
+  // counter.poke is plumbing (@internal): left out of the registry, and a component may call it.
   refused(found, "uses counter.nope, which is not a transition in the registry");
   refused(found, "computed member");
-  assertEquals(found.length, 4, found.join("\n"));
+  assertEquals(found.length, 2, found.join("\n"));
+});
+
+Deno.test("a component may use the plumbing of a machine (@internal) and the machine it holds, which are no transitions", async () => {
+  assertEquals(
+    await broken({
+      "src/App.svelte": (t) =>
+        t.replace(
+          "<button onclick={counter.reset}>",
+          "<button onclick={() => counter.poke(2)}>{store.counter.poke}</button><button onclick={counter.reset}>",
+        ),
+    }),
+    [],
+  );
 });
 
 Deno.test("a machine the registry does not know, and a store taken apart by a pattern that cannot be followed, are refused", async () => {
@@ -464,5 +478,76 @@ Deno.test("no to MCP sets up none of it, and a project that never answered is as
   } finally {
     await Deno.remove(no, { recursive: true });
     await Deno.remove(asked, { recursive: true });
+  }
+});
+
+Deno.test("an entry says its argument's values and its kind: a machine generated from a model is an input of it", async () => {
+  const dir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(`${dir}/src/generated/mod`, { recursive: true });
+    await Deno.writeTextFile(
+      `${dir}/src/app.svelte.ts`,
+      `import { createStore } from "./store.ts";
+import { Mode } from "./generated/mod/mode.ts";
+export const store = createStore({ mode: new Mode() });
+`,
+    );
+    await Deno.writeTextFile(
+      `${dir}/src/generated/mod/mode.ts`,
+      `export class Mode {
+  readonly view = {};
+  /** Picks a mode. */
+  pick(mode: "a" | "b", more?: string): boolean {
+    return true;
+  }
+}
+`,
+    );
+    const { entries } = await readMachines(dir, "src/app.svelte.ts");
+    assertEquals(entries.map((e) => [e.kind, e.model, e.args]), [[
+      "model",
+      "mod",
+      [{ name: "mode", type: '"a" | "b"', values: ["a", "b"] }, { name: "more", type: "string", optional: true }],
+    ]]);
+    assert(renderRegistry(entries, "src/app.svelte.ts").includes('"values":["a","b"]'));
+    assertEquals(parseRegistry(renderRegistry(entries, "src/app.svelte.ts"))?.map((e) => e.name), ["pick"]);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("a project that reads its machines itself (check.transitions.reader) is held to the same rendering and comments", async () => {
+  const dir = await Deno.makeTempDir();
+  try {
+    await copy(fixture, dir, { overwrite: true });
+    await Deno.writeTextFile(
+      `${dir}/scripts-reader.ts`,
+      `export function read() {
+  return {
+    entries: [
+      { machine: "late", name: "go", args: [], description: "Goes.", sequence: false, person: false, kind: "code", file: "src/late.ts" },
+      { machine: "late", name: "mute", args: [], description: "", sequence: false, person: false, kind: "code", file: "src/late.ts" },
+    ],
+    internals: [{ machine: "wire", name: "plug" }],
+    problems: [],
+  };
+}
+`,
+    );
+    const cfg = JSON.parse(await Deno.readTextFile(`${dir}/stance-ui.json`));
+    cfg.check.transitions.reader = "scripts-reader.ts";
+    await Deno.writeTextFile(`${dir}/stance-ui.json`, JSON.stringify(cfg));
+    const found = (await runChecks(dir, CHECKS)).filter((f) => f.level === "problem").map((f) =>
+      `${f.check} ${f.file}: ${f.message}`
+    );
+    // Its machines are not the sources' own: the registry on disk is stale, and a transition with no comment is refused.
+    refused(found, "late.mute has no comment");
+    refused(found, "is not what the machines generate now");
+    const { loadReading } = await import("../scripts/transitions.ts");
+    assertEquals((await loadReading(dir, "src/app.svelte.ts", "scripts-reader.ts")).internals, [
+      { machine: "wire", name: "plug" },
+    ]);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
   }
 });

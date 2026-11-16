@@ -17,7 +17,7 @@ export class Counter {
     return this.#bump(-this.#count);
   }
 
-  /** Sets the count outright, as a test does: not a transition, so no component and no agent may call it. @internal */
+  /** Sets the count outright, as a test does: plumbing, no transition, so an agent cannot call it. @internal */
   poke(count: number): void {
     this.#count = count;
   }

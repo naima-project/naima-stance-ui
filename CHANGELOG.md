@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### The registry says the kind of each transition and the values of its arguments; a project may read its machines itself
+
+Each entry of the registry now carries its `kind` (`model` with the model's name for a machine generated from a model,
+else `code`) and, for an argument typed as a union of strings, its `values`; the file declares its `Arg` and `Transition`
+types. `check.transitions.reader` names a module of the project that reads the store's machines with the compiler's
+types, for a store whose machines the sources do not show by name; the stance keeps rendering the registry, requiring
+comments and checking the components. A component may call a method tagged `@internal` (plumbing, no transition, no
+agent's) and may use a machine a machine holds (`item.answering`).
+
 ### The transitions check reads machines made by factories and machines nested in machines
 
 The one-machine-per-file check used to find only `createStore({ name: new Machine() })`. It now also follows a factory

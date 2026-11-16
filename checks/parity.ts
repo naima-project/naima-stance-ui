@@ -15,7 +15,7 @@ import { parse } from "svelte/compiler";
 import ts from "typescript";
 import type { StanceConfig } from "./config.ts";
 import { type Finding, lineOf } from "./finding.ts";
-import { readMachines, renderRegistry } from "../scripts/transitions.ts";
+import { loadReading, renderRegistry } from "../scripts/transitions.ts";
 
 // deno-lint-ignore no-explicit-any
 type Node = any;
@@ -36,18 +36,26 @@ const CHANNEL = new Set(["agent-endpoint.ts", "bridge-mcp.ts", "bridge-handler.t
 
 /** The entries of a generated registry file, or null when the file is not one. */
 export function parseRegistry(source: string): RegistryEntry[] | null {
-  const start = source.indexOf("[\n");
-  const end = source.lastIndexOf("] as const");
-  if (start < 0 || end < 0) return null;
+  const start = source.indexOf("registry");
+  const open = start < 0 ? -1 : source.indexOf("= [\n", start) + 2;
+  // The list ends at the line `];` (or `] as const;`, the format before the registry declared its types).
+  const end = source.lastIndexOf("\n]");
+  if (open < 2 || end < open) return null;
   try {
-    return JSON.parse(source.slice(start, end).replace(/,\s*$/, "") + "]") as RegistryEntry[];
+    return JSON.parse(source.slice(open, end).replace(/,\s*$/, "") + "]") as RegistryEntry[];
   } catch {
     return null;
   }
 }
 
 /** Every use of a store machine in a component that is neither its view nor `allowed` nor a registered transition. */
-export function checkTransitionCalls(file: string, source: string, registry: readonly RegistryEntry[]): Finding[] {
+export function checkTransitionCalls(
+  file: string,
+  source: string,
+  registry: readonly RegistryEntry[],
+  internals: readonly RegistryEntry[] = [],
+  known: readonly string[] = [],
+): Finding[] {
   let ast: Node;
   try {
     ast = parse(source, { modern: true, filename: file });
@@ -64,7 +72,8 @@ export function checkTransitionCalls(file: string, source: string, registry: rea
   walk(ast.instance?.content);
   walk(ast.module?.content);
   walk(ast.fragment);
-  const machines = new Set(registry.map((t) => t.machine));
+  // A machine with only plumbing (@internal), or with a view alone, is one a component may use.
+  const machines = new Set([...[...registry, ...internals].map((t) => t.machine), ...known]);
   const stores = new Set<string>();
   const alias = new Map<string, string>(); // a name in the component → the machine it holds
   const findings: Finding[] = [];
@@ -115,6 +124,12 @@ export function checkTransitionCalls(file: string, source: string, registry: rea
       continue;
     }
     if (READS.has(member) || registry.some((t) => t.machine === machine && t.name === member)) continue;
+    // Plumbing a component calls, which is no transition (a method tagged @internal).
+    if (internals.some((t) => t.machine === machine && t.name === member)) continue;
+    // A machine the machine holds (item.answering): what is used of it is checked as a machine of its own path.
+    if (machines.has(`${machine}.${member}`) || [...machines].some((m) => m.startsWith(`${machine}.${member}.`))) {
+      continue;
+    }
     const key = `${n.start}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -139,7 +154,7 @@ export async function checkTransitions(
   const findings: Finding[] = [];
   const problem = (file: string, message: string) =>
     findings.push({ check: TRANSITIONS, level: "problem", file, message });
-  const machines = await readMachines(root, t.machines);
+  const machines = await loadReading(root, t.machines, t.reader);
   for (const p of machines.problems) problem(p.file, p.message);
   for (const e of machines.entries) {
     if (!e.description) {
@@ -154,7 +169,9 @@ export async function checkTransitions(
     }
   }
   const registry = (have ? parseRegistry(have) : null) ?? machines.entries;
-  for (const file of components) findings.push(...checkTransitionCalls(file, await read(file), registry));
+  for (const file of components) {
+    findings.push(...checkTransitionCalls(file, await read(file), registry, machines.internals, machines.machines));
+  }
   return findings;
 }
 

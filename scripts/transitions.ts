@@ -19,22 +19,46 @@
 // check.transitions gives. `--check` writes nothing and exits 1 when the file on disk is not the one to generate.
 
 import { dirname, posix, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import ts from "typescript";
+
+/** An argument of a transition: its name, its type as the code writes it, the values an enumerated one takes. */
+export interface Arg {
+  name: string;
+  type: string;
+  /** The values of an argument whose type is a union of string literals. */
+  values?: string[];
+  optional?: boolean;
+}
 
 export interface Entry {
   machine: string;
   name: string;
-  args: { name: string; type: string; optional?: boolean }[];
+  args: Arg[];
   description: string;
   sequence: boolean;
   /** Only a person takes it (a secret, a passkey): an agent is refused. */
   person: boolean;
+  /** model: an input of a machine generated from a model (a file under `generated/<model>/`); code: written by hand. */
+  kind: "model" | "code";
+  /** The model's name, for a model's input. */
+  model?: string;
   /** The machine's file, from the root. */
   file: string;
 }
 
+/** A public method of a machine that a component may call but that is no transition: plumbing (@internal). */
+export interface Internal {
+  machine: string;
+  name: string;
+}
+
 export interface Reading {
   entries: Entry[];
+  /** The plumbing: public methods tagged @internal, which components call and agents cannot. */
+  internals: Internal[];
+  /** Every machine of the store by its path, also one with no transition (a status that is only read). */
+  machines: string[];
   /** What is wrong with the machines: a message, and the file it is about. */
   problems: { file: string; message: string }[];
 }
@@ -216,10 +240,19 @@ const hasView = (c: ts.ClassDeclaration) =>
 /** The machines of the store at `storeFile` (from `root`), and what each can be told to do. */
 export async function readMachines(root: string, storeFile: string): Promise<Reading> {
   const entries: Entry[] = [];
+  const internals: Internal[] = [];
+  const paths: string[] = [];
   const problems: Reading["problems"] = [];
   const sources = new Sources(root);
   const store = await sources.load(storeFile);
-  if (!store) return { entries, problems: [{ file: storeFile, message: "the store file is not there" }] };
+  if (!store) {
+    return {
+      entries,
+      internals,
+      machines: paths,
+      problems: [{ file: storeFile, message: "the store file is not there" }],
+    };
+  }
   const machines = storeMachines(store.sf);
   if (machines.length === 0) {
     problems.push({
@@ -234,6 +267,7 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
   /** Reads one machine at `path`: its transitions, then the machines it holds and the machines it makes on demand. */
   const read = async (path: string, made: Made, stack: string[]) => {
     const { cls: className, file } = made;
+    paths.push(path);
     const held = classIn.get(file);
     if (held && held.cls !== className) {
       problems.push({ file, message: `holds the machines ${held.name} and ${path}: one file for each machine` });
@@ -305,18 +339,29 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
       ) continue;
       const doc = docOf(member);
       const tags = new Set((doc?.tags ?? []).map((t) => t.tagName.text));
-      if (tags.has("internal")) continue;
+      if (tags.has("internal")) {
+        internals.push({ machine: path, name });
+        continue;
+      }
       entries.push({
         machine: path,
         name,
-        args: member.parameters.map((p) => ({
-          name: p.name.getText(sf),
-          type: p.type?.getText(sf) ?? "unknown",
-          ...(p.questionToken || p.initializer ? { optional: true } : {}),
-        })),
+        args: member.parameters.map((p) => {
+          const values = p.type && ts.isUnionTypeNode(p.type) &&
+              p.type.types.every((t) => ts.isLiteralTypeNode(t) && ts.isStringLiteral(t.literal))
+            ? p.type.types.map((t) => ((t as ts.LiteralTypeNode).literal as ts.StringLiteral).text)
+            : null;
+          return {
+            name: p.name.getText(sf),
+            type: p.type?.getText(sf) ?? "unknown",
+            ...(values ? { values } : {}),
+            ...(p.questionToken || p.initializer ? { optional: true } : {}),
+          };
+        }),
         description: text(doc?.comment).replace(/\s+/g, " ").trim(),
         sequence: tags.has("sequence"),
         person: tags.has("person"),
+        ...kindOf(file),
         file,
       });
     }
@@ -340,7 +385,13 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
     }
     await read(m.name, made, []);
   }
-  return { entries, problems };
+  return { entries, internals, machines: paths, problems };
+}
+
+/** The entry's kind: a machine generated from a model lives in a folder `generated/<model>/`. */
+export function kindOf(file: string): Pick<Entry, "kind" | "model"> {
+  const model = /(?:^|\/)generated\/([^/]+)\//.exec(file)?.[1];
+  return model ? { kind: "model", model } : { kind: "code" };
 }
 
 function hasViewClass(m: Module | null, cls: string): boolean {
@@ -348,15 +399,62 @@ function hasViewClass(m: Module | null, cls: string): boolean {
   return !!c && hasView(c);
 }
 
+/**
+ * The machines of a project, read by the stance, or by the project's own reader when check.transitions.reader names
+ * one: a module of the project exporting `read(root, storeFile)`, which answers a Reading. A project whose store builds
+ * machines the sources do not show by name (a machine made when a screen is first looked at, one handed to its parent
+ * as an argument) reads them with the compiler's types there, and keeps this script's rendering, comments and checks.
+ */
+export async function loadReading(root: string, storeFile: string, reader?: string): Promise<Reading> {
+  if (!reader) return await readMachines(root, storeFile);
+  const mod = await import(toFileURL(resolve(root, reader)));
+  if (typeof mod.read !== "function") {
+    return {
+      entries: [],
+      internals: [],
+      machines: [],
+      problems: [{
+        file: reader,
+        message: "is the project's reader of machines and exports no `read(root, storeFile)`",
+      }],
+    };
+  }
+  return await mod.read(root, storeFile) as Reading;
+}
+
+const toFileURL = (path: string) => pathToFileURL(path).href;
+
 /** The registry's file: data only, so that a server on any runtime can import it. */
 export function renderRegistry(entries: Entry[], storeFile: string): string {
   const lines = entries.map((e) => "  " + JSON.stringify(e));
   return `// deno-fmt-ignore-file
 // Generated by \`deno task transitions\` from the machines createStore names in ${storeFile}. Do not edit: change a
 // machine, and generate it again. Plain data: the page's agent tools, the MCP server and the transitions check read it.
-export const registry = [
+
+/** An argument of a transition: its name, its type as the code writes it, the values an enumerated one takes. */
+export interface Arg {
+  readonly name: string;
+  readonly type: string;
+  readonly values?: readonly string[];
+  readonly optional?: boolean;
+}
+
+/** A transition of the store, called on its machine by its name, as the components call it. */
+export interface Transition {
+  readonly machine: string;
+  readonly name: string;
+  readonly args: readonly Arg[];
+  readonly description: string;
+  readonly sequence: boolean;
+  readonly person: boolean;
+  readonly kind: "model" | "code";
+  readonly model?: string;
+  readonly file: string;
+}
+
+export const registry: readonly Transition[] = [
 ${lines.join(",\n")}${lines.length ? "," : ""}
-] as const;
+];
 `;
 }
 
@@ -364,12 +462,16 @@ if (import.meta.main) {
   const args = Deno.args;
   const arg = (f: string) => args.indexOf(f) >= 0 ? args[args.indexOf(f) + 1] : undefined;
   const root = resolve(arg("--project") ?? Deno.cwd());
-  let cfg: { store?: string; registry?: string } = {};
+  let cfg: { store?: string; registry?: string; reader?: string } = {};
   try {
     const rec = JSON.parse(await Deno.readTextFile(`${root}/stance-ui.json`)) as {
-      check?: { transitions?: { machines?: string; registry?: string } };
+      check?: { transitions?: { machines?: string; registry?: string; reader?: string } };
     };
-    cfg = { store: rec.check?.transitions?.machines, registry: rec.check?.transitions?.registry };
+    cfg = {
+      store: rec.check?.transitions?.machines,
+      registry: rec.check?.transitions?.registry,
+      reader: rec.check?.transitions?.reader,
+    };
   } catch {
     // no stance-ui.json: the flags say where
   }
@@ -381,7 +483,7 @@ if (import.meta.main) {
     );
     Deno.exit(2);
   }
-  const { entries, problems } = await readMachines(root, store);
+  const { entries, problems } = await loadReading(root, store, cfg.reader);
   for (const p of problems) console.error(`${p.file}: ${p.message}`);
   if (problems.length) Deno.exit(1);
   const body = renderRegistry(entries, store);

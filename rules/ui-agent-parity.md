@@ -34,7 +34,14 @@ machines a machine holds (a field `zoom = new Zoom()`, a constructor's `this.zoo
 one by an argument, `historyOf(ref)`, which is then no transition) and checks each through its parent: each class in a
 file of its own, each transition commented. A nested machine is named in the registry by its path (`features.gantt`,
 `bugs.historyOf(ref)`), and an agent calls it by that name. A class is a nested machine when it has a `view`; a machine
-that holds itself is refused. The check `agent-endpoint` refuses an MCP server file that imports anything of the app:
+that holds itself is refused. A public method tagged `@internal` is plumbing (loading a screen's parts, wiring the page's
+address): it is no transition, an agent cannot call it, and a component may. A component may also use a machine a machine
+holds (`item.answering`), checked through the path of its own. A project whose store makes machines the sources do not
+show by name (one made when a screen is first looked at, one handed to its parent) names a reader of its own in
+`check.transitions.reader`, a module exporting `read(root, storeFile)` that answers the machines, their transitions and
+their plumbing; the check keeps its rendering, its comments and its calls. The registry says, for each transition,
+the values of an argument that is a union of strings, and its `kind` (`model` with the model's `name`, for a machine
+generated from a model in a folder `generated/<model>/`, else `code`). The check `agent-endpoint` refuses an MCP server file that imports anything of the app:
 only the registry, the agent channel and the standard library.
 
 ## Why
