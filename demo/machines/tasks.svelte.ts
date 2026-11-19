@@ -81,27 +81,28 @@ export class Tasks {
     return M.allowed(this.#state, event);
   }
 
-  /** Adds a task with this title, at the end of the list, when the list has room. */
+  /** Adds a task with this title, at the end of the list, when the list has room.
+   * @affordance button: the Add button, or Enter in the title field */
   add(title: string): boolean {
     return this.#input({ type: "add", title });
   }
 
-  /** Marks the task done, or not done again. */
+  /** Marks the task done, or not done again. @affordance choice: the task's checkbox */
   toggle(id: number): boolean {
     return this.#input({ type: "toggle", id });
   }
 
-  /** Asks whether to remove the task: nothing is removed until it is confirmed. */
+  /** Asks whether to remove the task: nothing is removed until it is confirmed. @affordance button: the task's Remove button */
   askRemove(id: number): boolean {
     return this.#input({ type: "askRemove", id });
   }
 
-  /** Removes the task that was asked about. */
+  /** Removes the task that was asked about. @affordance button: Remove, in the question */
   confirm(): boolean {
     return this.#input({ type: "confirm" });
   }
 
-  /** Keeps the task that was asked about. */
+  /** Keeps the task that was asked about. @affordance button: Keep it, in the question */
   cancel(): boolean {
     return this.#input({ type: "cancel" });
   }

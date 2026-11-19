@@ -437,6 +437,7 @@ Deno.test("yes to MCP at adoption scaffolds the registry, the agent endpoint and
         "server/bridge-server.ts",
         "src/lib/ui/agent/agent.ts",
         "scripts/stance-ui-transitions.ts",
+        "scripts/affordance.ts",
         "src/transitions.generated.ts",
       ]
     ) assert(await Deno.stat(`${dir}/${file}`).then(() => true, () => false), file);

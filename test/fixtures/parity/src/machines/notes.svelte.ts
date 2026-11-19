@@ -1,4 +1,5 @@
 // A second machine, in a file of its own.
+/** @affordance button: the note button */
 export class Notes {
   readonly view = { notes: [] as string[] };
 

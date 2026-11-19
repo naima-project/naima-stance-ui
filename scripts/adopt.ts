@@ -96,6 +96,7 @@ async function plan(
     files.set("platform/agent-endpoint.ts", "server/agent-endpoint.ts");
     files.set("src/lib/agent/agent.ts", `${to}/agent/agent.ts`);
     files.set("scripts/transitions.ts", "scripts/stance-ui-transitions.ts");
+    files.set("scripts/affordance.ts", "scripts/affordance.ts");
   }
   if (platforms.tauri) {
     const shell = async (rel: string) => {

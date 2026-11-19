@@ -9,7 +9,8 @@
 // transition (machine, name, arguments, description), except `allowed`, a name that begins with an underscore and
 // anything its comment tags @internal. A comment tagged @sequence says the method is a named sequence of transitions
 // (a convenience such as "show the open tasks"), which components and agents call like any other. One tagged @person
-// is for a person alone, such as typing a password: the agent's tools refuse it.
+// is for a person alone, such as typing a password: the agent's tools refuse it. One tagged @affordance says what offers
+// it to a person and its cues (scripts/affordance.ts); a class's @affordance holds for its methods that say none.
 //
 //   deno task transitions [--project <dir>] [--store src/app.svelte.ts] [--out src/transitions.generated.ts] [--check]
 //
@@ -21,6 +22,9 @@
 import { dirname, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+import { type Affordance, type NoAffordance, parseAffordance } from "./affordance.ts";
+
+export type { Affordance, NoAffordance } from "./affordance.ts";
 
 /** An argument of a transition: its name, its type as the code writes it, the values an enumerated one takes. */
 export interface Arg {
@@ -45,6 +49,8 @@ export interface Entry {
   model?: string;
   /** The machine's file, from the root. */
   file: string;
+  /** What offers it to a person and its cues, or why no person takes it (@affordance). */
+  affordance?: Affordance | NoAffordance;
 }
 
 /** A public method of a machine that a component may call but that is no transition: plumbing (@internal). */
@@ -63,7 +69,16 @@ export interface Reading {
   problems: { file: string; message: string }[];
 }
 
-type Doc = { comment?: string | readonly { text: string }[]; tags?: readonly { tagName: { text: string } }[] };
+type Doc = {
+  comment?: string | readonly { text: string }[];
+  tags?: readonly { tagName: { text: string }; comment?: string | readonly { text: string }[] }[];
+};
+
+/** The text of a doc comment's @affordance tag, when it has one. */
+const affordanceTag = (doc: Doc | undefined): string | undefined => {
+  const t = doc?.tags?.find((t) => t.tagName.text === "affordance");
+  return t ? text(t.comment) : undefined;
+};
 
 const text = (c: Doc["comment"]) => typeof c === "string" ? c : (c ?? []).map((p) => p.text).join("");
 const docOf = (node: ts.Node): Doc | undefined => {
@@ -286,6 +301,7 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
     viewed.add(file);
     const cls = classes.find((c) => c.name!.text === className)!;
     const key = `${file}#${className}`;
+    const classAffordance = affordanceTag(docOf(cls));
     // The machines the class holds in a field, or sets in its constructor, and those a method makes by an argument.
     const nested: { path: string; made: Made }[] = [];
     const makes = new Set<ts.Node>();
@@ -343,6 +359,9 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
         internals.push({ machine: path, name });
         continue;
       }
+      const said = affordanceTag(doc) ?? classAffordance;
+      const affordance = said === undefined ? undefined : parseAffordance(said);
+      if (affordance && "error" in affordance) problems.push({ file, message: `${path}.${name}: ${affordance.error}` });
       entries.push({
         machine: path,
         name,
@@ -363,6 +382,7 @@ export async function readMachines(root: string, storeFile: string): Promise<Rea
         person: tags.has("person"),
         ...kindOf(file),
         file,
+        ...(affordance && !("error" in affordance) ? { affordance } : {}),
       });
     }
     for (const n of nested) {
@@ -439,6 +459,17 @@ export interface Arg {
   readonly optional?: boolean;
 }
 
+/** How a person finds and takes a transition: the element that offers it, its cues at rest, on hover or focus and on
+ * touch, and how a person discovers one that shows nothing at rest. */
+export interface Affordance {
+  readonly kind: string;
+  readonly element: string;
+  readonly rest?: string;
+  readonly hover?: string;
+  readonly touch?: string;
+  readonly discover?: string;
+}
+
 /** A transition of the store, called on its machine by its name, as the components call it. */
 export interface Transition {
   readonly machine: string;
@@ -450,6 +481,8 @@ export interface Transition {
   readonly kind: "model" | "code";
   readonly model?: string;
   readonly file: string;
+  /** What offers it to a person and its cues, or why no person takes it. */
+  readonly affordance?: Affordance | { readonly none: string };
 }
 
 export const registry: readonly Transition[] = [

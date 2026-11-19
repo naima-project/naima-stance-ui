@@ -7,12 +7,12 @@ export class Counter {
     return event.type === "add" ? this.#count < 3 : this.#count > 0;
   }
 
-  /** Adds one, up to three. */
+  /** Adds one, up to three. @affordance button: Add */
   add(): boolean {
     return this.#bump(1);
   }
 
-  /** Starts over from zero. */
+  /** Starts over from zero. @affordance button: Start over */
   reset(): boolean {
     return this.#bump(-this.#count);
   }

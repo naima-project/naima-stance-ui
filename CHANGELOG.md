@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Every action a person can take declares its affordance, and the check `affordances` holds it
+
+A new rule, `ui-affordances`: each transition a person takes says with `@affordance` (on the method, or on its class)
+the element that offers it, its cue at rest, on hover or focus and on touch, and how a person discovers one that shows
+nothing at rest; `@affordance none: why` marks one no person takes. A kind of the widget set (`button:`, `link:`,
+`menu:`, `key:` and others) gives its cues by itself. The registry carries each affordance, and the check `affordances`
+(Naima check `ui-affordances`) refuses a person's transition with none, a missing cue, a cue invisible at rest with no
+way to discover it, and a transition said to be no person's that a component calls from an event handler. Registries
+generated before this change differ in their header: run `deno task transitions` again.
+
 ### The registry says the kind of each transition and the values of its arguments; a project may read its machines itself
 
 Each entry of the registry now carries its `kind` (`model` with the model's name for a machine generated from a model,

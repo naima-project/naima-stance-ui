@@ -10,6 +10,17 @@ export interface Arg {
   readonly optional?: boolean;
 }
 
+/** How a person finds and takes a transition: the element that offers it, its cues at rest, on hover or focus and on
+ * touch, and how a person discovers one that shows nothing at rest. */
+export interface Affordance {
+  readonly kind: string;
+  readonly element: string;
+  readonly rest?: string;
+  readonly hover?: string;
+  readonly touch?: string;
+  readonly discover?: string;
+}
+
 /** A transition of the store, called on its machine by its name, as the components call it. */
 export interface Transition {
   readonly machine: string;
@@ -21,10 +32,12 @@ export interface Transition {
   readonly kind: "model" | "code";
   readonly model?: string;
   readonly file: string;
+  /** What offers it to a person and its cues, or why no person takes it. */
+  readonly affordance?: Affordance | { readonly none: string };
 }
 
 export const registry: readonly Transition[] = [
-  {"machine":"counter","name":"add","args":[],"description":"Adds one, up to three.","sequence":false,"person":false,"kind":"code","file":"src/machines/counter.svelte.ts"},
-  {"machine":"counter","name":"reset","args":[],"description":"Starts over from zero.","sequence":false,"person":false,"kind":"code","file":"src/machines/counter.svelte.ts"},
-  {"machine":"notes","name":"write","args":[{"name":"text","type":"string"}],"description":"Writes a note at the end.","sequence":false,"person":false,"kind":"code","file":"src/machines/notes.svelte.ts"},
+  {"machine":"counter","name":"add","args":[],"description":"Adds one, up to three.","sequence":false,"person":false,"kind":"code","file":"src/machines/counter.svelte.ts","affordance":{"kind":"button","element":"Add","rest":"a button with its label or icon","hover":"the button's hover and focus state","touch":"a finger-size target, tapped"}},
+  {"machine":"counter","name":"reset","args":[],"description":"Starts over from zero.","sequence":false,"person":false,"kind":"code","file":"src/machines/counter.svelte.ts","affordance":{"kind":"button","element":"Start over","rest":"a button with its label or icon","hover":"the button's hover and focus state","touch":"a finger-size target, tapped"}},
+  {"machine":"notes","name":"write","args":[{"name":"text","type":"string"}],"description":"Writes a note at the end.","sequence":false,"person":false,"kind":"code","file":"src/machines/notes.svelte.ts","affordance":{"kind":"button","element":"the note button","rest":"a button with its label or icon","hover":"the button's hover and focus state","touch":"a finger-size target, tapped"}},
 ];

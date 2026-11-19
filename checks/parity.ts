@@ -55,6 +55,7 @@ export function checkTransitionCalls(
   registry: readonly RegistryEntry[],
   internals: readonly RegistryEntry[] = [],
   known: readonly string[] = [],
+  handled?: Set<string>,
 ): Finding[] {
   let ast: Node;
   try {
@@ -63,11 +64,17 @@ export function checkTransitionCalls(
     return [{ check: TRANSITIONS, level: "problem", file, message: `does not parse: ${(e as Error).message}` }];
   }
   const nodes: Node[] = [];
-  const walk = (n: Node) => {
+  // The nodes inside an event handler (onclick={...}, on:click, a component's onselect): what a person sets off.
+  const inHandler = new Set<Node>();
+  const walk = (n: Node, handler = false) => {
     if (!n || typeof n !== "object") return;
-    if (Array.isArray(n)) return n.forEach(walk);
-    if (typeof n.type === "string") nodes.push(n);
-    for (const [k, v] of Object.entries(n)) if (k !== "parent" && v && typeof v === "object") walk(v);
+    if (Array.isArray(n)) return n.forEach((c) => walk(c, handler));
+    const here = handler || n.type === "OnDirective" || n.type === "Attribute" && /^on[a-z]/.test(n.name ?? "");
+    if (typeof n.type === "string") {
+      nodes.push(n);
+      if (here) inHandler.add(n);
+    }
+    for (const [k, v] of Object.entries(n)) if (k !== "parent" && v && typeof v === "object") walk(v, here);
   };
   walk(ast.instance?.content);
   walk(ast.module?.content);
@@ -123,7 +130,11 @@ export function checkTransitionCalls(
       say(n.start, `${machine} is used with a computed member, which cannot be checked: name the transition`);
       continue;
     }
-    if (READS.has(member) || registry.some((t) => t.machine === machine && t.name === member)) continue;
+    if (READS.has(member)) continue;
+    if (registry.some((t) => t.machine === machine && t.name === member)) {
+      if (inHandler.has(n)) handled?.add(`${machine}.${member}`);
+      continue;
+    }
     // Plumbing a component calls, which is no transition (a method tagged @internal).
     if (internals.some((t) => t.machine === machine && t.name === member)) continue;
     // A machine the machine holds (item.answering): what is used of it is checked as a machine of its own path.

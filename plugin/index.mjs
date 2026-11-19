@@ -96,6 +96,12 @@ const CHECKS = [
       "agent parity: the registry of transitions is what the machines generate, each says what it does, and every transition a component calls is in it",
   },
   {
+    name: "ui-affordances",
+    runs: "affordances",
+    says:
+      "every transition a person takes declares its affordance: the element that offers it, its cue at rest, on hover or focus and on touch, and how a person discovers one that shows nothing at rest",
+  },
+  {
     name: "ui-agent-endpoint",
     runs: "agent-endpoint",
     says:

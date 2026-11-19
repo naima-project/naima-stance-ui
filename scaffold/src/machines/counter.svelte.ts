@@ -42,12 +42,12 @@ export class Counter {
     return logic.allowed(this.#state, event);
   }
 
-  /** Adds one to the count, up to the limit. */
+  /** Adds one to the count, up to the limit. @affordance button: the Add button */
   add(): boolean {
     return this.#send({ type: "add" });
   }
 
-  /** Starts over from zero. */
+  /** Starts over from zero. @affordance button: the Start over button */
   reset(): boolean {
     return this.#send({ type: "reset" });
   }

@@ -6,6 +6,7 @@ import { loadConfig, type StanceConfig } from "./config.ts";
 import type { Finding } from "./finding.ts";
 import { checkIcons, readIconChoice } from "./icons.ts";
 import { checkAgentEndpoint, checkTransitions } from "./parity.ts";
+import { checkAffordances } from "./affordance.ts";
 import { checkImports } from "./imports.ts";
 import { checkLiterals } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVES } from "./primitives.ts";
@@ -25,6 +26,7 @@ export const CHECKS = [
   "auth-only",
   "transitions",
   "agent-endpoint",
+  "affordances",
   ...BROWSER_CHECKS,
 ] as const;
 export type CheckName = typeof CHECKS[number];
@@ -257,6 +259,10 @@ export async function runChecks(
   if (only.includes("transitions")) {
     const components = [...files].filter((f) => !inWidgets(f));
     findings.push(...await checkTransitions(root, cfg, components, (f) => Deno.readTextFile(`${root}/${f}`)));
+  }
+  if (only.includes("affordances")) {
+    const components = [...files].filter((f) => !inWidgets(f));
+    findings.push(...await checkAffordances(root, cfg, components, (f) => Deno.readTextFile(`${root}/${f}`)));
   }
   if (only.includes("agent-endpoint")) findings.push(...await checkAgentEndpoint(root, cfg));
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));

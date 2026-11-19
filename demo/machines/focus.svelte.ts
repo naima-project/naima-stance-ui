@@ -23,17 +23,20 @@ export class Focus {
     return this.#filter.allowed({ type: "choose", show: SHOWS[event.type] });
   }
 
-  /** Shows every task, and drops a removal that was being asked about. @sequence */
+  /** Shows every task, and drops a removal that was being asked about. @sequence
+   * @affordance menu: All, in the list's menu */
   showAll(): boolean {
     return this.#show("showAll");
   }
 
-  /** Shows the tasks still to do, and drops a removal that was being asked about. @sequence */
+  /** Shows the tasks still to do, and drops a removal that was being asked about. @sequence
+   * @affordance menu: Open, in the list's menu */
   showOpen(): boolean {
     return this.#show("showOpen");
   }
 
-  /** Shows the tasks that are done, and drops a removal that was being asked about. @sequence */
+  /** Shows the tasks that are done, and drops a removal that was being asked about. @sequence
+   * @affordance menu: Done, in the list's menu */
   showDone(): boolean {
     return this.#show("showDone");
   }

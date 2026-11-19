@@ -25,7 +25,8 @@ export class Filter {
     return event.show !== this.#show;
   }
 
-  /** Chooses which tasks the list shows: all, the open ones or the done ones. */
+  /** Chooses which tasks the list shows: all, the open ones or the done ones.
+   * @affordance none: the list's menu takes it through focus.showAll, showOpen and showDone, which also drop a pending removal */
   choose(show: Show): boolean {
     if (!this.allowed({ type: "choose", show })) return false;
     this.#show = show;
