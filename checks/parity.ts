@@ -89,7 +89,10 @@ export function checkTransitionCalls(
     findings.push({ check: TRANSITIONS, level: "problem", file, line: lineOf(source, at), message });
   const nameOf = (n: Node): string | null =>
     n?.type === "Identifier" ? n.name : n?.type === "Literal" && typeof n.value === "string" ? n.value : null;
-  const isStore = (n: Node) => n?.type === "Identifier" && stores.has(n.name);
+  const isStore = (n: Node) =>
+    n?.type === "Identifier" && stores.has(n.name) ||
+    // A store taken apart where it is made: const { m } = useStore<AppStore>().
+    n?.type === "CallExpression" && n.callee.type === "Identifier" && n.callee.name === "useStore";
   // The names bound to the store and to its machines, until no new one appears.
   for (let pass = 0; pass < 3; pass++) {
     for (const n of nodes) {

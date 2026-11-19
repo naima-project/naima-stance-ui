@@ -72,6 +72,22 @@ Deno.test("a machine the registry does not know, and a store taken apart by a pa
   refused(found, "cannot be followed");
 });
 
+Deno.test("a store taken apart where it is made, const { m } = useStore(), is followed like one bound to a name", async () => {
+  const apart = (t: string, taken: string, extra = "") =>
+    t.replace(
+      "const store = useStore<AppStore>();\n  const { counter } = store;",
+      `const store = useStore<AppStore>();\n  ${taken}`,
+    )
+      .replace("{counter.view.count}", `{counter.view.count}${extra}`);
+  const clean = await broken({ "src/App.svelte": (t) => apart(t, "const { counter } = useStore<AppStore>();") });
+  assertEquals(clean, []);
+  const found = await broken({
+    "src/App.svelte": (t) => apart(t, "const { counter, ghost } = useStore<AppStore>();", "{counter.nope()}"),
+  });
+  refused(found, "the store's machine ghost is not in the registry");
+  refused(found, "counter.nope, which is not a transition");
+});
+
 Deno.test("a registry that no longer matches the machines, or is missing, is refused", async () => {
   refused(
     await broken({
