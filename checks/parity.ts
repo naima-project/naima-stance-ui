@@ -56,6 +56,7 @@ export function checkTransitionCalls(
   internals: readonly RegistryEntry[] = [],
   known: readonly string[] = [],
   handled?: Set<string>,
+  used?: Set<string>,
 ): Finding[] {
   let ast: Node;
   try {
@@ -133,6 +134,7 @@ export function checkTransitionCalls(
     if (READS.has(member)) continue;
     if (registry.some((t) => t.machine === machine && t.name === member)) {
       if (inHandler.has(n)) handled?.add(`${machine}.${member}`);
+      used?.add(`${machine}.${member}`);
       continue;
     }
     // Plumbing a component calls, which is no transition (a method tagged @internal).
