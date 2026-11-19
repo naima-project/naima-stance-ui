@@ -57,6 +57,7 @@ export function checkTransitionCalls(
   known: readonly string[] = [],
   handled?: Set<string>,
   used?: Set<string>,
+  free: readonly string[] = [],
 ): Finding[] {
   let ast: Node;
   try {
@@ -67,10 +68,18 @@ export function checkTransitionCalls(
   const nodes: Node[] = [];
   // The nodes inside an event handler (onclick={...}, on:click, a component's onselect): what a person sets off.
   const inHandler = new Set<Node>();
+  // The call each node is the callee of, and the handlers that are a member itself (onclick={m.reset}).
+  const called = new Set<Node>();
+  const handlerValue = new Set<Node>();
   const walk = (n: Node, handler = false) => {
     if (!n || typeof n !== "object") return;
     if (Array.isArray(n)) return n.forEach((c) => walk(c, handler));
     const here = handler || n.type === "OnDirective" || n.type === "Attribute" && /^on[a-z]/.test(n.name ?? "");
+    if (n.type === "CallExpression") called.add(n.callee);
+    if (n.type === "OnDirective" && n.expression) handlerValue.add(n.expression);
+    if (n.type === "Attribute" && /^on[a-z]/.test(n.name ?? "")) {
+      for (const v of Array.isArray(n.value) ? n.value : [n.value]) if (v?.expression) handlerValue.add(v.expression);
+    }
     if (typeof n.type === "string") {
       nodes.push(n);
       if (here) inHandler.add(n);
@@ -115,7 +124,7 @@ export function checkTransitionCalls(
     }
   }
   for (const [name, machine] of alias) {
-    if (!machines.has(machine)) {
+    if (!machines.has(machine) && !free.includes(machine)) {
       const at = nodes.find((n) => n.type === "VariableDeclarator" && JSON.stringify(n.id).includes(`"${name}"`));
       say(at?.start ?? 0, `the store's machine ${machine} is not in the registry`);
     }
@@ -128,7 +137,7 @@ export function checkTransitionCalls(
     else if (n.object.type === "MemberExpression" && isStore(n.object.object) && !n.object.computed) {
       machine = nameOf(n.object.property) ?? undefined;
     }
-    if (!machine || !machines.has(machine)) continue;
+    if (!machine || !machines.has(machine) || free.includes(machine)) continue;
     const member = n.computed ? null : nameOf(n.property);
     if (member === null) {
       say(n.start, `${machine} is used with a computed member, which cannot be checked: name the transition`);
@@ -146,6 +155,8 @@ export function checkTransitionCalls(
     if (machines.has(`${machine}.${member}`) || [...machines].some((m) => m.startsWith(`${machine}.${member}.`))) {
       continue;
     }
+    // What is neither called nor handed to an event as itself is a read of the machine's state (a getter or a field).
+    if (!called.has(n) && !handlerValue.has(n)) continue;
     const key = `${n.start}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -186,7 +197,18 @@ export async function checkTransitions(
   }
   const registry = (have ? parseRegistry(have) : null) ?? machines.entries;
   for (const file of components) {
-    findings.push(...checkTransitionCalls(file, await read(file), registry, machines.internals, machines.machines));
+    findings.push(
+      ...checkTransitionCalls(
+        file,
+        await read(file),
+        registry,
+        machines.internals,
+        machines.machines ?? [],
+        undefined,
+        undefined,
+        t.pageMachines ?? [],
+      ),
+    );
   }
   return findings;
 }

@@ -23,8 +23,9 @@ export interface StanceConfig {
    * with createStore), the generated registry of their transitions, and the MCP server's files, which import only the
    * registry and the agent channel. Absent until then. `reader` names a module of the project that reads the machines
    * itself (`export function read(root, storeFile)` answering what scripts/transitions.ts's readMachines does), for a
-   * store whose machines the sources do not show by name. */
-  transitions?: { machines: string; registry: string; server: string[]; reader?: string };
+   * store whose machines the sources do not show by name. `pageMachines` names machines a page holds in a store of its own
+   * (the state explorer's), which the check leaves alone: they are no part of the app's agent surface. */
+  transitions?: { machines: string; registry: string; server: string[]; reader?: string; pageMachines?: string[] };
   /** The tsconfig svelte-check reads, or null to skip the type check. */
   tsconfig: string | null;
   /** For the platforms check: the app's folder (where src-tauri is), its end-to-end script, or null, and for the

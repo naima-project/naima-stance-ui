@@ -88,6 +88,33 @@ Deno.test("a store taken apart where it is made, const { m } = useStore(), is fo
   refused(found, "counter.nope, which is not a transition");
 });
 
+Deno.test("a component may read a machine's state besides its view, but not call or hand off what is no transition", async () => {
+  const read = (t: string) =>
+    t.replace("{counter.view.count}", "{counter.view.count}{counter.count}{counter.items.length}");
+  assertEquals(await broken({ "src/App.svelte": read }), []);
+  const found = await broken({
+    "src/App.svelte": (t) => read(t).replace("onclick={counter.reset}", "onclick={counter.mystery}"),
+  });
+  refused(found, "counter.mystery, which is not a transition");
+});
+
+Deno.test("a machine a page holds in a store of its own (check.transitions.pageMachines) is left alone", async () => {
+  const ghost = (t: string) =>
+    t.replace(
+      "const { counter } = store;",
+      "const { counter } = store;\n  const { ghost } = useStore<{ ghost: { go(): void } }>();",
+    )
+      .replace("{counter.view.count}", "{counter.view.count}{ghost.go()}");
+  refused(await broken({ "src/App.svelte": ghost }), "the store's machine ghost is not in the registry");
+  assertEquals(
+    await broken({
+      "src/App.svelte": ghost,
+      "stance-ui.json": (t) => t.replace('"server"', '"pageMachines": ["ghost"], "server"'),
+    }),
+    [],
+  );
+});
+
 Deno.test("a registry that no longer matches the machines, or is missing, is refused", async () => {
   refused(
     await broken({

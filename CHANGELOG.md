@@ -5,7 +5,10 @@
 ### The transitions check follows a store taken apart where it is made
 
 `const { m } = useStore<AppStore>()` binds its machines like `const store = useStore(); const { m } = store`: the
-component's calls through them are checked against the registry and seen by the affordances cross-check.
+component's calls through them are checked against the registry and seen by the affordances cross-check. A member of a machine that
+is neither a transition nor plumbing, and is used as a value (a getter or a field), is a read and passes; one that is
+called, or handed to an event as itself, must be a transition or `@internal`. `check.transitions.pageMachines` names
+machines a page holds in a store of its own (the state explorer's), which the check leaves alone.
 
 ### Every action a person can take declares its affordance, and the check `affordances` holds it
 
