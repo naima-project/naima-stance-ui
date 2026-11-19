@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### The transitions check follows a store taken apart where it is made
+
+`const { m } = useStore<AppStore>()` binds its machines like `const store = useStore(); const { m } = store`: the
+component's calls through them are checked against the registry and seen by the affordances cross-check.
+
 ### Every action a person can take declares its affordance, and the check `affordances` holds it
 
 A new rule, `ui-affordances`: each transition a person takes says with `@affordance` (on the method, or on its class)
