@@ -60,7 +60,7 @@ init Lock(true);
     { id: "notes", title: "Notes" },
   ];
   const initial: Arrangement = {
-    root: { dir: "row", ratio: 0.6, a: { card: "graph" }, b: { dir: "col", ratio: 0.5, a: { card: "state" }, b: { card: "notes" } } },
+    root: { dir: "row", ratio: 0.6, a: { card: "graph" }, b: { dir: "col", ratio: 0.65, a: { card: "state" }, b: { card: "notes" } } },
     closed: [],
     maximised: null,
   };
@@ -111,7 +111,7 @@ init Lock(true);
 
 <Card title="A graph">
   <div class="drawing">
-    <Graph label="The lock's states" {nodes} {edges} notation="uml-state-machine" />
+    <Graph label="The lock's states" {nodes} {edges} notation="uml-state-machine" grow />
   </div>
 </Card>
 
@@ -187,18 +187,18 @@ init Lock(true);
 </Card>
 
 <style>
-  /* Each drawing has a box of its own, which it fits and scrolls inside: nothing it draws runs over the next entry. */
-  .drawing,
-  .editor,
+  /* A drawing has a box of its own, which it fits and pans inside. The editor and the mosaic take the height their
+     contents need, and no less than a floor in rem, so nothing they hold runs over the next entry at any text size. */
+  .drawing {
+    display: flex;
+    flex-direction: column;
+  }
+  .editor {
+    min-block-size: var(--size-w-8);
+  }
   .mosaic {
     display: flex;
     flex-direction: column;
-    aspect-ratio: 4 / 3;
-    min-block-size: 0;
-    overflow: auto;
-    contain: paint;
-  }
-  .mosaic {
-    aspect-ratio: 1;
+    min-block-size: var(--size-w-24);
   }
 </style>

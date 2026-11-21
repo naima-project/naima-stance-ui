@@ -18,6 +18,21 @@ and can leave its step buttons out (`buttons`); Pannable slides a handle (`onsli
 `border-soft`, `surface-soft`, `accent-tint`, `accent-line` and `on-accent-soft`. The `component-imports` check lets a
 component import the widget set's own plain modules.
 
+### The study widgets and the list pass the stance's own browser checks
+
+Their gallery entries now pass the checks on every mood board. Every control is a whole control under a finger (44 CSS
+px at a coarse pointer): the toolbars of the graph and the timeline, the segments of a choice (each button is as tall as
+the capsule, its lit part a fill inset by a border), the mosaic's tools, handles, gutters and junctions, and the list's
+search, chips, sort, columns and headings. The mosaic is a grid of its two sides at their ratio, so that a mosaic given no
+height takes the height its cards need at that ratio; a card no longer clips its bar. The timeline's states and steps are
+buttons of their own (the steps carry their words in their names, the branch is no part of a step), its drawing is a
+group and no image, and it scrolls to keep the current state and the steps ahead in view. A graph under a finger starts at
+its own size and pans. The editor loads CodeMirror when it is about to be seen, keeps its stylesheet in a shadow root,
+shows a focus ring on its box, and lets Tab leave it (Ctrl-M turns Tab indenting on). The state table's rows are as high
+as a target and wrap name over value in a narrow card, its quiet words keep their contrast, and a note is no longer
+clipped to a line. The list's column chooser opens only when its box does. With more contrast asked for, nothing in these
+widgets fades.
+
 ### The check `layout-in-css` holds the rule that layout is the browser's
 
 A script that writes a layout property of an element's style, or a measured size (getBoundingClientRect, offset, client

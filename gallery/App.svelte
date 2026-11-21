@@ -149,6 +149,7 @@
   main {
     max-width: var(--size-dialog-width);
     margin: 0 auto;
-    padding: var(--space-2xl) var(--space-lg);
+    padding-block: var(--space-2xl);
+    padding-inline: max(var(--space-lg), env(safe-area-inset-left)) max(var(--space-lg), env(safe-area-inset-right));
   }
 </style>
