@@ -2,13 +2,37 @@
 
 ## Unreleased
 
+### The study widgets and the one list are parts of the widget set
+
+`src/lib/components/study/` (Action, Segmented, Graph with its layouts and routing, Timeline, Sequence, StateTable,
+Editor with mCRL2 highlighting, Mosaic and the named diagrams) and `src/lib/components/list/` (List, its plain part and
+rows) come from Naima's Models tab and main UI, with their tests (`test/study.test.ts`, `test/study-layout.test.ts`,
+`test/list.test.ts`), the models of the mosaic's drag and of the list's cursor (`models/`) and an entry each in the
+gallery. A project takes them with `adopt --parts study,list`, which adds the packages they need and, in a new
+`stance-ui.json`, chooses Lucide's icons and names their drawings; one that has made the stance its own takes them with
+`adopt --only src/lib/components/study,src/lib/components/list`, which copies only those files and records the commit
+each came from. Draggable reports a drag's travel (`ontravel`), draws as a thin bar (`slim`), takes a click (`onpress`)
+and can leave its step buttons out (`buttons`); Pannable slides a handle (`onslide`), pans a window it does not scroll
+(`onpan`) and pinches (`onpinch`); Icon no longer fills an outline icon. The mood boards gain `size-target`,
+`size-touch`, `size-dot`, `size-w-8` to `size-w-24`, `font-size-2xs`, `font-size-xs` and the see-through colours
+`border-soft`, `surface-soft`, `accent-tint`, `accent-line` and `on-accent-soft`. The `component-imports` check lets a
+component import the widget set's own plain modules.
+
+### The check `layout-in-css` holds the rule that layout is the browser's
+
+A script that writes a layout property of an element's style, or a measured size (getBoundingClientRect, offset, client
+and scroll sizes, the window's, a ResizeObserver entry, a measuring binding) that reaches a `style:` directive, a style
+attribute or an `<svg>`'s box, is refused. A drawing's coordinates inside an SVG, a pointer's travel in a drag's
+handlers and scrolling stay allowed.
+
 ### The transitions check follows a store taken apart where it is made
 
 `const { m } = useStore<AppStore>()` binds its machines like `const store = useStore(); const { m } = store`: the
-component's calls through them are checked against the registry and seen by the affordances cross-check. A member of a machine that
-is neither a transition nor plumbing, and is used as a value (a getter or a field), is a read and passes; one that is
-called, or handed to an event as itself, must be a transition or `@internal`. `check.transitions.pageMachines` names
-machines a page holds in a store of its own (the state explorer's), which the check leaves alone.
+component's calls through them are checked against the registry and seen by the affordances cross-check. A member of a
+machine that is neither a transition nor plumbing, and is used as a value (a getter or a field), is a read and passes;
+one that is called, or handed to an event as itself, must be a transition or `@internal`.
+`check.transitions.pageMachines` names machines a page holds in a store of its own (the state explorer's), which the
+check leaves alone.
 
 ### Every action a person can take declares its affordance, and the check `affordances` holds it
 
@@ -23,11 +47,11 @@ generated before this change differ in their header: run `deno task transitions`
 ### The registry says the kind of each transition and the values of its arguments; a project may read its machines itself
 
 Each entry of the registry now carries its `kind` (`model` with the model's name for a machine generated from a model,
-else `code`) and, for an argument typed as a union of strings, its `values`; the file declares its `Arg` and `Transition`
-types. `check.transitions.reader` names a module of the project that reads the store's machines with the compiler's
-types, for a store whose machines the sources do not show by name; the stance keeps rendering the registry, requiring
-comments and checking the components. A component may call a method tagged `@internal` (plumbing, no transition, no
-agent's) and may use a machine a machine holds (`item.answering`).
+else `code`) and, for an argument typed as a union of strings, its `values`; the file declares its `Arg` and
+`Transition` types. `check.transitions.reader` names a module of the project that reads the store's machines with the
+compiler's types, for a store whose machines the sources do not show by name; the stance keeps rendering the registry,
+requiring comments and checking the components. A component may call a method tagged `@internal` (plumbing, no
+transition, no agent's) and may use a machine a machine holds (`item.answering`).
 
 ### The transitions check reads machines made by factories and machines nested in machines
 

@@ -1,0 +1,3 @@
+% The keyboard is never on something the list does not draw: a row filtered out or folded away, or the heading of a
+% group with no row left.
+[true*][cursor_hidden] false

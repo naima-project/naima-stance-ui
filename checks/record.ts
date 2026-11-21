@@ -7,6 +7,7 @@
 // The record is stance-ui.checked.json, beside stance-ui.json. It describes one checkout, so it is not committed:
 // add it to the project's .gitignore.
 
+import { layoutFile } from "./layout.ts";
 import { posix } from "node:path";
 import { encodeHex } from "@std/encoding/hex";
 import type { StanceConfig } from "./config.ts";
@@ -68,8 +69,9 @@ export function isChecked(cfg: StanceConfig, file: string): boolean {
   }
   if (cfg.widgets.some(under)) return true;
   if (cfg.transitions && (under(cfg.transitions.registry) || cfg.transitions.server.some(under))) return true;
-  // With agent parity a machine's file is read too: the registry is generated from it.
-  return cfg.components.some(under) && (f.endsWith(".svelte") || (!!cfg.transitions && f.endsWith(".svelte.ts")));
+  // A component's script modules are read too, by layout-in-css (and, with agent parity, a machine's file, since the
+  // registry is generated from it).
+  return cfg.components.some(under) && layoutFile(f);
 }
 
 /** One hash over every file the checks read, by path and content. */

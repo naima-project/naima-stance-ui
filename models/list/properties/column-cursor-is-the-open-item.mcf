@@ -1,0 +1,3 @@
+% Beside an item open, the row the keyboard is on is the item open: the arrows open each row they reach, and a change of
+% the search, a filter, the sort or the grouping never leaves the keyboard on another row.
+[true*][astray] false

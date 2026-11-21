@@ -1,0 +1,132 @@
+% list.mcrl2 -- how a person works the one list every long list of the UI shares (src/lib/components/list/, List.svelte): rows
+% in groups by a category, each group under a heading that folds and unfolds it; one place the keyboard is at (the
+% cursor: a heading, a row, or nowhere); a row opened beside the list, which narrows the list to a column, as a mail
+% app's list beside the message open; there the arrows open the next or the previous row. The search, the filters, the
+% sort and the grouping change which rows there are and where they stand. The machine is written by hand in
+% src/lib/components/list/list.ts (the cursor's moves and what the list does after a change) and follows this model.
+%
+% Leaves out what the rows are (two groups of two rows stand for any list), how the search, a filter, the sort or a
+% grouping picks and orders the rows (one change, any outcome: the rows the cursor and the open item keep are wherever
+% that change put them), the columns, and the selection of several rows, which is another interaction.
+% Probes (cursor_hidden, astray, in_item) are offered in the states the properties are about, and do not change them.
+
+sort Gi = struct G0 | G1;                       % two groups stand for any number
+     Ri = struct R0 | R1;                       % two rows a group
+     Place = struct NONE | HEAD(hg: Gi) | ROW(rg: Gi, rr: Ri);
+
+map  N: Nat;                                    % places in the order the list draws (a heading and its rows, a group)
+     gn: Gi -> Nat; rn: Ri -> Nat;
+     ix: Place -> Nat;                            % a place's index in that order
+     at: Nat -> Place;                            % the place at an index
+     isRow: Place -> Bool;
+     heading: Place -> Place;                          % the heading of a place's group
+     upd: List(Bool) # Nat # Bool -> List(Bool);
+     shown: List(Bool) # Gi # Ri -> Bool;       % whether the search and the filters keep a row
+     folded: List(Bool) # Gi -> Bool;
+     vis: List(Bool) # List(Bool) # Place -> Bool;        % whether a place is drawn
+     fwd: List(Bool) # List(Bool) # Nat # Bool -> Place;  % the first place drawn from index i on (rows only, or all)
+     bwd: List(Bool) # List(Bool) # Int # Bool -> Place;  % the last place drawn from index i down
+     next, prev: List(Bool) # List(Bool) # Place # Bool -> Place;
+var  l: List(Bool); b, c, o: Bool; n: Nat; g: Gi; r: Ri; i: Int; sh, fo: List(Bool);
+eqn  N = 6;
+     gn(G0) = 0; gn(G1) = 1; rn(R0) = 0; rn(R1) = 1;
+     ix(HEAD(g)) = 3 * gn(g);
+     ix(ROW(g, r)) = 3 * gn(g) + 1 + rn(r);
+     ix(NONE) = N;
+     at(0) = HEAD(G0); at(1) = ROW(G0, R0); at(2) = ROW(G0, R1);
+     at(3) = HEAD(G1); at(4) = ROW(G1, R0); at(5) = ROW(G1, R1);
+     n >= N -> at(n) = NONE;
+     isRow(ROW(g, r)) = true; isRow(HEAD(g)) = false; isRow(NONE) = false;
+     heading(ROW(g, r)) = HEAD(g); heading(HEAD(g)) = HEAD(g); heading(NONE) = NONE;
+     upd([], n, b) = [];
+     upd(c |> l, 0, b) = b |> l;
+     n > 0 -> upd(c |> l, n, b) = c |> upd(l, Int2Nat(n - 1), b);
+     shown(sh, g, r) = sh . (2 * gn(g) + rn(r));
+     folded(fo, g) = fo . gn(g);
+     vis(sh, fo, NONE) = true;
+     vis(sh, fo, HEAD(g)) = shown(sh, g, R0) || shown(sh, g, R1);
+     vis(sh, fo, ROW(g, r)) = shown(sh, g, r) && !folded(fo, g);
+     n >= N -> fwd(sh, fo, n, o) = NONE;
+     n < N && vis(sh, fo, at(n)) && (!o || isRow(at(n))) -> fwd(sh, fo, n, o) = at(n);
+     n < N && !(vis(sh, fo, at(n)) && (!o || isRow(at(n)))) -> fwd(sh, fo, n, o) = fwd(sh, fo, n + 1, o);
+     i < 0 -> bwd(sh, fo, i, o) = NONE;
+     i >= 0 && vis(sh, fo, at(Int2Nat(i))) && (!o || isRow(at(Int2Nat(i)))) -> bwd(sh, fo, i, o) = at(Int2Nat(i));
+     i >= 0 && !(vis(sh, fo, at(Int2Nat(i))) && (!o || isRow(at(Int2Nat(i))))) -> bwd(sh, fo, i, o) = bwd(sh, fo, i - 1, o);
+     next(sh, fo, NONE, o) = fwd(sh, fo, 0, o);
+     next(sh, fo, HEAD(g), o) = fwd(sh, fo, ix(HEAD(g)) + 1, o);
+     next(sh, fo, ROW(g, r), o) = fwd(sh, fo, ix(ROW(g, r)) + 1, o);
+     prev(sh, fo, NONE, o) = bwd(sh, fo, N - 1, o);
+     prev(sh, fo, HEAD(g), o) = bwd(sh, fo, ix(HEAD(g)) - 1, o);
+     prev(sh, fo, ROW(g, r), o) = bwd(sh, fo, ix(ROW(g, r)) - 1, o);
+
+% the person: the arrows (or j and k), Home and End, Enter, the left and right arrows, a click on a heading or a row,
+% Escape, a change of the search, a filter or the sort, and another grouping
+act  down, up, first, last, enter, left, right, escape, change, regroup;
+     click: Place;
+% what the list does: open a row beside it, close it (back to the whole list), fold or unfold a group
+     opened: Place; closed; fold, unfold: Gi;
+% probes
+     cursor_hidden, astray, in_item;
+
+% sh: which rows the search and the filters keep; fo: which groups are folded; cur: the cursor; open: the row open
+% beside the list (NONE: the whole list is shown)
+proc L(sh: List(Bool), fo: List(Bool), cur: Place, open: Place) =
+    % probes
+    (cur != NONE && !vis(sh, fo, cur)) -> cursor_hidden . L()
+  + (open != NONE && isRow(cur) && cur != open) -> astray . L()
+  + (open != NONE) -> in_item . L()
+
+    % the arrows, Home and End: over the headings and the rows of the whole list; beside an item, over the rows only,
+    % each opened as it is reached; at either end nothing moves
+  + sum q: Place . (q == next(sh, fo, cur, open != NONE) && q != NONE) -> down . Go(sh, fo, q, open)
+  + (next(sh, fo, cur, open != NONE) == NONE) -> down . L()
+  + sum q: Place . (q == prev(sh, fo, cur, open != NONE) && q != NONE) -> up . Go(sh, fo, q, open)
+  + (prev(sh, fo, cur, open != NONE) == NONE) -> up . L()
+  + sum q: Place . (q == next(sh, fo, NONE, open != NONE) && q != NONE) -> first . Go(sh, fo, q, open)
+  + sum q: Place . (q == prev(sh, fo, NONE, open != NONE) && q != NONE) -> last . Go(sh, fo, q, open)
+
+    % Enter opens the row at the cursor, or folds or unfolds the group whose heading it is
+  + isRow(cur) -> enter . opened(cur) . L(open = cur)
+  + (cur != NONE && !isRow(cur)) -> enter . Toggle(sh, fo, cur, open, hg(cur))
+
+    % the left arrow goes from a row to its group's heading, and folds a group from its heading; the right unfolds it
+  + isRow(cur) -> left . L(cur = heading(cur))
+  + (cur != NONE && !isRow(cur) && !folded(fo, hg(cur))) -> left . fold(hg(cur)) . L(fo = upd(fo, gn(hg(cur)), true))
+  + (cur != NONE && !isRow(cur) && folded(fo, hg(cur))) -> right . unfold(hg(cur)) . L(fo = upd(fo, gn(hg(cur)), false))
+
+    % a click on a row opens it; on a heading it folds or unfolds that group; either takes the cursor there
+  + sum q: Place . (isRow(q) && vis(sh, fo, q)) -> click(q) . opened(q) . L(cur = q, open = q)
+  + sum q: Place . (q != NONE && !isRow(q) && vis(sh, fo, q)) -> click(q) . Toggle(sh, fo, q, open, hg(q))
+
+    % Escape closes the item: the cursor goes back to its row, or to its group's heading when the row is folded away,
+    % or nowhere when a filter took it out
+  + (open != NONE) -> escape . closed .
+      L(open = NONE, cur = if(vis(sh, fo, open), open, if(vis(sh, fo, heading(open)), heading(open), NONE)))
+
+    % a change of the search, a filter or the sort: any rows; the open item stays open wherever it now stands; the
+    % cursor follows what it was on, beside an item the item itself, or is nowhere once that is gone
+  + sum a, b, c, d: Bool . change . After(sh, [a, b, c, d], fo, cur, open)
+    % another grouping: any rows, new groups, all unfolded
+  + sum a, b, c, d: Bool . regroup . After(sh, [a, b, c, d], [false, false], cur, open);
+
+% the cursor reached a place: beside an item, a row reached is opened
+proc Go(sh: List(Bool), fo: List(Bool), q: Place, open: Place) =
+    (open != NONE && isRow(q)) -> opened(q) . L(sh, fo, q, q)
+  <> L(sh, fo, q, open);
+
+% a group folds or unfolds from its heading, the cursor on that heading
+proc Toggle(sh: List(Bool), fo: List(Bool), h: Place, open: Place, g: Gi) =
+    folded(fo, g) -> unfold(g) . L(sh, upd(fo, gn(g), false), h, open)
+  <> fold(g) . L(sh, upd(fo, gn(g), true), h, open);
+
+% after a change: where the open item now stands (any row; it stays open), and where the cursor is
+proc After(was: List(Bool), sh: List(Bool), fo: List(Bool), cur: Place, open: Place) =
+    (open == NONE) -> (
+        L(sh, fo, NONE, NONE)
+      + sum q: Place . (q != NONE && vis(sh, fo, q) && cur != NONE) -> L(sh, fo, q, NONE))
+  <> sum o2: Place . isRow(o2) -> (
+        (vis(sh, fo, o2)) -> L(sh, fo, o2, o2)
+      + L(sh, fo, NONE, o2)
+      + sum h: Place . (h != NONE && !isRow(h) && vis(sh, fo, h) && !isRow(cur) && cur != NONE) -> L(sh, fo, h, o2));
+
+init L([true, true, true, true], [false, false], NONE, NONE);

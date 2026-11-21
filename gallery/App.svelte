@@ -22,6 +22,7 @@
   } from "../src/lib/components/index.ts";
   import { useStore } from "../src/lib/store/store.svelte.ts";
   import type { AppStore } from "./app.svelte.ts";
+  import Study from "./Study.svelte";
 
   const { theme, sheet, shelf, auth } = useStore<AppStore>();
   let name = $state("");
@@ -124,6 +125,8 @@
         <Keycap tone="accent" aria-label="Equals">=</Keycap>
       </Grid>
     </Card>
+
+    <Study />
   </Stack>
 </main>
 

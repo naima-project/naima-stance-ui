@@ -87,6 +87,55 @@
         "value": 22.5,
         "unit": "rem"
       }
+    },
+    "target": {
+      "$value": {
+        "value": 1.7,
+        "unit": "rem"
+      },
+      "$description": "the least a pointer target measures: 24 CSS px at the root's 90%, with some to spare (WCAG 2.5.8)"
+    },
+    "touch": {
+      "$value": {
+        "value": 3.1,
+        "unit": "rem"
+      },
+      "$description": "The height of a control under a finger (a coarse pointer): 44 CSS px at the root's 90%, more when the text is larger."
+    },
+    "w-8": {
+      "$value": {
+        "value": 8,
+        "unit": "rem"
+      },
+      "$description": "a width the layout asks for: 8rem, used for a column, a measure or the least size of a grid track"
+    },
+    "w-12": {
+      "$value": {
+        "value": 12,
+        "unit": "rem"
+      },
+      "$description": "a width the layout asks for: 12rem, used for a column, a measure or the least size of a grid track"
+    },
+    "w-16": {
+      "$value": {
+        "value": 16,
+        "unit": "rem"
+      },
+      "$description": "a width the layout asks for: 16rem, used for a column, a measure or the least size of a grid track"
+    },
+    "w-24": {
+      "$value": {
+        "value": 24,
+        "unit": "rem"
+      },
+      "$description": "a width the layout asks for: 24rem, used for a column, a measure or the least size of a grid track"
+    },
+    "dot": {
+      "$value": {
+        "value": 0.5556,
+        "unit": "rem"
+      },
+      "$description": "a small round mark a row of a list starts with"
     }
   },
   "border": {

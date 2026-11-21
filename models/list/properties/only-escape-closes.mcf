@@ -1,0 +1,2 @@
+% Only Escape closes the item open: no search, filter, sort, grouping, fold or arrow closes it.
+[(!escape)* . closed] false && [true* . !escape . closed] false

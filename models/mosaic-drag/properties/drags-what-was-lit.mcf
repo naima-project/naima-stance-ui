@@ -1,0 +1,3 @@
+% A press drags exactly what was lit when it came: one divider after a divider was lit, a junction's set after a set was.
+[true* . lit_one . (!(lit_set || unlit || ended))* . press . drag_set] false &&
+[true* . lit_set . (!(lit_one || unlit || ended))* . press . drag_one] false

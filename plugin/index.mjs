@@ -102,6 +102,12 @@ const CHECKS = [
       "every transition a person takes declares its affordance: the element that offers it, its cue at rest, on hover or focus and on touch, and how a person discovers one that shows nothing at rest",
   },
   {
+    name: "ui-layout-in-css",
+    runs: "layout-in-css",
+    says:
+      "layout is the browser's: no script writes a position or a size into a style, and no measured size reaches the layout; a drawing's own SVG coordinates, a pointer's travel in a drag and scrolling stay allowed",
+  },
+  {
     name: "ui-agent-endpoint",
     runs: "agent-endpoint",
     says:

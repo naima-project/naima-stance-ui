@@ -1,4 +1,5 @@
-// A component imports no app logic. A widget of the set imports Svelte and other components only; an app's
+// A component imports no app logic. A widget of the set imports Svelte and the widget set only (other components,
+// and the set's own plain modules, such as a graph's layout or the parser of an editor's language); an app's
 // component may also import the store module, for the store's read view and its transitions. Anything may be
 // imported as a type, since a type import is erased and carries no logic. The scripts are parsed by Svelte's
 // compiler, and every import, re-export and dynamic import() is looked at.
@@ -18,8 +19,8 @@ export interface ImportRules {
   widget: boolean;
   /** Whether a resolved path is a store module. */
   isStore: (resolved: string) => boolean;
-  /** Whether a resolved path is the widget set's index module. */
-  isWidgetIndex: (resolved: string) => boolean;
+  /** Whether a resolved path is in the widget set: its index, or a plain module of the set's own. */
+  isWidgetSet: (resolved: string) => boolean;
   /** Packages allowed besides svelte. */
   packages: readonly string[];
 }
@@ -40,12 +41,12 @@ function refusal(file: string, spec: string, rules: ImportRules): string | null 
   // Icons are the icons check's: it allows the chosen set and refuses every other icon library.
   if (!spec.startsWith(".") && isIconPackage(spec)) return null;
   const resolved = resolveFrom(file, spec);
-  if (rules.isWidgetIndex(resolved)) return null;
+  if (rules.isWidgetSet(resolved)) return null;
   if (rules.isStore(resolved)) {
     return rules.widget ? "a widget of the set is generic: it takes props and never reads the store" : null;
   }
   return rules.widget
-    ? "a widget imports only Svelte and other components"
+    ? "a widget imports only Svelte and the widget set"
     : "is app logic: a component reads the store's view and calls its transitions (useStore), and imports anything else only as a type";
 }
 

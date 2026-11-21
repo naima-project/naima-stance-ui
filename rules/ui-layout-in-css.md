@@ -3,6 +3,8 @@ name: ui-layout-in-css
 title: "Layout is the browser's: boxes and CSS place and size everything, and no script computes a position or a size"
 audience: everyone
 strength: must
+enforcedBy: ui-layout-in-css
+verifiedBy: ui-layout-in-css
 ---
 
 Where things go on the page and how big they are is declared with elements and CSS: flex and grid boxes, their

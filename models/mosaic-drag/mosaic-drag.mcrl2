@@ -1,0 +1,34 @@
+% mosaic-drag.mcrl2 -- how a person resizes the mosaic of cards (src/lib/components/study/Mosaic.svelte): the pointer over a
+% divider lights that one divider, over a junction (where dividers meet, a T or a cross) it lights every divider that
+% meets there and every divider on the same lines across the mosaic; a press starts a drag of what is lit; each move of
+% the pointer moves it, snapping to an aligned line when close; a release, or a cancel (the pointer lost, Escape), ends
+% the drag. The machine is written by hand in src/lib/components/study/mosaic.ts (drag) and follows this model.
+%
+% Leaves out where the dividers are and by how much they move (the ratios of the tree, mosaic.ts's data), the keys,
+% which move a divider or a junction one step and are a press, a move and a release at once, and the cards dragged by
+% their titles, which are another interaction.
+
+sort Over = struct NOTHING | DIVIDER | JUNCTION;       % what the pointer is over
+     Drag = struct NONE | ONE | SET;                   % what is dragged: nothing, one divider, a junction's set
+
+% the person's pointer
+act  enter_divider, enter_junction, leave, press, move, release, cancel;
+% what the mosaic does: light what will move, start a drag of one divider or of a set, move, snap, end
+     lit_one, lit_set, unlit, drag_one, drag_set, moved, snapped, ended;
+
+% over: what the pointer is over; drag: what is dragged
+proc Mosaic(over: Over, drag: Drag) =
+    % hovering, not dragging: what will move is lit
+    (drag == NONE) -> enter_divider . lit_one . Mosaic(over = DIVIDER)
+  + (drag == NONE) -> enter_junction . lit_set . Mosaic(over = JUNCTION)
+  + (drag == NONE && over != NOTHING) -> leave . unlit . Mosaic(over = NOTHING)
+    % a press drags what is lit, and nothing else
+  + (drag == NONE && over == DIVIDER) -> press . drag_one . Mosaic(drag = ONE)
+  + (drag == NONE && over == JUNCTION) -> press . drag_set . Mosaic(drag = SET)
+    % while dragging the pointer may go anywhere: the drag keeps what it took; a move moves it, at times onto a line
+  + (drag != NONE) -> move . (moved + snapped) . Mosaic()
+  + (drag != NONE) -> (enter_divider + enter_junction + leave) . Mosaic()
+    % a release or a cancel ends the drag; what is lit again is what the pointer is over then
+  + (drag != NONE) -> (release + cancel) . ended . Mosaic(drag = NONE);
+
+init Mosaic(NOTHING, NONE);

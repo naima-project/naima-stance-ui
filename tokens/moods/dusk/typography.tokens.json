@@ -20,6 +20,20 @@
     },
     "size": {
       "$type": "dimension",
+      "2xs": {
+        "$value": {
+          "value": 0.5625,
+          "unit": "rem"
+        },
+        "$description": "9px: the count on a checkpoint's square on the roadmap"
+      },
+      "xs": {
+        "$value": {
+          "value": 0.625,
+          "unit": "rem"
+        },
+        "$description": "10px: a number inside a small badge of a drawing (the roadmap's counts)"
+      },
       "sm": {
         "$value": {
           "value": 0.8125,
