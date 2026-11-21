@@ -187,16 +187,18 @@ init Lock(true);
 </Card>
 
 <style>
+  /* Each drawing has a box of its own, which it fits and scrolls inside: nothing it draws runs over the next entry. */
   .drawing,
-  .editor {
+  .editor,
+  .mosaic {
     display: flex;
     flex-direction: column;
     aspect-ratio: 4 / 3;
     min-block-size: 0;
+    overflow: auto;
+    contain: paint;
   }
   .mosaic {
-    display: flex;
-    flex-direction: column;
     aspect-ratio: 1;
   }
 </style>
