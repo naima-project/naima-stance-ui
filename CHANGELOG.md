@@ -13,13 +13,60 @@ a click posts `pick`. Given the project's registry of transitions, both name eac
 (`stepNames`), sent with `loaded`. `memoryStorage()` stands in for browser storage, which the card's opaque origin
 lacks.
 
+### The one list keeps views under a name
+
+A person keeps the filters, the sort, the grouping and the columns on the page under a name, picks one again and
+deletes one. The list offers views when it is given `saved` (bindable), and the caller keeps them, per project. The
+words searched and the folds are not kept. Its model is `models/list/views.mcrl2`, with three properties, and its plain
+part is in `list.ts` (`saveView`, `pickView`, `dropView`, `appliedView`, `readViews`), tested in `test/list.test.ts`.
+The quiet status line of Naima's list (`quiet`, `slice`) is part of the widget now, as it is used there.
+
+### The study widgets and the one list are parts of the widget set
+
+`src/lib/components/study/` (Action, Segmented, Graph with its layouts and routing, Timeline, Sequence, StateTable,
+Editor with mCRL2 highlighting, Mosaic and the named diagrams) and `src/lib/components/list/` (List, its plain part and
+rows) come from Naima's Models tab and main UI, with their tests (`test/study.test.ts`, `test/study-layout.test.ts`,
+`test/list.test.ts`), the models of the mosaic's drag and of the list's cursor (`models/`) and an entry each in the
+gallery. A project takes them with `adopt --parts study,list`, which adds the packages they need and, in a new
+`stance-ui.json`, chooses Lucide's icons and names their drawings; one that has made the stance its own takes them with
+`adopt --only src/lib/components/study,src/lib/components/list`, which copies only those files and records the commit
+each came from. Draggable reports a drag's travel (`ontravel`), draws as a thin bar (`slim`), takes a click (`onpress`)
+and can leave its step buttons out (`buttons`); Pannable slides a handle (`onslide`), pans a window it does not scroll
+(`onpan`) and pinches (`onpinch`); Icon no longer fills an outline icon. The mood boards gain `size-target`,
+`size-touch`, `size-dot`, `size-w-8` to `size-w-24`, `font-size-2xs`, `font-size-xs` and the see-through colours
+`border-soft`, `surface-soft`, `accent-tint`, `accent-line` and `on-accent-soft`. The `component-imports` check lets a
+component import the widget set's own plain modules.
+
+### The study widgets and the list pass the stance's own browser checks
+
+Their gallery entries now pass the checks on every mood board. Every control is a whole control under a finger (44 CSS
+px at a coarse pointer): the toolbars of the graph and the timeline, the segments of a choice (each button is as tall as
+the capsule, its lit part a fill inset by a border), the mosaic's tools, handles, gutters and junctions, and the list's
+search, chips, sort, columns and headings. The mosaic is a grid of its two sides at their ratio, so that a mosaic given no
+height takes the height its cards need at that ratio; a card no longer clips its bar. The timeline's states and steps are
+buttons of their own (the steps carry their words in their names, the branch is no part of a step), its drawing is a
+group and no image, and it scrolls to keep the current state and the steps ahead in view. A graph under a finger starts at
+its own size and pans. The editor loads CodeMirror when it is about to be seen, keeps its stylesheet in a shadow root,
+shows a focus ring on its box, and lets Tab leave it (Ctrl-M turns Tab indenting on). The state table's rows are as high
+as a target and wrap name over value in a narrow card, its quiet words keep their contrast, and a note is no longer
+clipped to a line. The list's column chooser opens only when its box does. With more contrast asked for, nothing in these
+widgets fades.
+
+### The check `layout-in-css` holds the rule that layout is the browser's
+
+A script that writes a layout property of an element's style, or a measured size (getBoundingClientRect, offset, client
+and scroll sizes, the window's, a ResizeObserver entry, a measuring binding) that reaches a `style:` directive, a style
+attribute or an `<svg>`'s box, is refused. A drawing's coordinates inside an SVG, a pointer's travel in a drag's
+handlers and scrolling stay allowed.
+
 ### The transitions check follows a store taken apart where it is made
 
 `const { m } = useStore<AppStore>()` binds its machines like `const store = useStore(); const { m } = store`: the
-component's calls through them are checked against the registry and seen by the affordances cross-check. A member of a machine that
-is neither a transition nor plumbing, and is used as a value (a getter or a field), is a read and passes; one that is
-called, or handed to an event as itself, must be a transition or `@internal`. `check.transitions.pageMachines` names
-machines a page holds in a store of its own (the state explorer's), which the check leaves alone.
+component's calls through them are checked against the registry and seen by the affordances cross-check. A member of a
+machine that is neither a transition nor plumbing, and is used as a value (a getter or a field), is a read and passes;
+one that is called, or handed to an event as itself, must be a transition or `@internal`.
+`check.transitions.pageMachines` names machines a page holds in a store of its own (the state explorer's), which the
+check leaves alone.
 
 ### Every action a person can take declares its affordance, and the check `affordances` holds it
 
@@ -34,11 +81,11 @@ generated before this change differ in their header: run `deno task transitions`
 ### The registry says the kind of each transition and the values of its arguments; a project may read its machines itself
 
 Each entry of the registry now carries its `kind` (`model` with the model's name for a machine generated from a model,
-else `code`) and, for an argument typed as a union of strings, its `values`; the file declares its `Arg` and `Transition`
-types. `check.transitions.reader` names a module of the project that reads the store's machines with the compiler's
-types, for a store whose machines the sources do not show by name; the stance keeps rendering the registry, requiring
-comments and checking the components. A component may call a method tagged `@internal` (plumbing, no transition, no
-agent's) and may use a machine a machine holds (`item.answering`).
+else `code`) and, for an argument typed as a union of strings, its `values`; the file declares its `Arg` and
+`Transition` types. `check.transitions.reader` names a module of the project that reads the store's machines with the
+compiler's types, for a store whose machines the sources do not show by name; the stance keeps rendering the registry,
+requiring comments and checking the components. A component may call a method tagged `@internal` (plumbing, no
+transition, no agent's) and may use a machine a machine holds (`item.answering`).
 
 ### The transitions check reads machines made by factories and machines nested in machines
 

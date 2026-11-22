@@ -18,7 +18,16 @@
     "store": [
       "src/lib/store/store.svelte.ts"
     ],
-    "allowImports": [],
+    "allowImports": [
+      "@codemirror/commands",
+      "@codemirror/lang-rust",
+      "@codemirror/language",
+      "@codemirror/legacy-modes",
+      "@codemirror/search",
+      "@codemirror/state",
+      "@codemirror/view",
+      "@lezer/highlight"
+    ],
     "tsconfig": "tsconfig.json",
     "contrast": "tokens/contrast.json",
     "pages": [
@@ -144,6 +153,14 @@
       "machines": "demo/app.svelte.ts",
       "registry": "demo/transitions.generated.ts",
       "server": []
+    },
+    "icons": {
+      "set": "lucide",
+      "drawings": [
+        "src/lib/components/study/Graph.svelte",
+        "src/lib/components/study/Sequence.svelte",
+        "src/lib/components/study/Timeline.svelte"
+      ]
     }
   }
 }

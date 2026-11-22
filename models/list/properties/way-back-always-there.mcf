@@ -1,0 +1,2 @@
+% With an item open beside the list, Escape always closes it and gives back the whole list.
+[true*]([in_item] false || <escape . closed> true)

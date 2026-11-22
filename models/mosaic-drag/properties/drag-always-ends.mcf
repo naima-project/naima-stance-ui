@@ -1,0 +1,2 @@
+% A drag of the mosaic's dividers can always end: from any state reached after a press, a release or a cancel ends it.
+[true* . press] <true* . ended> true

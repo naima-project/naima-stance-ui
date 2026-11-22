@@ -8,6 +8,7 @@ import { checkIcons, readIconChoice } from "./icons.ts";
 import { checkAgentEndpoint, checkTransitions } from "./parity.ts";
 import { checkAffordances } from "./affordance.ts";
 import { checkImports } from "./imports.ts";
+import { checkLayout, LAYOUT_CHECK, layoutFile } from "./layout.ts";
 import { checkLiterals } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVES } from "./primitives.ts";
 import { readThemes } from "../scripts/tokens.ts";
@@ -27,13 +28,15 @@ export const CHECKS = [
   "transitions",
   "agent-endpoint",
   "affordances",
+  LAYOUT_CHECK,
   ...BROWSER_CHECKS,
 ] as const;
 export type CheckName = typeof CHECKS[number];
 
 const norm = (p: string) => posix.normalize(p).replace(/\/+$/, "");
 
-async function svelteFiles(root: string, dir: string): Promise<string[]> {
+/** The files under `dir` (or `dir` itself, a file) that `take` keeps, by their path from the root. */
+async function sourceFiles(root: string, dir: string, take: (path: string) => boolean): Promise<string[]> {
   const out: string[] = [];
   const walk = async (rel: string) => {
     let entries: Deno.DirEntry[];
@@ -46,12 +49,16 @@ async function svelteFiles(root: string, dir: string): Promise<string[]> {
       if (e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue;
       const path = `${rel}/${e.name}`;
       if (e.isDirectory) await walk(path);
-      else if (e.isFile && e.name.endsWith(".svelte")) out.push(path);
+      else if (e.isFile && take(path)) out.push(path);
     }
   };
-  await walk(norm(dir));
+  const start = norm(dir);
+  const stat = await Deno.stat(`${root}/${start}`).catch(() => null);
+  if (stat?.isFile) return take(start) ? [start] : [];
+  await walk(start);
   return out.sort();
 }
+const svelteFiles = (root: string, dir: string) => sourceFiles(root, dir, (p) => p.endsWith(".svelte"));
 
 /** Every theme of the mood board in `label`, its tokens validated, and the findings about it. */
 export async function readMood(
@@ -250,8 +257,7 @@ export async function runChecks(
       findings.push(...checkImports(file, source, {
         widget: inWidgets(file),
         isStore: (r) => stores.has(r.replace(/\.(ts|js)$/, "")),
-        isWidgetIndex: (r) =>
-          widgetDirs.some((d) => r === d || /^index\.(ts|js)$/.test(r.slice(d.length + 1)) && r.startsWith(d + "/")),
+        isWidgetSet: (r) => widgetDirs.some((d) => r === d || r.startsWith(d + "/")),
         packages: cfg.allowImports,
       }));
     }
@@ -263,6 +269,15 @@ export async function runChecks(
   if (only.includes("affordances")) {
     const components = [...files].filter((f) => !inWidgets(f));
     findings.push(...await checkAffordances(root, cfg, components, (f) => Deno.readTextFile(`${root}/${f}`)));
+  }
+  if (only.includes(LAYOUT_CHECK)) {
+    const sources = new Set<string>();
+    for (const dir of [...cfg.widgets, ...cfg.components]) {
+      for (const f of await sourceFiles(root, dir, layoutFile)) sources.add(f);
+    }
+    for (const file of [...sources].sort()) {
+      findings.push(...checkLayout(file, await Deno.readTextFile(`${root}/${file}`)));
+    }
   }
   if (only.includes("agent-endpoint")) findings.push(...await checkAgentEndpoint(root, cfg));
   if (only.includes("svelte-check") && cfg.tsconfig) findings.push(...await svelteCheck(root, cfg.tsconfig));

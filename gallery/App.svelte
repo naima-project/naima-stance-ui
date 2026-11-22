@@ -22,6 +22,7 @@
   } from "../src/lib/components/index.ts";
   import { useStore } from "../src/lib/store/store.svelte.ts";
   import type { AppStore } from "./app.svelte.ts";
+  import Study from "./Study.svelte";
 
   const { theme, sheet, shelf, auth } = useStore<AppStore>();
   let name = $state("");
@@ -124,6 +125,8 @@
         <Keycap tone="accent" aria-label="Equals">=</Keycap>
       </Grid>
     </Card>
+
+    <Study />
   </Stack>
 </main>
 
@@ -146,6 +149,7 @@
   main {
     max-width: var(--size-dialog-width);
     margin: 0 auto;
-    padding: var(--space-2xl) var(--space-lg);
+    padding-block: var(--space-2xl);
+    padding-inline: max(var(--space-lg), env(safe-area-inset-left)) max(var(--space-lg), env(safe-area-inset-right));
   }
 </style>

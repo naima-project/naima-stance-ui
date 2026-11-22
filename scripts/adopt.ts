@@ -2,11 +2,19 @@
 // the stance's version and commit, and the sha256 of every file as copied. Later runs compare against that
 // record, so an update never overwrites a file the project changed without saying so.
 //
-//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--tauri] [--server] [--force] [--no-scaffold] [--no-install]
+//   deno task adopt --project <dir> [--mood white] [--to src/lib/ui] [--parts study,list] [--tauri] [--server] [--force] [--no-scaffold] [--no-install]
 //                                                                    copy (or update) the stance
+//   deno task adopt --project <dir> --only <stance path>[,<path>]   take only these files or folders of the stance
 //   deno task adopt --project <dir> --status                        what changed, here and there
 //
-// What is copied: the widget set to <to>/components/, the store module to <to>/store/, the theme machine
+// With --only, a project that has made the stance its own takes part of an update, say a new part of the widget set
+// (--only src/lib/components/study), and leaves the rest as it is: only the files under those paths of the stance are
+// copied or checked for changes, each recorded with the commit it came from, and nothing else is written (no scaffold,
+// no registry, no token build).
+//
+// What is copied: the widget set to <to>/components/, and with --parts the parts of it a project asks for, each a
+// folder of its own (study, the drawings of models, the mosaic of cards and the editor; list, the one list; PARTS
+// says what each needs), recorded so that later runs take them again, the store module to <to>/store/, the theme machine
 // and its outputs for the page to <to>/theme/, the sign-in machine and its passkey helper to <to>/auth/, the platform bridge to
 // <to>/platform/ (with port.ts, its deprecated old name), the chosen mood board with its themes and the contrast
 // pairs to tokens/, and the token build to scripts/stance-ui-tokens.ts. With --tauri, the Tauri 2 shell to
@@ -50,8 +58,11 @@ interface Record {
   /** The platform parts the project took: the Tauri shell, the Deno bridge server. */
   /** mcp: absent until the project answers whether agents reach the bridge through MCP. */
   platforms?: { tauri: boolean; server: boolean; mcp?: boolean };
-  /** Every copied file, by its path in the project: where it came from and its sha256 as copied. */
-  files: { [path: string]: { from: string; sha256: string } };
+  /** The parts of the widget set the project took besides its components, by folder (PARTS). */
+  parts?: string[];
+  /** Every copied file, by its path in the project: where it came from, its sha256 as copied, and, when it was taken
+   * with --only, the commit it came from (the others came from `stance.commit`). */
+  files: { [path: string]: { from: string; sha256: string; commit?: string } };
   check: unknown;
 }
 
@@ -65,16 +76,72 @@ async function git(...args: string[]): Promise<string> {
   return new TextDecoder().decode(out.stdout).trim();
 }
 
+/**
+ * The parts of the widget set a project takes only when it asks for them (--parts), each a folder of
+ * src/lib/components: the npm packages it needs, the module specifiers of those its widgets import (the
+ * component-imports check's allowImports), and its drawings, which hold inline SVG (the icons check's drawings).
+ * Their icons are Lucide's, so a project that takes one draws its icons from Lucide.
+ */
+export const PARTS: { [part: string]: { npm: string[]; imports: string[]; drawings: string[] } } = {
+  study: {
+    npm: [
+      "@codemirror/commands",
+      "@codemirror/lang-rust",
+      "@codemirror/language",
+      "@codemirror/legacy-modes",
+      "@codemirror/search",
+      "@codemirror/state",
+      "@codemirror/view",
+      "@lezer/highlight",
+      "@lucide/svelte",
+    ],
+    imports: [
+      "@codemirror/commands",
+      "@codemirror/lang-rust",
+      "@codemirror/language",
+      "@codemirror/legacy-modes",
+      "@codemirror/search",
+      "@codemirror/state",
+      "@codemirror/view",
+      "@lezer/highlight",
+    ],
+    drawings: ["Graph.svelte", "Sequence.svelte", "Timeline.svelte"],
+  },
+  // The one list uses the study part's Action and Segmented.
+  list: { npm: ["@lucide/svelte"], imports: [], drawings: [] },
+};
+const PART_NEEDS: { [part: string]: string[] } = { list: ["study"] };
+
+/** The parts asked for with those they need. */
+function withNeeds(parts: readonly string[]): string[] {
+  const out = new Set<string>();
+  const add = (p: string) => {
+    if (!PARTS[p]) throw new Error(`no part "${p}" of the widget set; the parts are ${Object.keys(PARTS).join(", ")}`);
+    if (out.has(p)) return;
+    out.add(p);
+    for (const n of PART_NEEDS[p] ?? []) add(n);
+  };
+  parts.forEach(add);
+  return [...out].sort();
+}
+
 /** The files to copy: path in the stance → path in the project. */
 async function plan(
   mood: string,
   to: string,
   platforms: { tauri: boolean; server: boolean; mcp?: boolean },
+  parts: readonly string[],
 ): Promise<Map<string, string>> {
   const files = new Map<string, string>();
-  for await (const e of Deno.readDir(`${STANCE}/src/lib/components`)) {
-    if (e.isFile) files.set(`src/lib/components/${e.name}`, `${to}/components/${e.name}`);
-  }
+  // The widget set, and the parts of it the project asked for, each a folder (study/, the drawings of models and the
+  // editor; list/, the one list).
+  const widgets = async (rel: string) => {
+    for await (const e of Deno.readDir(`${STANCE}/src/lib/components${rel}`)) {
+      if (e.isDirectory && (rel || parts.includes(e.name))) await widgets(`${rel}/${e.name}`);
+      else if (e.isFile) files.set(`src/lib/components${rel}/${e.name}`, `${to}/components${rel}/${e.name}`);
+    }
+  };
+  await widgets("");
   files.set("src/lib/store/store.svelte.ts", `${to}/store/store.svelte.ts`);
   for (const dir of ["theme", "auth", "uicard"]) {
     for await (const e of Deno.readDir(`${STANCE}/src/lib/${dir}`)) {
@@ -145,7 +212,12 @@ const json = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
  * (its exact package versions, its compiler options), and the templates of scaffold/, their imports of the
  * stance's copy pointed at `to`.
  */
-async function scaffoldFiles(to: string, tauri: boolean, mcp: boolean): Promise<Map<string, string>> {
+async function scaffoldFiles(
+  to: string,
+  tauri: boolean,
+  mcp: boolean,
+  parts: readonly string[] = [],
+): Promise<Map<string, string>> {
   const pkg = JSON.parse(await Deno.readTextFile(`${STANCE}/package.json`)) as {
     devDependencies: { [name: string]: string };
   };
@@ -167,6 +239,7 @@ async function scaffoldFiles(to: string, tauri: boolean, mcp: boolean): Promise<
     "typescript",
     "vite",
     ...(tauri ? ["@tauri-apps/cli"] : []),
+    ...new Set(parts.flatMap((p) => PARTS[p]!.npm)),
   ];
   const tokensCss = `${to}/tokens.css`;
   const vite = `deno run -A npm:vite@${v("vite")}`;
@@ -233,9 +306,15 @@ async function scaffoldFiles(to: string, tauri: boolean, mcp: boolean): Promise<
 }
 
 /** Writes the scaffold's files the project does not have yet, and names those it keeps. */
-async function scaffold(project: string, to: string, tauri: boolean, mcp: boolean): Promise<string[]> {
+async function scaffold(
+  project: string,
+  to: string,
+  tauri: boolean,
+  mcp: boolean,
+  parts: readonly string[],
+): Promise<string[]> {
   const lines: string[] = [];
-  for (const [path, text] of await scaffoldFiles(to, tauri, mcp)) {
+  for (const [path, text] of await scaffoldFiles(to, tauri, mcp, parts)) {
     const target = `${project}/${path}`;
     if (await read(target)) {
       lines.push(`skipped ${path}: the project has one`);
@@ -259,6 +338,10 @@ export async function adopt(
     server?: boolean;
     mcp?: boolean;
     scaffold?: boolean;
+    /** Paths of the stance, files or folders: only these are taken. */
+    only?: string[];
+    /** Parts of the widget set to take besides its components (PARTS), with those they need. */
+    parts?: string[];
   },
 ): Promise<string[]> {
   const before = await loadRecord(project);
@@ -271,10 +354,21 @@ export async function adopt(
     server: opts.server || (before?.platforms?.server ?? false) || (opts.mcp ?? before?.platforms?.mcp) === true,
   };
   if (platforms.mcp === undefined) delete platforms.mcp;
-  const files = await plan(mood, to, platforms);
+  const parts = withNeeds([...(before?.parts ?? []), ...(opts.parts ?? [])]);
+  // --only may name a part's folder the project has not taken yet: the plan holds every part, and --only picks.
+  const all = await plan(mood, to, platforms, opts.only ? Object.keys(PARTS) : parts);
+  const only = opts.only?.map((p) => posix.normalize(p).replace(/\/+$/, ""));
+  const taken = (from: string) => !only || only.some((p) => from === p || from.startsWith(`${p}/`));
+  const files = new Map([...all].filter(([from]) => taken(from)));
+  if (only && files.size === 0) throw new Error(`the stance has no file under ${only.join(", ")}`);
+  if (only && !before) {
+    throw new Error(`--only updates a copy: ${RECORD} records none, so adopt the stance whole first`);
+  }
+  const head = (await git("rev-parse", "HEAD")) + ((await git("status", "--porcelain")) !== "" ? "+changes" : "");
   const lines: string[] = [];
   const conflicts: string[] = [];
-  const record: Record["files"] = {};
+  // With --only, the files not taken keep what the record says of them.
+  const record: Record["files"] = only ? { ...before!.files } : {};
   for (const [from, dest] of files) {
     const src = await Deno.readFile(`${STANCE}/${from}`);
     const there = await read(`${project}/${dest}`);
@@ -283,7 +377,7 @@ export async function adopt(
       // A file the project has changed since the copy, or one that was never ours: not overwritten silently.
       if (!copied || (await sha(there)) !== copied) conflicts.push(dest);
     }
-    record[dest] = { from, sha256: await sha(src) };
+    record[dest] = { from, sha256: await sha(src), ...(only ? { commit: head } : {}) };
   }
   if (conflicts.length && !opts.force) {
     throw new Error(
@@ -305,8 +399,19 @@ export async function adopt(
   for (const dest of Object.keys(before?.files ?? {})) {
     if (!record[dest]) lines.push(`no longer in the stance, kept: ${dest}`);
   }
+  if (only) {
+    const named = Object.keys(PARTS).filter((p) =>
+      [...files.keys()].some((f) => f.startsWith(`src/lib/components/${p}/`))
+    );
+    const took = withNeeds([...parts, ...named]);
+    await Deno.writeTextFile(
+      `${project}/${RECORD}`,
+      json({ ...before!, ...(took.length ? { parts: took } : {}), files: record }),
+    );
+    lines.push(`recorded ${files.size} file(s) of stance ui at ${head.slice(0, 12)} in ${RECORD}`);
+    return lines;
+  }
   const pkg = JSON.parse(await Deno.readTextFile(`${STANCE}/package.json`)) as { version: string };
-  const dirty = (await git("status", "--porcelain")) !== "";
   // Agent parity: where the machines are made, the registry of their transitions, and the MCP server's own files.
   const transitions = {
     machines: "src/app.svelte.ts",
@@ -319,11 +424,12 @@ export async function adopt(
       name: "ui",
       author: "makebecome",
       version: pkg.version,
-      commit: (await git("rev-parse", "HEAD")) + (dirty ? "+changes" : ""),
+      commit: head,
     },
     mood,
     to,
     platforms,
+    ...(parts.length ? { parts } : {}),
     files: record,
     check: before?.check
       ? { ...(before.check as object), ...(platforms.mcp ? { transitions: kept ?? transitions } : {}) }
@@ -332,7 +438,16 @@ export async function adopt(
         widgets: [`${to}/components`],
         components: ["src"],
         store: [`${to}/store/store.svelte.ts`],
-        allowImports: [],
+        allowImports: [...new Set(parts.flatMap((p) => PARTS[p]!.imports))].sort(),
+        // A part of the widget set draws Lucide's icons, so the project that takes one has chosen them.
+        ...(parts.length
+          ? {
+            icons: {
+              set: "lucide",
+              drawings: parts.flatMap((p) => PARTS[p]!.drawings.map((d) => `${to}/components/${p}/${d}`)),
+            },
+          }
+          : {}),
         tsconfig: "tsconfig.json",
         contrast: "tokens/contrast.json",
         // The scaffold's page, built by its build task; a project without the scaffold lists its own.
@@ -351,7 +466,9 @@ export async function adopt(
       "asked: should agents read and act on the app as an MCP server, through its store and the same transitions the user's buttons call (agent parity, rule 27)? Answer with --mcp or --no-mcp; until then it is not set up",
     );
   }
-  if (opts.scaffold !== false) lines.push(...await scaffold(project, to, platforms.tauri, platforms.mcp === true));
+  if (opts.scaffold !== false) {
+    lines.push(...await scaffold(project, to, platforms.tauri, platforms.mcp === true, parts));
+  }
   if (platforms.mcp) lines.push(await writeRegistry(project, out.check as { transitions: typeof transitions }));
   await buildTokens(`${project}/tokens`, `${project}/${to}/tokens.css`, "tokens");
   lines.push(`built ${to}/tokens.css: mood ${mood}, light and dark`);
@@ -441,9 +558,11 @@ if (import.meta.main) {
       server: args.includes("--server"),
       mcp: args.includes("--mcp") ? true : args.includes("--no-mcp") ? false : undefined,
       scaffold: !args.includes("--no-scaffold"),
+      only: arg("--only")?.split(","),
+      parts: arg("--parts")?.split(","),
     });
     for (const l of lines) console.log(l);
-    if (!args.includes("--status") && !args.includes("--no-install")) {
+    if (!args.includes("--status") && !args.includes("--no-install") && !args.includes("--only")) {
       console.log(await install(project));
       const failed = await ensureChromium(project, (l) => console.log(l.replace(/^stance ui: /, "")));
       if (failed) console.log(`${failed}; the browser checks will try again`);

@@ -1,5 +1,5 @@
 <!-- A slot for an icon of the project's chosen icon set (check.icons; the icons check refuses any other), sized by the
-     icon token and coloured by the text around it.
+     icon token and coloured by the text around it. The icon draws itself: outline icons keep their strokes and stay unfilled.
      Without a label it is decoration and hidden from screen readers; with one it is an image with that name. -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -29,6 +29,5 @@
   .icon :global(svg) {
     width: 100%;
     height: 100%;
-    fill: currentColor;
   }
 </style>

@@ -200,6 +200,71 @@
         ],
         "hex": "#f8ebe3"
       }
+    },
+    "border-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.454,
+          0.423,
+          0.375
+        ],
+        "alpha": 0.4,
+        "hex": "#746c60"
+      },
+      "$description": "a rule between controls drawn over any surface: the strong border, light"
+    },
+    "surface-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.922,
+          0.902,
+          0.867
+        ],
+        "alpha": 0.6,
+        "hex": "#ebe6dd"
+      },
+      "$description": "a control drawn over a drawing or a card: the sunken surface, see-through"
+    },
+    "accent-tint": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.466,
+          0.226,
+          0.122
+        ],
+        "alpha": 0.1,
+        "hex": "#773a1f"
+      },
+      "$description": "the accent as a faint wash behind what is chosen or under the pointer"
+    },
+    "accent-line": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.466,
+          0.226,
+          0.122
+        ],
+        "alpha": 0.45,
+        "hex": "#773a1f"
+      },
+      "$description": "the edge of what is chosen: the accent, half see-through"
+    },
+    "on-accent-soft": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1,
+          1,
+          1
+        ],
+        "alpha": 0.25,
+        "hex": "#ffffff"
+      },
+      "$description": "a mark drawn on the accent: the colour on the accent, light"
     }
   }
 }

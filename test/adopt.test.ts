@@ -43,6 +43,57 @@ Deno.test("a file that was never the stance's is not overwritten", async () => {
 });
 
 /** Runs a task of the project, as its owner would, and fails with its output when it fails. */
+Deno.test("a part of the widget set is taken when asked for, with the parts it needs, and holds to the stance", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    const plain = await Deno.makeTempDir();
+    try {
+      assert(!(await adopt(plain, { scaffold: false })).some((l) => l.includes("/components/study/")));
+    } finally {
+      await Deno.remove(plain, { recursive: true });
+    }
+    const lines = await adopt(project, { parts: ["list"], scaffold: false });
+    assert(lines.includes("copied src/lib/ui/components/list/List.svelte"));
+    assert(lines.includes("copied src/lib/ui/components/study/Action.svelte"));
+    const record = JSON.parse(await Deno.readTextFile(`${project}/stance-ui.json`));
+    assertEquals(record.parts, ["list", "study"]);
+    assertEquals(record.check.icons.set, "lucide");
+    assert(record.check.icons.drawings.includes("src/lib/ui/components/study/Graph.svelte"));
+    assert(record.check.allowImports.includes("@codemirror/view"));
+    const fs = await runChecks(project, [
+      "tokens",
+      "contrast",
+      "no-raw-literals",
+      "component-imports",
+      "icons",
+      "no-raw-drag",
+      "auth-only",
+    ]);
+    assertEquals(fs.filter((f) => f.level === "problem"), []);
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});
+
+Deno.test("--only takes part of an update and leaves the project's own changes alone", async () => {
+  const project = await Deno.makeTempDir();
+  try {
+    await adopt(project, { scaffold: false });
+    await Deno.writeTextFile(`${project}/src/lib/ui/components/Card.svelte`, "<section></section>\n");
+    const lines = await adopt(project, { only: ["src/lib/components/study"] });
+    assert(lines.includes("copied src/lib/ui/components/study/Mosaic.svelte"));
+    assert(!lines.some((l) => l.includes("Card.svelte")));
+    const record = JSON.parse(await Deno.readTextFile(`${project}/stance-ui.json`));
+    assertEquals(record.parts, ["study"]);
+    assert(/^[0-9a-f]{40}/.test(record.files["src/lib/ui/components/study/Mosaic.svelte"].commit));
+    assertEquals(record.files["src/lib/ui/components/Card.svelte"].commit, undefined);
+    assert((await status(project)).includes("changed in the project: src/lib/ui/components/Card.svelte"));
+    await assertRejects(() => adopt(project, { only: ["src/nothing"] }), Error, "no file under src/nothing");
+  } finally {
+    await Deno.remove(project, { recursive: true });
+  }
+});
+
 async function task(project: string, name: string): Promise<void> {
   const out = await new Deno.Command(Deno.execPath(), {
     args: ["task", name],

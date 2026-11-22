@@ -1,0 +1,26 @@
+% views.mcrl2 -- how a person keeps views of the one list under a name (src/lib/components/list/list.ts, "Views kept under a
+% name"): the view on the page is kept under a name, a name picked puts its view on the page, a name dropped is gone, and
+% the list says which name the page shows while the view on the page is exactly the view kept under it. The code is
+% written by hand and follows this model.
+%
+% Leaves out what a view holds (two views stand for any: the filters, the sort, the grouping and the columns taken
+% together; the words searched and the folds are never kept) and how many names there are (two stand for any). Editing
+% the view on the page, by any control, is one step that leaves it any view. Probes (shows) do not change the state.
+
+sort Vw = struct X | Y;
+     Kept = struct NO | IS(kv: Vw);          % what a name holds: nothing, or a view
+     Nm = struct A | B;
+
+act  save, pick: Nm # Vw;                    % the view on the page kept under the name; the view the name put on the page
+     drop: Nm;
+     edit: Vw;                               % the person changed the page's view, whatever the control, to this one
+     shows: Nm;                              % probe: the list says the page shows this name
+
+proc V(a: Kept, b: Kept, cur: Vw) =
+    sum n: Nm . save(n, cur) . V(if(n == A, IS(cur), a), if(n == B, IS(cur), b), cur)
+  + sum n: Nm, w: Vw . (if(n == A, a, b) == IS(w)) -> pick(n, w) . V(a, b, w)
+  + sum n: Nm . (if(n == A, a, b) != NO) -> drop(n) . V(if(n == A, NO, a), if(n == B, NO, b), cur)
+  + sum w: Vw . edit(w) . V(a, b, w)
+  + sum n: Nm . (if(n == A, a, b) == IS(cur)) -> shows(n) . V(a, b, cur);
+
+init V(NO, NO, X);
