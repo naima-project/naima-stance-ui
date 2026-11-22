@@ -148,6 +148,8 @@ src/lib/components/                 the widget set
 src/lib/store/store.svelte.ts       createStore, storeContext, useStore, snapshot
 src/lib/theme/                      the theme machine and its outputs for the page
 src/lib/auth/                       the sign-in machine and its passkey helper for the browser
+src/lib/uicard/                     the UI card's runtime: the app walked along a model's road in Naima's UI tab, and
+                                    the pictures of its Every state card
 gallery/                            every widget on one page, built once per mood board
 scripts/variants.ts                 several variants of the design side by side, live, in light and dark
 method/design.md                    the design method: six steps, each closed by the owner's choice among variants

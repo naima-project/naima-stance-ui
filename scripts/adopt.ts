@@ -76,7 +76,7 @@ async function plan(
     if (e.isFile) files.set(`src/lib/components/${e.name}`, `${to}/components/${e.name}`);
   }
   files.set("src/lib/store/store.svelte.ts", `${to}/store/store.svelte.ts`);
-  for (const dir of ["theme", "auth"]) {
+  for (const dir of ["theme", "auth", "uicard"]) {
     for await (const e of Deno.readDir(`${STANCE}/src/lib/${dir}`)) {
       if (e.isFile) files.set(`src/lib/${dir}/${e.name}`, `${to}/${dir}/${e.name}`);
     }

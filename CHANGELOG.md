@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### The UI card's runtime is the stance's
+
+`src/lib/uicard/` (copied to `<to>/uicard/`) holds what a project's card page needs to show its app in Naima's UI tab.
+`Card` mounts the app on a store of its own and walks it along the road the tab posts, through the machine's input
+methods, after the inputs that bring the app to the machine's place; it reports the person's steps on the real
+controls (`acted`) and the inputs the model refuses (`refused`). `Pictures` draws the Every state card: each state the
+tab posts as a small picture of the app walked along that state's road, a few at a time, kept while the frame lives;
+a click posts `pick`. Given the project's registry of transitions, both name each step by the element that offers it
+(`stepNames`), sent with `loaded`. `memoryStorage()` stands in for browser storage, which the card's opaque origin
+lacks.
+
 ### The transitions check follows a store taken apart where it is made
 
 `const { m } = useStore<AppStore>()` binds its machines like `const store = useStore(); const { m } = store`: the
