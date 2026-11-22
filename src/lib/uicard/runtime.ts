@@ -263,21 +263,23 @@ const PICTURES_CSS = `
   border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12)); border-radius: var(--radius-md, 0.5rem);
   background: var(--color-surface, transparent); }
 .uicard-shot > * { zoom: 0.25; }
-.uicard-picture[aria-current="true"] .uicard-shot { border-color: var(--color-accent, currentColor); border-width: 2px; }
+.uicard-picture[aria-current="true"] .uicard-shot { border-color: var(--color-text, currentColor); border-width: 2px; }
 .uicard-caption { font-size: var(--font-size-sm, 0.875rem); color: var(--color-text-muted, inherit); }
 .uicard-picture[aria-current="true"] .uicard-caption { color: var(--color-text, inherit); }
 `;
 
 /**
- * The Every state card: each state the tab posts, drawn as a picture of the real app in that state (a fresh store
- * walked along the state's road, its static HTML kept), a few at a time so that the frame stays responsive. A picture is
- * kept by its road while the frame lives: the frame is loaded again after the app is built. A click on one posts `pick`.
+ * The Every state card: each state the tab posts, drawn as a picture of the real app in that state (a fresh store at the
+ * model's place, its data let arrive, walked along the state's road, its static HTML kept), a few at a time so that the
+ * frame stays responsive. A picture is kept by its road while the frame lives: the frame is loaded again after the app is
+ * built. A click on one posts `pick`.
  */
 export class Pictures {
   readonly #o: CardOptions;
   readonly #target: HTMLElement;
   readonly #batch: number;
   readonly #later: (f: () => void) => void;
+  readonly #settle: () => Promise<void>;
   #module: GeneratedModule | null = null;
   readonly #kept = new Map<string, string>();
   #queue: { road: readonly string[]; shot: HTMLElement }[] = [];
@@ -286,12 +288,14 @@ export class Pictures {
   constructor(
     target: HTMLElement,
     o: CardOptions,
-    opts: { batch?: number; later?: (f: () => void) => void } = {},
+    opts: { batch?: number; later?: (f: () => void) => void; settle?: () => Promise<void> } = {},
   ) {
     this.#target = target;
     this.#o = o;
     this.#batch = opts.batch ?? 4;
     this.#later = opts.later ?? ((f) => void setTimeout(f, 0));
+    // What the app reads on a fresh store (the fixture's answers, a file it fetches) comes back after a short while.
+    this.#settle = opts.settle ?? (() => new Promise((done) => setTimeout(done, 60)));
   }
 
   /** Loads the model's module and checks that a fresh store reaches its place; says loaded, or failed. */
@@ -349,28 +353,31 @@ export class Pictures {
   #run(): void {
     if (this.#running) return;
     this.#running = true;
-    const next = () => {
+    const next = async () => {
       const batch = this.#queue.splice(0, this.#batch);
-      for (const { road, shot } of batch) {
+      await Promise.all(batch.map(async ({ road, shot }) => {
         const key = JSON.stringify(road);
-        const html = this.#kept.get(key) ?? this.picture(road);
+        const html = this.#kept.get(key) ?? await this.picture(road);
         this.#kept.set(key, html);
         if (shot.isConnected) shot.innerHTML = html;
-      }
-      if (this.#queue.length) this.#later(next);
+      }));
+      if (this.#queue.length) this.#later(() => void next());
       else this.#running = false;
     };
-    next();
+    void next();
   }
 
-  /** The static HTML of the app walked along a road from its place; empty when the walk fails. */
-  picture(road: readonly string[]): string {
+  /** The static HTML of the app at its place, its data arrived, walked along a road; empty when the walk fails. */
+  async picture(road: readonly string[]): Promise<string> {
     const stage = this.#target.ownerDocument.createElement("div");
     let unmount: (() => void) | null = null;
     try {
       const p = placed(this.#o, stage);
       unmount = p.unmount;
+      await this.#settle();
       for (const label of road) fireOn(p.machine, this.#module, label);
+      this.#o.flush();
+      await this.#settle();
       this.#o.flush();
       return stage.innerHTML;
     } catch {

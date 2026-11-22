@@ -152,7 +152,12 @@ Deno.test("Every state draws each state's picture, a few at a time, and keeps it
   const doc = new Doc();
   const target = new El(doc);
   const later: (() => void)[] = [];
-  const pictures = new Pictures(target as unknown as HTMLElement, opts, { batch: 2, later: (f) => later.push(f) });
+  const tick = () => new Promise<void>((done) => setTimeout(done, 0));
+  const pictures = new Pictures(target as unknown as HTMLElement, opts, {
+    batch: 2,
+    later: (f) => later.push(f),
+    settle: () => Promise.resolve(),
+  });
   await pictures.start();
   assertEquals(posted[0]?.t, "loaded");
   const states = [
@@ -161,12 +166,15 @@ Deno.test("Every state draws each state's picture, a few at a time, and keeps it
     { key: "c", name: "s2", road: ["inc", "add(2)"], current: false },
   ];
   pictures.states(states);
+  await tick();
   const shots = () => target.children[0]!.children.map((li) => li.children[0]!.children[0]!.innerHTML);
-  assertEquals(shots(), ["<p>count 0</p>", "<p>count 1</p>", ""], "the first batch is drawn at once");
+  assertEquals(shots(), ["<p>count 0</p>", "<p>count 1</p>", ""], "the first batch is drawn first");
   later.shift()!();
+  await tick();
   assertEquals(shots(), ["<p>count 0</p>", "<p>count 1</p>", "<p>count 3</p>"]);
   const made = stores.length;
   pictures.states(states);
+  await tick();
   assertEquals(stores.length, made, "pictures already drawn are kept");
   assertEquals(shots()[2], "<p>count 3</p>");
   target.children[0]!.children[2]!.children[0]!.clicks[0]!();
