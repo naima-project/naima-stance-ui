@@ -252,14 +252,14 @@ export interface PictureState {
 
 /** The pictures' own layout, inserted once: a grid of the app's pictures, each its top at a quarter of its size. */
 const PICTURES_CSS = `
-.uicard-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+.uicard-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--size-thumbnail-min, 13rem), 100%), 1fr));
   gap: var(--space-md, 1rem); margin: 0; padding: var(--space-md, 1rem); list-style: none; }
 .uicard-picture { display: flex; flex-direction: column; gap: var(--space-xs, 0.25rem); inline-size: 100%;
   padding: var(--space-xs, 0.25rem); border: 0; border-radius: var(--radius-lg, 0.75rem); background: none;
   color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .uicard-picture:hover { background: var(--color-surface-sunken, rgba(0, 0, 0, 0.04)); }
 .uicard-picture:focus-visible { outline: 2px solid var(--color-focus, currentColor); outline-offset: 2px; }
-.uicard-shot { display: block; block-size: 9rem; contain: paint; overflow: hidden; pointer-events: none;
+.uicard-shot { display: block; block-size: var(--size-thumbnail-height, 9rem); contain: paint; overflow: hidden; pointer-events: none;
   border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12)); border-radius: var(--radius-md, 0.5rem);
   background: var(--color-surface, transparent); }
 .uicard-shot > * { zoom: 0.25; }
