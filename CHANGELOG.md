@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### The one list keeps views under a name
+
+A person keeps the filters, the sort, the grouping and the columns on the page under a name, picks one again and
+deletes one. The list offers views when it is given `saved` (bindable), and the caller keeps them, per project. The
+words searched and the folds are not kept. Its model is `models/list/views.mcrl2`, with three properties, and its plain
+part is in `list.ts` (`saveView`, `pickView`, `dropView`, `appliedView`, `readViews`), tested in `test/list.test.ts`.
+The quiet status line of Naima's list (`quiet`, `slice`) is part of the widget now, as it is used there.
+
 ### The study widgets and the one list are parts of the widget set
 
 `src/lib/components/study/` (Action, Segmented, Graph with its layouts and routing, Timeline, Sequence, StateTable,

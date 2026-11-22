@@ -1,0 +1,2 @@
+% A name dropped cannot be picked, and the list does not say the page shows it, until a view is kept under it again.
+forall n: Nm. [true* . drop(n) . (!(exists v: Vw. save(n, v)))* . (exists w: Vw. pick(n, w)) || shows(n)] false

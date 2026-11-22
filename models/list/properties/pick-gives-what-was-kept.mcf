@@ -1,0 +1,2 @@
+% A name picked puts on the page the view last kept under it.
+forall n: Nm, v, w: Vw. [true* . save(n, v) . (!((exists u: Vw. save(n, u)) || drop(n)))* . pick(n, w)] val(v == w)

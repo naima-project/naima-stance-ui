@@ -262,3 +262,101 @@ test("rows that are not all items (commits, what lies ahead) group under their h
     ["z", "y", "x"],
   );
 });
+
+// ---- Views kept under a name (models/list/views.mcrl2).
+
+import {
+  appliedView,
+  dropView,
+  pickView,
+  readViews,
+  type SavedView,
+  saveView,
+} from "../src/lib/components/list/list.ts";
+
+test("views: keep under a name, pick, drop; a name kept again is replaced, never doubled", () => {
+  const a: ListView = {
+    ...EMPTY_VIEW,
+    group: "pri",
+    sort: "age",
+    desc: true,
+    filters: { tag: ["ui"] },
+    search: "x",
+    folded: ["now"],
+  };
+  let saved: SavedView[] = [];
+  saved = saveView(saved, "  Old   bugs ", a);
+  assert.equal(saved[0]!.name, "Old bugs");
+  assert.equal(saved[0]!.view.search, "", "the words searched are not kept");
+  assert.deepEqual(saved[0]!.view.folded, [], "nor the folds");
+  assert.deepEqual(pickView(saved, "old bugs", EMPTY_VIEW), { ...a, search: "", folded: [] });
+  assert.deepEqual(pickView(saved, "nothing", EMPTY_VIEW), EMPTY_VIEW, "an unknown name changes nothing");
+  saved = saveView(saved, "Quiet", EMPTY_VIEW);
+  saved = saveView(saved, "OLD BUGS", { ...a, group: "" });
+  assert.deepEqual(saved.map((s) => s.name), ["OLD BUGS", "Quiet"]);
+  assert.equal(saveView(saved, "   ", a).length, 2, "an empty name keeps nothing");
+  saved = dropView(saved, "quiet");
+  assert.deepEqual(saved.map((s) => s.name), ["OLD BUGS"]);
+});
+
+test("views: the name shown is that of the view kept that the page shows exactly", () => {
+  const v: ListView = { ...EMPTY_VIEW, group: "pri" };
+  const saved = saveView([], "By priority", v);
+  assert.equal(appliedView(saved, v), "By priority");
+  assert.equal(
+    appliedView(saved, { ...v, search: "a", folded: ["now"] }),
+    "By priority",
+    "searching or folding does not leave the view",
+  );
+  assert.equal(appliedView(saved, { ...v, sort: "age" }), null);
+  assert.equal(appliedView(dropView(saved, "By priority"), v), null);
+});
+
+test("views: read back from what was kept, whatever is not a view dropped", () => {
+  const saved = saveView(saveView([], "A", { ...EMPTY_VIEW, group: "pri" }), "B", { ...EMPTY_VIEW, toggled: ["age"] });
+  assert.deepEqual(readViews(JSON.stringify(saved)), saved);
+  assert.deepEqual(readViews("not json"), []);
+  assert.deepEqual(readViews({}), []);
+  assert.deepEqual(readViews([{ name: "" }, { name: 3 }, null, { name: "ok", view: { group: 4, sort: "age" } }]), [
+    { name: "ok", view: { ...EMPTY_VIEW, sort: "age" } },
+  ]);
+});
+
+test("views: random walks keep the model's properties", () => {
+  // Two names and two views stand for any (models/list/views.mcrl2); the model: the last view kept under a name.
+  const names = ["A", "B"];
+  const views: ListView[] = [{ ...EMPTY_VIEW, group: "pri" }, { ...EMPTY_VIEW, sort: "age" }];
+  let seed = 7;
+  const rnd = (n: number) => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) >> 8) % n;
+  for (let walk = 0; walk < 200; walk++) {
+    let saved: SavedView[] = [];
+    let cur = views[0]!;
+    const kept = new Map<string, ListView>();
+    for (let step = 0; step < 30; step++) {
+      const n = names[rnd(2)]!;
+      switch (rnd(4)) {
+        case 0:
+          saved = saveView(saved, n, cur);
+          kept.set(n, cur);
+          break;
+        case 1:
+          if (kept.has(n)) {
+            cur = pickView(saved, n, cur);
+            assert.deepEqual(cur, kept.get(n), "a name picked puts on the page what was last kept under it");
+          } else assert.deepEqual(pickView(saved, n, cur), cur, "a name dropped or never kept cannot be picked");
+          break;
+        case 2:
+          saved = dropView(saved, n);
+          kept.delete(n);
+          break;
+        default:
+          cur = views[rnd(2)]!;
+      }
+      assert.equal(new Set(saved.map((s) => s.name)).size, saved.length, "no name is kept twice");
+      for (const m of names) {
+        const shown = appliedView(saved, cur);
+        if (shown === m) assert.ok(kept.has(m), "the list never says the page shows a name that is not kept");
+      }
+    }
+  }
+});
