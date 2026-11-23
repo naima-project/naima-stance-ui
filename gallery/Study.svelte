@@ -9,6 +9,7 @@
   import Text from "../src/lib/components/Text.svelte";
   import Action from "../src/lib/components/study/Action.svelte";
   import Segmented from "../src/lib/components/study/Segmented.svelte";
+  import Menu from "../src/lib/components/study/Menu.svelte";
   import Graph from "../src/lib/components/study/Graph.svelte";
   import Timeline from "../src/lib/components/study/Timeline.svelte";
   import Sequence from "../src/lib/components/study/Sequence.svelte";
@@ -95,6 +96,7 @@ init Lock(true);
     <Action label="Run" hint="Run the model one step" icon={Play} variant="primary" onclick={() => ran++} />
     <Action label="Start again" icon={RotateCcw} onclick={() => (ran = 0)} />
     <Action label="Save" disabled why="Nothing has changed since the last save" />
+    <Menu label="More for the run" entries={[{ label: "Copy the run", onselect: () => {} }, { label: "Start again", onselect: () => (ran = 0), rule: true }]} />
     <Text tone="muted" live="polite">Runs: {ran}</Text>
     <Segmented
       label="Speed"

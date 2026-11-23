@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Actions are words, not boxes
+
+The study widgets drop the pill with an icon in its disc. `Action` is a short verb set in the page's type, an optional
+quiet glyph before it, a hairline under it on hover and focus; primary is the accent's ink, kept for the one main action
+of a place. What it does, and why it is disabled, are said on hover and to screen readers, never inside it: `detail` no
+longer draws anything, and a disabled action no longer writes its reason under its label. `Segmented` is a row of words,
+the chosen one underlined in the accent. `Menu` is new: actions used now and then behind a quiet word or the three dots
+of "more", with names, arrow keys and Escape. `Mosaic` shows a card's handle, maximise and close only on hover and
+focus, titles its cards in the page's type, and puts the closed cards and Reset the layout in one Layout menu; its row
+takes the page's own `lead` and `trail` (the old `closedRow` is gone). `Graph` floats its view tools over the drawing's
+corner, shown on hover and focus.
+
 ### The UI card's runtime is the stance's
 
 `src/lib/uicard/` (copied to `<to>/uicard/`) holds what a project's card page needs to show its app in Naima's UI tab.

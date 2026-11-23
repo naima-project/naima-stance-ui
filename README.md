@@ -310,13 +310,16 @@ copy of `Auth`.
 Two parts of the widget set are folders of their own, which a project takes only when it asks for them
 (`deno task adopt --parts study,list`): their widgets need packages the others do not, and they draw Lucide's icons, so
 the project that takes one has chosen Lucide (`adopt` sets `check.icons` when it writes a new `stance-ui.json`).
-`study/` draws models and their runs: `Action` (an action as an icon in its disc and a word, which says why when it is
-disabled), `Segmented` (a choice of a few), `Graph` (a state machine or a directed graph, laid out in layers by
+`study/` draws models and their runs: `Action` (a short verb set in the page's type, with an optional quiet glyph and a
+hairline under it on hover; what it does, and why when it is disabled, is said on hover and to screen readers, never
+inside it), `Segmented` (a choice of a few, as words, the chosen one underlined), `Menu` (actions used now and then,
+behind a quiet word or the three dots of "more"), `Graph` (a state machine or a directed graph, laid out in layers by
 `layout.ts` and routed by `route.ts`, or around a centre, by springs or on a grid by `algorithms.ts`, which pans and
 zooms in a `Pannable`), `Timeline` (a run's states on a line, the steps possible now ahead), `Sequence` (a UML sequence
 diagram), `StateTable` (a state as a table of its values, the changed ones marked), `Editor` (CodeMirror, with mCRL2
 highlighted by `mcrl2-tokens.ts`) and `Mosaic` (cards tiling a box as nested flex boxes, their gutters and junctions
-moved through `Draggable`, as the model `models/mosaic-drag/` says). `named.ts` lists the standard diagrams a view may
+moved through `Draggable`, as the model `models/mosaic-drag/` says; a card's handle, maximise and close appear on hover
+and focus, and the cards closed are in one Layout menu). `named.ts` lists the standard diagrams a view may
 declare. `list/` is the one list every long list shares: `List`, dense and searchable, filtered by facets with their
 counts, sorted by any column, grouped and folded, its cursor moved as `models/list/` says; `list.ts` is its plain part
 and `rows.ts` makes a list of rows that are not all of one kind. A project that has made the stance its own takes a
