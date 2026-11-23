@@ -14,8 +14,9 @@ desktop's image. A list of 50 items or more sets `content-visibility: auto` on i
 so that the browser skips what is off screen. Each screen has a budget, measured by the check `budget` on the profile of
 a mid-range phone (a 4 times slower processor and a slow 4G network: 150 ms of latency, 1.6 Mbit/s, the profile
 Lighthouse uses): the largest content painted within 2.5 s, a layout shift below 0.1, a total blocking time below 300
-ms, at most 170 kB of JavaScript and 1 MB in all, both compressed with gzip. A project may set a tighter budget in
-`stance-ui.json` (`check.budget`).
+ms, at most 170 kB of JavaScript and 1 MB in all, both compressed with gzip. A project sets its own budget in
+`stance-ui.json` (`check.budget`): a tighter one, or a looser one when its owner decides the screens are not served
+over a phone network, such as an app that runs on the owner's own computer.
 
 Do:
 `<img src="a-800.webp" srcset="a-400.webp 400w, a-800.webp 800w" sizes="(width >= 40rem) 40rem, 100vw" width="800" height="450">`.
