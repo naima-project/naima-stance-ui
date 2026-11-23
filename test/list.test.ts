@@ -360,3 +360,18 @@ test("views: random walks keep the model's properties", () => {
     }
   }
 });
+
+// ---- An off-screen group keeps its true height (the estimate once fell 8 px short and moved the layout on focus).
+
+import { readFileSync } from "node:fs";
+
+test("an off-screen group's reckoned height is its rows, its heading and the space above the heading", () => {
+  const css = readFileSync(new URL("../src/lib/components/list/List.svelte", import.meta.url), "utf8");
+  const rule = /\.group\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
+  assert.match(rule, /content-visibility:\s*auto/);
+  assert.match(
+    rule,
+    /contain-intrinsic-size:\s*auto calc\(\(var\(--n\) \+ 1\) \* var\(--row\) \+ var\(--space-sm\)\)/,
+    "rows plus heading, plus the heading's space-sm",
+  );
+});
