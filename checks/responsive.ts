@@ -99,7 +99,14 @@ export function cutOff(page: Page): Promise<string[]> {
       const wide = clips(cs.overflowX) && w > 1;
       const high = clips(cs.overflowY) && h > 1;
       if ((wide || high) && (el.textContent ?? "").trim() !== "") {
-        out.push(`${name(el)} cuts its text off${cs.textOverflow === "ellipsis" ? " with an ellipsis" : ""}`);
+        // Which box, by how much and what runs past its edge: the measure the finding is read from.
+        const box = el.getBoundingClientRect();
+        const past = [...el.querySelectorAll("*")].find((k) => {
+          const b = k.getBoundingClientRect();
+          return b.width > 0 && getComputedStyle(k).visibility !== "hidden" && (b.right > box.right + 1 || b.bottom > box.bottom + 1);
+        });
+        const who = past ? `, ${past.tagName.toLowerCase()}.${String((past as HTMLElement).className?.baseVal ?? (past as HTMLElement).className).replace(/svelte-\w+/g, "").trim().split(" ")[0]} runs past it` : "";
+        out.push(`${name(el)} cuts its text off${cs.textOverflow === "ellipsis" ? " with an ellipsis" : ""} (${el.tagName.toLowerCase()}.${String(el.className).replace(/svelte-\w+/g, "").trim().split(" ")[0]}: ${w > 1 ? w + " px wider" : ""}${w > 1 && h > 1 ? ", " : ""}${h > 1 ? h + " px taller" : ""} than its box${who})`);
       }
     }
     return out;
