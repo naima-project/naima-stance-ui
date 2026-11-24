@@ -68,6 +68,9 @@ export interface Range<T> {
   readonly id: string;
   readonly label: string;
   readonly day: (item: T) => string | null;
+  /** The span is chosen here and kept in the view, but the list does not apply it: the caller has narrowed the items to it
+   *  already (the time window of a timeline). */
+  readonly outside?: boolean;
 }
 
 /** What the list knows of the items: how each is named, and what it can show, filter and group by. */
@@ -190,7 +193,7 @@ export function filterItems<T>(
   ranges: NonNullable<ListView["ranges"]> = {},
 ): T[] {
   const active = (spec.facets ?? []).filter((f) => f.id !== except && (filters[f.id]?.length ?? 0) > 0);
-  const spans = (spec.ranges ?? []).filter((r) => ranges[r.id]);
+  const spans = (spec.ranges ?? []).filter((r) => !r.outside && ranges[r.id]);
   if (!active.length && !spans.length) return [...items];
   return items.filter((i) =>
     active.every((f) => f.values(i).some((v) => filters[f.id]!.includes(v))) &&
