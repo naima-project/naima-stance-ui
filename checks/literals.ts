@@ -123,8 +123,25 @@ function textOf(value: Node): string | null {
   return parts.map((p: Node) => p.type === "Text" ? p.data : HOLE).join("");
 }
 
+/** The custom properties a project declares anywhere in its sources: in a stylesheet or a component's style, in a style
+ * attribute or directive, or set by script (setProperty). Custom properties inherit, so a component may use one that an
+ * ancestor declares; a var() of a name nobody declares is still a finding. */
+export function declaredProperties(sources: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  const decl = /(?:^|[\s;{"'`(])(--[A-Za-z0-9_-]+)\s*:/g;
+  const style = /style:(--[A-Za-z0-9_-]+)\b/g;
+  const set = /setProperty\(\s*["'`](--[A-Za-z0-9_-]+)["'`]/g;
+  for (const s of sources) for (const re of [decl, style, set]) for (const m of s.matchAll(re)) out.add(m[1]!);
+  return out;
+}
+
 /** Every raw colour, size or duration in a component, and every var() of something that is not a token. */
-export function checkLiterals(file: string, source: string, tokens: ReadonlySet<string>): Finding[] {
+export function checkLiterals(
+  file: string,
+  source: string,
+  tokens: ReadonlySet<string>,
+  declared: ReadonlySet<string> = new Set(),
+): Finding[] {
   const findings: Finding[] = [];
   let ast: Node;
   try {
@@ -168,7 +185,7 @@ export function checkLiterals(file: string, source: string, tokens: ReadonlySet<
   };
   walk(ast.fragment);
   for (const d of decls) if (d.property.startsWith("--")) local.add(d.property);
-  const known = (name: string) => tokens.has(name) || local.has(name);
+  const known = (name: string) => tokens.has(name) || local.has(name) || declared.has(name);
   for (const d of decls) {
     for (const message of valueFindings(d.value, known)) {
       findings.push({

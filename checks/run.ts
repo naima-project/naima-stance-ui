@@ -9,7 +9,7 @@ import { checkAgentEndpoint, checkTransitions } from "./parity.ts";
 import { checkAffordances } from "./affordance.ts";
 import { checkImports } from "./imports.ts";
 import { checkLayout, LAYOUT_CHECK, layoutFile } from "./layout.ts";
-import { checkLiterals } from "./literals.ts";
+import { checkLiterals, declaredProperties } from "./literals.ts";
 import { AUTH_COMPONENT, checkPrimitives, DRAG_PRIMITIVES } from "./primitives.ts";
 import { readThemes } from "../scripts/tokens.ts";
 import { BROWSER_CHECKS, type BrowserCheck, browserChecks } from "./browser.ts";
@@ -238,9 +238,19 @@ export async function runChecks(
   progress("static checks");
   const files = new Set<string>();
   for (const dir of [...cfg.widgets, ...cfg.components]) for (const f of await svelteFiles(root, dir)) files.add(f);
+  // The custom properties declared anywhere in the project's sources, which inherit into every component.
+  let declared = new Set<string>();
+  if (only.includes("no-raw-literals")) {
+    const texts: string[] = [];
+    const anySource = (p: string) => /\.(svelte|css|ts|js)$/.test(p) && !p.endsWith(".d.ts");
+    for (const dir of [...cfg.widgets, ...cfg.components]) {
+      for (const f of await sourceFiles(root, dir, anySource)) texts.push(await Deno.readTextFile(`${root}/${f}`));
+    }
+    declared = declaredProperties(texts);
+  }
   for (const file of [...files].sort()) {
     const source = await Deno.readTextFile(`${root}/${file}`);
-    if (only.includes("no-raw-literals")) findings.push(...checkLiterals(file, source, names));
+    if (only.includes("no-raw-literals")) findings.push(...checkLiterals(file, source, names, declared));
     if (only.includes("no-raw-drag") || only.includes("auth-only")) {
       const base = posix.basename(file);
       const found = checkPrimitives(file, source, {

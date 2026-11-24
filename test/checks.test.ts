@@ -303,3 +303,16 @@ Deno.test("a theme made for more contrast is held to 7:1 for text, and the token
     assert(css.includes(query), query);
   }
 });
+
+Deno.test("a custom property declared anywhere in the project is not a raw literal; an undeclared one is a finding", async () => {
+  const { checkLiterals, declaredProperties } = await import("../checks/literals.ts");
+  const declared = declaredProperties([
+    "<style>.board { --caption: calc(1rem * var(--k)); }</style>",
+    "<div style:--k={1.2}></div>",
+    'document.documentElement.style.setProperty("--text-scale", "1")',
+  ]);
+  assertEquals([...declared].sort(), ["--caption", "--k", "--text-scale"]);
+  const child = "<p>x</p><style>p { font-size: var(--caption); gap: var(--text-scale); margin: var(--nobody); }</style>";
+  const fs = checkLiterals("Child.svelte", child, new Set(), declared);
+  assertEquals(fs.map((f) => f.message), ["margin: var(--nobody) is not a token of the mood board"]);
+});
