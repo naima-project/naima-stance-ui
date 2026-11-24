@@ -1,0 +1,5 @@
+/* The content of a closed disclosure is not laid out at all. The browser hides it but still gives it a box, which the
+   reflow check and a reader's find-in-page see as text lying over the text below. */
+details:not([open]) > :not(summary) {
+  display: none;
+}

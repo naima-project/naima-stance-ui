@@ -36,9 +36,7 @@
     justify-content: center;
     width: 100%;
     height: var(--size-key);
-    box-sizing: border-box;
     padding: 0;
-    /* A border that is transparent shows nothing, and is the edge a control keeps in forced colours. */
     border: var(--border-width-thin) solid transparent;
     border-radius: var(--radius-lg);
     background: var(--color-key);

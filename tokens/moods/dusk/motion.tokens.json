@@ -19,6 +19,13 @@
           "value": 70,
           "unit": "ms"
         }
+      },
+      "breathe": {
+        "$value": {
+          "value": 1600,
+          "unit": "ms"
+        },
+        "$description": "one breath of a loading placeholder"
       }
     },
     "easing": {

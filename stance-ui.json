@@ -8,7 +8,10 @@
     "tokens": "tokens/moods/white",
     "moods": "tokens/moods",
     "widgets": [
-      "src/lib/components"
+      "src/lib/components",
+      "src/lib/popover.ts",
+      "src/lib/anchor.ts",
+      "src/lib/anchor.css"
     ],
     "components": [
       "demo",
@@ -152,7 +155,8 @@
     "transitions": {
       "machines": "demo/app.svelte.ts",
       "registry": "demo/transitions.generated.ts",
-      "server": []
+      "server": [],
+      "pageMachines": ["host", "calculator", "sheet", "shelf", "auth"]
     },
     "icons": {
       "set": "lucide",

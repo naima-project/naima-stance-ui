@@ -34,7 +34,8 @@ export function createStore<T extends Record<string, Machine>>(machines: T): Sto
 /** What every machine shows now, as plain data. */
 export function snapshot<T extends Record<string, Machine>>(store: Store<T>): Snapshot<T> {
   const out: Record<string, unknown> = {};
-  for (const [name, machine] of Object.entries(store)) out[name] = $state.snapshot(fields(machine.view));
+  // A machine of a part not built yet (the store's getter answers undefined) shows nothing.
+  for (const [name, machine] of Object.entries(store)) if (machine) out[name] = $state.snapshot(fields(machine.view));
   return out as Snapshot<T>;
 }
 

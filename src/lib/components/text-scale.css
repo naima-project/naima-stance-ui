@@ -1,0 +1,5 @@
+/* The reader's text scale, which the widgets that must grow with it multiply by (Graph, Sequence, Timeline). 1 until the
+   app sets another on the document (its text-size control writes --text-scale on the root). */
+:root {
+  --text-scale: 1;
+}

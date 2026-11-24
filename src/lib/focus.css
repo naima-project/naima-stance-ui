@@ -1,0 +1,11 @@
+/* The keys' focus, on every screen. Every element the Tab key can reach is ringed with the tokens' focus style, unless its
+   own stylesheet rings it otherwise (these rules weigh nothing, so any component's own wins); and when the focus brings
+   an element into view, it stops clear of the box's edge (the strip, the header and the rail when it is there, is above the
+   box the screens scroll in, not over it), so that what has the focus is never hidden. */
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]):focus-visible {
+  outline: var(--border-width-focus) solid var(--color-focus);
+  outline-offset: var(--border-width-focus);
+}
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]) {
+  scroll-margin-block: var(--space-sm);
+}

@@ -93,10 +93,7 @@ export class Auth {
     }
   }
 
-  /**
-   * Signs in with a username and a password. An empty one is refused here, with the field it is about.
-   * @person
-   */
+  /** Signs in with a username and a password. An empty one is refused here, with the field it is about. */
   async password(username: string, password: string): Promise<boolean> {
     if (!this.allowed({ type: "password" })) return false;
     const name = username.trim();
@@ -108,10 +105,7 @@ export class Auth {
     return true;
   }
 
-  /**
-   * Signs in with a passkey, through the outputs.
-   * @person
-   */
+  /** Signs in with a passkey, through the outputs. */
   async passkey(): Promise<boolean> {
     if (!this.allowed({ type: "passkey" }) || !this.#outputs.passkey) return false;
     this.#step = "checking";
@@ -119,10 +113,7 @@ export class Auth {
     return true;
   }
 
-  /**
-   * Gives the one-time code the service asked for.
-   * @person
-   */
+  /** Gives the one-time code the service asked for. */
   async code(code: string): Promise<boolean> {
     if (!this.allowed({ type: "code" })) return false;
     const given = code.replace(/\s+/g, "");

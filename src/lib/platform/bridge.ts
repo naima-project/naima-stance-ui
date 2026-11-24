@@ -105,7 +105,8 @@ export function tauriBridge(): Bridge {
     kind: "tauri",
     async call<T extends Json>(command: string, args: { [key: string]: Json } = {}) {
       try {
-        return await invoke<T>(command, args);
+        // One shell command carries every bridge command by name, so that a command Naima adds needs no change of the shell.
+        return await invoke<T>("bridge", { command, args });
       } catch (e) {
         throw new BridgeError(command, typeof e === "string" ? e : String(e));
       }

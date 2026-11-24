@@ -266,16 +266,7 @@ export function groupItems<T>(
   if (!grouping) return [{ key: "", title: "", items: [...items] }];
   const out = new Map<
     string,
-    {
-      key: string;
-      title: string;
-      sub?: string;
-      chapter?: Chapter;
-      chapterRank: number;
-      rank: number;
-      first: number;
-      items: T[];
-    }
+    { key: string; title: string; sub?: string; chapter?: Chapter; chapterRank: number; rank: number; first: number; items: T[] }
   >();
   items.forEach((i, n) => {
     const g = grouping.group(i);
@@ -295,13 +286,7 @@ export function groupItems<T>(
   });
   return [...out.values()]
     .sort((a, b) => a.chapterRank - b.chapterRank || a.rank - b.rank || a.first - b.first)
-    .map(({ key, title, sub, chapter, items }) => ({
-      key,
-      title,
-      ...(sub ? { sub } : {}),
-      ...(chapter ? { chapter } : {}),
-      items,
-    }));
+    .map(({ key, title, sub, chapter, items }) => ({ key, title, ...(sub ? { sub } : {}), ...(chapter ? { chapter } : {}), items }));
 }
 
 // ---- Days: a grouping by day under chapter headings, and the spans of days a filter offers.

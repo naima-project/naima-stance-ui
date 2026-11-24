@@ -48,6 +48,13 @@
         "value": 4,
         "unit": "rem"
       }
+    },
+    "home-line": {
+      "$value": {
+        "value": 1.1111,
+        "unit": "rem"
+      },
+      "$description": "Home: from the caption to the agents, and from the hairline to what needs the owner, 16 CSS px"
     }
   },
   "size": {
@@ -136,6 +143,20 @@
         "unit": "rem"
       },
       "$description": "a small round mark a row of a list starts with"
+    },
+    "ledger-when": {
+      "$value": {
+        "value": 6.6667,
+        "unit": "rem"
+      },
+      "$description": "Home's Diary: the width of the date labels' column, 96 CSS px"
+    },
+    "w-39-5": {
+      "$value": {
+        "value": 39.5,
+        "unit": "rem"
+      },
+      "$description": "a width the layout asks for: 39.5rem, kept from the pixel width the screens had"
     }
   },
   "border": {

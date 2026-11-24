@@ -75,6 +75,41 @@
           "value": 2,
           "unit": "rem"
         }
+      },
+      "heading": {
+        "$value": {
+          "value": 1.25,
+          "unit": "rem"
+        },
+        "$description": "20px section or day heading of Home and Diary"
+      },
+      "home-caption": {
+        "$value": {
+          "value": 0.9028,
+          "unit": "rem"
+        },
+        "$description": "Home: the date, the captions and what needs the owner, 13 CSS px"
+      },
+      "title": {
+        "$value": {
+          "value": 2.125,
+          "unit": "rem"
+        },
+        "$description": "34px large title of Home and Diary"
+      },
+      "reading": {
+        "$value": {
+          "value": 1.0625,
+          "unit": "rem"
+        },
+        "$description": "17px body text of Home and Diary"
+      },
+      "home-label": {
+        "$value": {
+          "value": 0.7639,
+          "unit": "rem"
+        },
+        "$description": "Home: the river's labels, 11 CSS px"
       }
     },
     "weight": {
@@ -96,6 +131,10 @@
       },
       "normal": {
         "$value": 1.5
+      },
+      "home-caption": {
+        "$value": 1.6,
+        "$description": "Home: the captions"
       }
     },
     "letter-spacing": {
@@ -111,6 +150,13 @@
           "value": 0.05,
           "unit": "rem"
         }
+      },
+      "title": {
+        "$value": {
+          "value": -0.0425,
+          "unit": "rem"
+        },
+        "$description": "a large title's tightening"
       }
     }
   }

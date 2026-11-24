@@ -265,6 +265,14 @@
         "hex": "#1e1c19"
       },
       "$description": "a mark drawn on the accent: the colour on the accent, light"
+    },
+    "home-now-text": {
+      "$value": "{color.accent}",
+      "$description": "Home: a quiet label or the words in the colour of now, as the mood's own accent or muted text"
+    },
+    "home-faint": {
+      "$value": "{color.text-muted}",
+      "$description": "Home: a quiet label or the words in the colour of now, as the mood's own accent or muted text"
     }
   }
 }
