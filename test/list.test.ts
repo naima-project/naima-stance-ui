@@ -7,8 +7,8 @@ import { test } from "node:test";
 import {
   afterChange,
   afterClose,
-  type Column,
   clearFilters,
+  type Column,
   dayGrouping,
   dayWords,
   EMPTY_VIEW,
@@ -27,9 +27,9 @@ import {
   searchItems,
   setRange,
   sideways,
-  spanWords,
   sortBy,
   sortItems,
+  spanWords,
   toggleColumn,
   toggleFilter,
   toggleFold,
@@ -412,12 +412,19 @@ test("a span of days keeps the items whose day is inside it; an item with no day
   assert.deepEqual(keys2(listModel(told, toldSpec, clearFilters(week))), ["t1", "t2", "t3", "t4", "t5"]);
   assert.deepEqual(setRange(week, "when", null).ranges, {});
 });
-const keys2 = (m: { groups: readonly { items: readonly Told[] }[] }) => m.groups.flatMap((g) => g.items.map((t) => t.key));
+const keys2 = (m: { groups: readonly { items: readonly Told[] }[] }) =>
+  m.groups.flatMap((g) => g.items.map((t) => t.key));
 
 test("the grouping by day: newest first, a chapter for each month, undated last; days said as a person says them", () => {
   const m = listModel(told, toldSpec, { ...EMPTY_VIEW, group: "day" });
   assert.deepEqual(m.groups.map((g) => g.title), ["Today", "Yesterday", "Mon 2 Nov", "Fri 30 Oct", "Undated"]);
-  assert.deepEqual(m.groups.map((g) => g.chapter?.title), ["November 2026", "November 2026", "November 2026", "October 2026", "Undated"]);
+  assert.deepEqual(m.groups.map((g) => g.chapter?.title), [
+    "November 2026",
+    "November 2026",
+    "November 2026",
+    "October 2026",
+    "Undated",
+  ]);
   assert.equal(dayWords("2025-12-31", "2026-11-24"), "Wed 31 Dec 2025");
   assert.equal(spanWords(lastDays(30, "2026-11-24"), "2026-11-24"), "last 30 days");
   assert.equal(spanWords({ from: "2026-11-01", to: "2026-11-03" }, "2026-11-24"), "Sun 1 Nov – Tue 3 Nov");

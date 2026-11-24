@@ -282,7 +282,20 @@ export function groupItems<T>(
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 /** A day, yyyy-mm-dd, as a date at noon UTC, or null when it is not one. */
 function dayDate(day: string): Date | null {
@@ -316,7 +329,14 @@ export function dayGrouping<T>(
     group: (item) => {
       const dd = day(item);
       const d = dd ? dayDate(dd) : null;
-      if (!dd || !d) return { key: "", title: "Undated", rank: Number.MAX_SAFE_INTEGER, ...(chapters === "none" ? {} : { chapter: { key: "", title: "Undated", rank: Number.MAX_SAFE_INTEGER } }) };
+      if (!dd || !d) {
+        return {
+          key: "",
+          title: "Undated",
+          rank: Number.MAX_SAFE_INTEGER,
+          ...(chapters === "none" ? {} : { chapter: { key: "", title: "Undated", rank: Number.MAX_SAFE_INTEGER } }),
+        };
+      }
       const rank = -Math.floor(d.getTime() / 864e5);
       if (chapters === "none") return { key: dd, title: dayWords(dd, opts.today ?? ""), rank };
       const y = d.getUTCFullYear();
