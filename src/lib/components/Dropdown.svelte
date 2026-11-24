@@ -96,7 +96,9 @@
     inset-inline-start: 0;
     margin: var(--space-xs) 0 0;
     padding: var(--space-xs);
-    min-width: var(--size-dropdown-width);
+    min-width: min(var(--size-dropdown-width), calc(100dvw - var(--space-md) - var(--space-md)));
+    max-inline-size: calc(100dvw - var(--space-md) - var(--space-md));
+    overflow-wrap: anywhere;
     list-style: none;
     border: var(--border-width-thin) solid var(--color-border);
     border-radius: var(--radius-md);
@@ -129,5 +131,11 @@
   [aria-disabled="true"] {
     color: var(--color-text-muted);
     cursor: not-allowed;
+  }
+  /* Under a finger an item is a whole control. */
+  @media (pointer: coarse) {
+    [role="menuitem"] {
+      min-block-size: var(--size-control);
+    }
   }
 </style>

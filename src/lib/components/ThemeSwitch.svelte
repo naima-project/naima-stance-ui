@@ -35,6 +35,9 @@
 <style>
   .switch {
     display: inline-flex;
+    flex-wrap: wrap;
+    max-inline-size: 100%;
+    box-sizing: border-box;
     gap: var(--space-xs);
     padding: var(--space-xs);
     border: var(--border-width-thin) solid var(--color-border);
