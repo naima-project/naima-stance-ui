@@ -435,3 +435,23 @@ test("a view with spans is read back, kept and told apart by them", () => {
   assert.deepEqual(readView(JSON.parse(JSON.stringify(v))), v);
   assert.deepEqual(readView({ ranges: { when: { from: "x", to: "2026-11-03" }, b: 1 } }).ranges, {});
 });
+
+test("a chapter folded hides every day of it, the keyboard has no place there, and a group keeps its quiet sub line", () => {
+  const items: Told[] = [{ key: "a", day: "2026-11-24" }, { key: "b", day: "2026-10-30" }, {
+    key: "c",
+    day: "2026-10-12",
+  }];
+  const base = dayGrouping<Told>("day", "Day", (t) => t.day);
+  const spec: ListSpec<Told> = {
+    key: (t) => t.key,
+    columns: [{ id: "key", label: "Entry", value: (t) => t.key, width: "grow" }],
+    groupings: [{ ...base, group: (t) => ({ ...base.group(t), sub: "the date" }) }],
+  };
+  const m = listModel(items, spec, { ...EMPTY_VIEW, group: "day", folded: ["2026-10"] });
+  assert.deepEqual(m.groups.map((g) => [g.key, g.hidden]), [["2026-11-24", false], ["2026-10-30", true], [
+    "2026-10-12",
+    true,
+  ]]);
+  assert.ok(m.groups.every((g) => g.sub === "the date"));
+  assert.ok(m.places.every((p) => p.group === "2026-11-24"));
+});
