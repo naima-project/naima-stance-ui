@@ -8,9 +8,14 @@ import {
   afterChange,
   afterClose,
   type Column,
+  clearFilters,
+  dayGrouping,
+  dayWords,
   EMPTY_VIEW,
   facetChips,
   filterItems,
+  filtersOn,
+  lastDays,
   listModel,
   type ListSpec,
   type ListView,
@@ -20,7 +25,9 @@ import {
   regroup,
   rowId,
   searchItems,
+  setRange,
   sideways,
+  spanWords,
   sortBy,
   sortItems,
   toggleColumn,
@@ -241,6 +248,7 @@ test("a view read back keeps what is a view and drops the rest", () => {
       desc: true,
       group: "pri",
       filters: { tag: ["ui"] },
+      ranges: {},
       folded: ["now"],
       toggled: [],
     },
@@ -374,4 +382,49 @@ test("an off-screen group's reckoned height is its rows, its heading and the spa
     /contain-intrinsic-size:\s*auto calc\(\(var\(--n\) \+ 1\) \* var\(--row\) \+ var\(--space-sm\)\)/,
     "rows plus heading, plus the heading's space-sm",
   );
+});
+
+// ---- Spans of days as a filter, and the grouping by day under chapter headings.
+
+interface Told {
+  key: string;
+  day: string | null;
+}
+const told: Told[] = [
+  { key: "t1", day: "2026-11-24" },
+  { key: "t2", day: "2026-11-23" },
+  { key: "t3", day: "2026-11-02" },
+  { key: "t4", day: "2026-10-30" },
+  { key: "t5", day: null },
+];
+const toldSpec: ListSpec<Told> = {
+  key: (t) => t.key,
+  columns: [{ id: "k", label: "What", value: (t) => t.key, width: "grow" }],
+  ranges: [{ id: "when", label: "When", day: (t) => t.day }],
+  groupings: [dayGrouping<Told>("day", "Day", (t) => t.day, { today: "2026-11-24" })],
+};
+
+test("a span of days keeps the items whose day is inside it; an item with no day is kept only with no span", () => {
+  const week = setRange(EMPTY_VIEW, "when", lastDays(7, "2026-11-24"));
+  assert.deepEqual(week.ranges, { when: { from: "2026-11-18", to: "2026-11-24" } });
+  assert.deepEqual(keys2(listModel(told, toldSpec, week)), ["t1", "t2"]);
+  assert.equal(filtersOn(week), 1);
+  assert.deepEqual(keys2(listModel(told, toldSpec, clearFilters(week))), ["t1", "t2", "t3", "t4", "t5"]);
+  assert.deepEqual(setRange(week, "when", null).ranges, {});
+});
+const keys2 = (m: { groups: readonly { items: readonly Told[] }[] }) => m.groups.flatMap((g) => g.items.map((t) => t.key));
+
+test("the grouping by day: newest first, a chapter for each month, undated last; days said as a person says them", () => {
+  const m = listModel(told, toldSpec, { ...EMPTY_VIEW, group: "day" });
+  assert.deepEqual(m.groups.map((g) => g.title), ["Today", "Yesterday", "Mon 2 Nov", "Fri 30 Oct", "Undated"]);
+  assert.deepEqual(m.groups.map((g) => g.chapter?.title), ["November 2026", "November 2026", "November 2026", "October 2026", "Undated"]);
+  assert.equal(dayWords("2025-12-31", "2026-11-24"), "Wed 31 Dec 2025");
+  assert.equal(spanWords(lastDays(30, "2026-11-24"), "2026-11-24"), "last 30 days");
+  assert.equal(spanWords({ from: "2026-11-01", to: "2026-11-03" }, "2026-11-24"), "Sun 1 Nov – Tue 3 Nov");
+});
+
+test("a view with spans is read back, kept and told apart by them", () => {
+  const v = setRange(EMPTY_VIEW, "when", { from: "2026-11-01", to: "2026-11-03" });
+  assert.deepEqual(readView(JSON.parse(JSON.stringify(v))), v);
+  assert.deepEqual(readView({ ranges: { when: { from: "x", to: "2026-11-03" }, b: 1 } }).ranges, {});
 });

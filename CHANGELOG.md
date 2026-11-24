@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### One filter in the list, spans of days, chapters, compact rows and a second line
+
+`List` filters by three kinds of thing, all in its one `view`: the values of a facet, the spans of days of a `Range`
+(`spec.ranges`: the day an item was filed, told or closed; offered as Any time and the last 7, 30 and 90 days, in Adjust and
+on the status line), and the words searched. `dayGrouping` groups by day, the newest first, under a chapter heading for each
+month or year (a `chapter` on a group); the headings are not places for the cursor. `compact` draws a thinner row, and
+`spec.second` a quiet second line under the title.
+
 ### Actions are words, not boxes
 
 The study widgets drop the pill with an icon in its disc. `Action` is a short verb set in the page's type, an optional
