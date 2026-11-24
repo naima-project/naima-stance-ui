@@ -24,7 +24,7 @@ Deno.test("every mood board builds to the same custom properties, with a dark th
         "color-scheme: light dark;",
         '@media (prefers-color-scheme: dark) {\n  :root:not([data-theme="light"]) {\n    --color-',
         ':root[data-theme="dark"] {\n  color-scheme: dark;\n  --color-',
-        "@media (prefers-reduced-motion: reduce) {\n  :root {\n    --motion-duration-fast: 0s;",
+        "@media (prefers-reduced-motion: reduce) {\n  :root {\n    --motion-duration-breathe: 0s;\n    --motion-duration-fast: 0s;",
       ]
     ) assert(css.includes(block), `${mood}: ${block}`);
     const base = css.slice(css.indexOf(":root {"), css.indexOf("}"));

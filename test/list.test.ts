@@ -375,7 +375,7 @@ import { readFileSync } from "node:fs";
 
 test("an off-screen group's reckoned height is its rows, its heading and the space above the heading", () => {
   const css = readFileSync(new URL("../src/lib/components/list/List.svelte", import.meta.url), "utf8");
-  const rule = /\.group\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
+  const rule = /\.group\.long\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
   assert.match(rule, /content-visibility:\s*auto/);
   assert.match(
     rule,
