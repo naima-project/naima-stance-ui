@@ -1,5 +1,6 @@
 // The widget set. Primitives first, then the components composed from them.
 import "./text-scale.css";
+import "./controls.css";
 export { default as Button } from "./Button.svelte";
 export { default as Text } from "./Text.svelte";
 export { default as Input } from "./Input.svelte";

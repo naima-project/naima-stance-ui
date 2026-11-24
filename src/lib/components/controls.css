@@ -1,0 +1,16 @@
+/* What every control of the set owes the reader's device, whichever app uses it. */
+
+/* Under a finger a control is as tall and as wide as the touch size: the pointer, never the window's width, decides. */
+@media (pointer: coarse) {
+  :root {
+    --size-control: var(--size-touch);
+  }
+}
+
+/* In forced colours a control with no border has no edge: a transparent outline becomes the system's colour. */
+@media (forced-colors: active) {
+  :where(button, input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="switch"]):not(:focus-visible) {
+    outline: var(--border-width-thin) solid transparent;
+    outline-offset: calc(-1 * var(--border-width-thin));
+  }
+}
