@@ -392,6 +392,8 @@ export async function browserChecks(
             }
           }
           await page.waitForTimeout(state.click.length ? 400 : 50);
+          // The page's fonts are loaded before it is measured: a machine that loads them late measures the fallback face's widths.
+          await page.evaluate(() => document.fonts.ready).catch(() => {});
           return { context, page, errors };
         };
         const add = (check: BrowserCheck, messages: string[], variant: string, limit = 15) => {
