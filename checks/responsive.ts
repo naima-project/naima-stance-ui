@@ -131,7 +131,17 @@ export function overlaps(page: Page): Promise<string[]> {
       range.setEndAfter(own[own.length - 1]);
       const r = range.getBoundingClientRect();
       if (r.width < 2 || r.height < 2) continue;
-      texts.push({ el, x: r.left, y: r.top, w: r.width, h: r.height });
+      // What a scrolling or clipping box (the element's own or an ancestor's) hides is not seen: only the part of the text inside every such box counts.
+      let [left, top, right, bottom] = [r.left, r.top, r.right, r.bottom];
+      for (let a: Element | null = el; a && a !== document.documentElement; a = a.parentElement) {
+        const cs = getComputedStyle(a);
+        if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+        const box = a.getBoundingClientRect();
+        if (cs.overflowX !== "visible") [left, right] = [Math.max(left, box.left), Math.min(right, box.right)];
+        if (cs.overflowY !== "visible") [top, bottom] = [Math.max(top, box.top), Math.min(bottom, box.bottom)];
+      }
+      if (right - left < 2 || bottom - top < 2) continue;
+      texts.push({ el, x: left, y: top, w: right - left, h: bottom - top });
       if (texts.length >= 400) break;
     }
     const out: string[] = [];

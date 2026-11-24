@@ -316,3 +316,8 @@ Deno.test("a custom property declared anywhere in the project is not a raw liter
   const fs = checkLiterals("Child.svelte", child, new Set(), declared);
   assertEquals(fs.map((f) => f.message), ["margin: var(--nobody) is not a token of the mood board"]);
 });
+
+Deno.test("text a scrolling ancestor hides does not lie over the text beside it", async () => {
+  const fs = await problems("responsive", ["reflow"]);
+  assertEquals(fs.filter((f) => f.message.includes("Scrolled out of the scroller")), []);
+});

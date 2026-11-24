@@ -124,7 +124,7 @@ const MEASURE_BINDINGS = new Set([
 const POINTER_READS = new Set(["clientX", "clientY", "pageX", "pageY", "screenX", "screenY", "movementX", "movementY"]);
 const POINTER_TYPES = new Set(["PointerEvent", "MouseEvent", "TouchEvent", "DragEvent", "WheelEvent"]);
 /** Props through which a drag reports its travel (Draggable, Pannable). */
-const TRAVEL_PROPS = new Set(["ontravel", "onslide", "onpan", "onpinch"]);
+const TRAVEL_PROPS = new Set(["ontravel", "onslide", "onpan", "onpinch", "onzoomdrag"]);
 const POINTER_EVENT = /^on(pointer|mouse|touch|drag|drop|wheel)/;
 /** Calls whose result is computed from their arguments: the measurement flows through them. */
 const PASS_THROUGH = new Set(["$derived", "Number", "String", "parseFloat", "parseInt"]);

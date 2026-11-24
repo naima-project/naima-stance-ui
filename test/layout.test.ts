@@ -145,3 +145,17 @@ Deno.test("the check reads components and script modules, not tests or declarati
   assert(!layoutFile("src/app.css"));
   assertEquals(notes("src/Bad.svelte", "<script>let = ;</script>").length, 1);
 });
+
+Deno.test("a pannable's vertical zoom drag reports a travel too, and a style it drives is the drag's", () => {
+  const src = `<script lang="ts">
+  let river: HTMLElement | undefined = $state();
+  let live = { a: 1 };
+  const zoom = (dy: number, clientX: number) => {
+    const w = river!.getBoundingClientRect().width;
+    live = { a: live.a * Math.exp(-dy / w) + clientX * 0 };
+    river!.style.setProperty("--za", String(live.a));
+  };
+</script>
+<div bind:this={river}><Pannable onzoomdrag={zoom} /></div>`;
+  assertEquals(problems("src/F.svelte", src), []);
+});
